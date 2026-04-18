@@ -61,7 +61,7 @@ const Logs = () => {
           </thead>
           <tbody>
             {logs.map((l) => (
-              <FragmentRow key={l.id}>
+              <Fragment key={l.id}>
                 <tr
                   className="border-b border-border last:border-0 hover:bg-secondary/30 cursor-pointer transition-base"
                   onClick={() => setOpen(open === l.id ? null : l.id)}
@@ -103,7 +103,7 @@ const Logs = () => {
                     </td>
                   </tr>
                 )}
-              </FragmentRow>
+              </Fragment>
             ))}
           </tbody>
         </table>
