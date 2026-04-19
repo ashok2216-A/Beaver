@@ -1,12 +1,12 @@
 """
-routes/chat.py — Chat and log endpoints.
+routes/chat.py — Chat and log endpoints (fully async).
 
 Endpoints
 ─────────
-POST /chat/{agent_id}            Send message to agent, get answer + API result
-GET  /chat/{agent_id}/logs       Paginated log list for an agent
-GET  /chat/{agent_id}/logs/{id}  Single log entry detail
-GET  /logs/export                Download all logs for an agent as NDJSON
+POST GET  /chat/{agent_id}                 Send message, get answer
+GET  /chat/{agent_id}/logs                 Paginated log list
+GET  /chat/{agent_id}/logs/{log_id}        Single log entry
+GET  /chat/{agent_id}/logs/export/ndjson   Stream all logs as NDJSON
 """
 from __future__ import annotations
 import json
@@ -38,13 +38,23 @@ def _get_agent_or_404(agent_id: int, db: Session) -> Agent:
 # ─── Chat ─────────────────────────────────────────────────────────────────────
 
 @router.post("/chat/{agent_id}", response_model=ChatResponse)
-def chat(agent_id: int, req: ChatRequest, db: Session = Depends(get_db)):
+async def chat(
+    agent_id: int,
+    req: ChatRequest,
+    session_id: Optional[str] = Query(None, description="Optional session ID for multi-turn conversations"),
+    db: Session = Depends(get_db),
+):
     """
-    Send a natural-language message to an agent.
+    Send a natural-language message to an ADK-powered agent.
+
     The agent will:
-      1. Map intent to the best API endpoint.
-      2. Call the real API.
-      3. Return a human-readable answer + raw API data.
+      1. Understand the intent and select the right API endpoint.
+      2. Extract parameters from the message.
+      3. Call the real API via the `call_api_endpoint` tool.
+      4. Return a human-readable answer + raw API response.
+
+    Pass `session_id` to maintain conversation context across turns.
+    Omit it for a stateless single-turn request.
     """
     agent = _get_agent_or_404(agent_id, db)
 
@@ -52,7 +62,7 @@ def chat(agent_id: int, req: ChatRequest, db: Session = Depends(get_db)):
     if not endpoints:
         raise HTTPException(
             status_code=422,
-            detail="This agent has no parsed endpoints. Upload a valid OpenAPI spec."
+            detail="This agent has no parsed endpoints. Upload a valid OpenAPI spec first.",
         )
 
     endpoint_list = [
@@ -67,16 +77,20 @@ def chat(agent_id: int, req: ChatRequest, db: Session = Depends(get_db)):
         for ep in endpoints
     ]
 
-    result = run_agent(
+    # Run the ADK agent (async — no blocking)
+    result = await run_agent(
         user_input=req.message,
         endpoints=endpoint_list,
         base_url=agent.base_url,
         system_prompt=agent.system_prompt,
         auth_type=agent.auth_type,
         auth_secret=agent.auth_secret,
+        agent_name=agent.name,
+        model=agent.model_id,
+        session_id=session_id,
     )
 
-    # Persist log
+    # Persist log entry
     matched = result.get("endpoint") or {}
     log_entry = Log(
         agent_id=agent_id,
@@ -85,7 +99,7 @@ def chat(agent_id: int, req: ChatRequest, db: Session = Depends(get_db)):
         method=matched.get("method", ""),
         status_code=result.get("status_code", 0),
         latency_ms=result.get("latency_ms", 0),
-        api_response=json.dumps(result.get("api_response"))[:4096],
+        api_response=json.dumps(result.get("api_response"), default=str)[:4096],
         llm_thought=result.get("llm_thought", ""),
         error=result.get("error", ""),
     )
@@ -133,7 +147,11 @@ def get_logs(
 def get_log(agent_id: int, log_id: int, db: Session = Depends(get_db)):
     """Return a single log entry."""
     _get_agent_or_404(agent_id, db)
-    entry = db.query(Log).filter(Log.id == log_id, Log.agent_id == agent_id).first()
+    entry = (
+        db.query(Log)
+          .filter(Log.id == log_id, Log.agent_id == agent_id)
+          .first()
+    )
     if not entry:
         raise HTTPException(status_code=404, detail="Log entry not found")
     return LogOut.model_validate(entry)
@@ -143,7 +161,12 @@ def get_log(agent_id: int, log_id: int, db: Session = Depends(get_db)):
 def export_logs(agent_id: int, db: Session = Depends(get_db)):
     """Stream all logs for an agent as NDJSON (one JSON object per line)."""
     _get_agent_or_404(agent_id, db)
-    logs = db.query(Log).filter(Log.agent_id == agent_id).order_by(Log.created_at).all()
+    logs = (
+        db.query(Log)
+          .filter(Log.agent_id == agent_id)
+          .order_by(Log.created_at)
+          .all()
+    )
 
     def _stream():
         for entry in logs:
@@ -153,5 +176,7 @@ def export_logs(agent_id: int, db: Session = Depends(get_db)):
     return StreamingResponse(
         _stream(),
         media_type="application/x-ndjson",
-        headers={"Content-Disposition": f'attachment; filename="logs_agent_{agent_id}.ndjson"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="logs_agent_{agent_id}.ndjson"'
+        },
     )

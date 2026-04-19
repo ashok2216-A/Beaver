@@ -1,0 +1,41 @@
+services:
+  # ── Backend: FastAPI Web Service ──────────────────────────────────────────
+  - type: web
+    name: api2bot-backend
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: api2bot-db
+          property: connectionString
+      - key: GEMINI_API_KEY
+        sync: false # Set this in Render Dashboard
+      - key: ALLOWED_ORIGINS
+        value: "*" # Update this with your frontend URL later
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+
+  # ── Frontend: Static Site ─────────────────────────────────────────────────
+  - type: static
+    name: api2bot-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: api2bot-backend
+          property: host
+    rewriteRules:
+      - source: /*
+        destination: /index.html
+
+# ── Database: PostgreSQL ────────────────────────────────────────────────────
+databases:
+  - name: api2bot-db
+    plan: free # Change to 'starter' if you need persistence > 90 days

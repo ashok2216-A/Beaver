@@ -1,0 +1,64 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ── Backend CI ────────────────────────────────────────────────────────────
+  backend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+
+      - name: Run backend tests
+        env:
+          DATABASE_URL: sqlite:///./test.db
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          APP_ENV: testing
+        run: |
+          cd backend && pytest
+
+  # ── Frontend CI ───────────────────────────────────────────────────────────
+  frontend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend && npm install
+
+      - name: Run frontend tests
+        run: |
+          cd frontend && npm run test -- --run
+
+  # ── Deploy Trigger (Optional) ─────────────────────────────────────────────
+  # Note: Render usually auto-deploys when you push to the connected repo.
+  # This step can be used to notify Render or perform a pre-deploy check.
+  deploy-check:
+    needs: [backend-test, frontend-test]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Deployment Ready
+        run: echo "All tests passed. Ready for deployment on Render."
