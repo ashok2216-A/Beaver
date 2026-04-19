@@ -8,17 +8,23 @@ async function request<T>(path: string, options: FetchOptions = {}): Promise<T> 
   const url = `${API_BASE_URL}${path}`;
   const { data, ...init } = options;
 
+  const adminKey = localStorage.getItem("admin_key");
+  const headers = { ...init.headers } as any;
+
+  if (adminKey) {
+    headers["X-Admin-Key"] = adminKey;
+  }
+
   if (data) {
     if (data instanceof FormData) {
       init.body = data;
     } else {
       init.body = JSON.stringify(data);
-      init.headers = {
-        ...init.headers,
-        "Content-Type": "application/json",
-      };
+      headers["Content-Type"] = "application/json";
     }
   }
+
+  init.headers = headers;
 
   const response = await fetch(url, init);
 

@@ -9,9 +9,11 @@ import logging
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+from utils.auth import verify_admin_key
 
 from config import get_settings
 from database import Base, engine
@@ -95,8 +97,16 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # ─── Routers ──────────────────────────────────────────────────────────────────
 
-app.include_router(agents.router, prefix="/api/v1")
-app.include_router(chat.router,   prefix="/api/v1")
+app.include_router(
+    agents.router, 
+    prefix="/api/v1",
+    dependencies=[Depends(verify_admin_key)]
+)
+app.include_router(
+    chat.router,   
+    prefix="/api/v1",
+    dependencies=[Depends(verify_admin_key)]
+)
 
 
 # ─── Health check ─────────────────────────────────────────────────────────────

@@ -26,6 +26,7 @@ from models import Agent, Endpoint, AgentStatus
 from schemas import (
     AgentCreate, AgentOut, AgentDetail, AgentUpdate,
     EndpointOut, IngestUrlRequest, MessageOut,
+    IngestPreviewRequest, IngestPreviewOut,
 )
 from services.parser import parse_openapi
 
@@ -145,6 +146,50 @@ async def ingest_file(
     agent = _ingest_spec(agent, spec, db)
     log.info("Ingested file agent id=%s", agent.id)
     return _agent_out(agent)
+
+
+@router.post("/ingest/preview", response_model=IngestPreviewOut)
+async def ingest_preview(body: IngestPreviewRequest):
+    """Fetch an OpenAPI spec URL and return its metadata without creating an agent."""
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+            r = await client.get(body.url)
+        r.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=422, detail=f"Failed to fetch spec: {exc}")
+
+    try:
+        spec = r.json()
+    except Exception:
+        try:
+            spec = yaml.safe_load(r.text)
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=f"Could not parse fetched spec: {exc}")
+
+    # Extract metadata
+    info = spec.get("info", {})
+    name = info.get("title", "New Agent from URL")
+    description = info.get("description", "")
+    
+    # Extract Base URL
+    base_url = ""
+    if "servers" in spec and spec["servers"] and spec["servers"][0].get("url"):
+        base_url = spec["servers"][0]["url"]
+        # If server URL is relative, combine with source domain
+        if base_url.startswith("/"):
+            from urllib.parse import urljoin
+            base_url = urljoin(body.url, base_url)
+    else:
+        # Fallback to the domain of the spec source
+        from urllib.parse import urlparse
+        p = urlparse(body.url)
+        base_url = f"{p.scheme}://{p.netloc}"
+
+    return IngestPreviewOut(
+        name=name,
+        description=description,
+        base_url=base_url
+    )
 
 
 @router.post("/ingest/url", response_model=AgentOut, status_code=status.HTTP_201_CREATED)

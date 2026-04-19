@@ -80,6 +80,16 @@ class IngestUrlRequest(BaseModel):
     base_url: str = ""
 
 
+class IngestPreviewRequest(BaseModel):
+    url: str = Field(..., min_length=5)
+
+
+class IngestPreviewOut(BaseModel):
+    name: str
+    description: str
+    base_url: str
+
+
 # ─── Chat ─────────────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):

@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     gemini_model: str = "mistral/mistral-small-latest"
 
     # ── Auth ──────────────────────────────────────────────────────
+    admin_key: str = ""
     secret_key: str = "change_me_in_production"
     access_token_expire_minutes: int = 60
 
