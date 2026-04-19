@@ -1,12 +1,15 @@
 import { Link } from "react-router-dom";
-import { Bot, MessageSquare, Zap, TrendingUp, MoreHorizontal, ArrowUpRight } from "lucide-react";
+import { Bot, MessageSquare, Zap, TrendingUp, MoreHorizontal, ArrowUpRight, Trash2, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 const Dashboard = () => {
+  const queryClient = useQueryClient();
+  
   const { data: agents = [], isLoading: loadingAgents } = useQuery({
     queryKey: ["agents"],
     queryFn: () => api.get<any[]>("/agents"),
@@ -17,12 +20,32 @@ const Dashboard = () => {
     queryFn: () => api.get<any>("/agents/stats"),
   });
 
+  const { mutate: deleteAgent, isPending: isDeleting } = useMutation({
+    mutationFn: (id: number) => api.delete(`/agents/${id}`),
+    onSuccess: () => {
+      toast.success("Agent deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["agents"] });
+      queryClient.invalidateQueries({ queryKey: ["stats"] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to delete agent");
+    },
+  });
+
   const stats = [
     { label: "Active agents", value: agents.length.toString(), change: "+0 this week", icon: Bot },
     { label: "Messages today", value: statsData?.message_count?.toString() || "0", change: "+0%", icon: MessageSquare },
     { label: "API calls", value: statsData?.message_count?.toString() || "0", change: "+0%", icon: Zap },
     { label: "Avg. response", value: `${statsData?.avg_latency_ms || 0}ms`, change: "-0ms", icon: TrendingUp },
   ];
+
+  const handleDelete = (e: React.MouseEvent, id: number, name: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (confirm(`Are you sure you want to delete "${name}"? This cannot be undone.`)) {
+      deleteAgent(id);
+    }
+  };
 
   return (
     <AppShell
@@ -64,25 +87,44 @@ const Dashboard = () => {
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {loadingAgents ? (
-            <p className="text-sm text-muted-foreground">Loading agents...</p>
+            <div className="col-span-full py-20 text-center">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="mt-2 text-sm text-muted-foreground">Loading agents...</p>
+            </div>
           ) : agents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No agents created yet.</p>
+            <div className="col-span-full py-20 text-center rounded-2xl border border-dashed border-border bg-secondary/20">
+              <Bot className="mx-auto h-10 w-10 text-muted-foreground opacity-20" />
+              <p className="mt-4 text-sm text-muted-foreground font-medium">No agents created yet.</p>
+              <Button asChild variant="soft" className="mt-4" size="sm">
+                <Link to="/agents/new">Create your first agent</Link>
+              </Button>
+            </div>
           ) : (
             agents.map((a) => (
               <div
                 key={a.id}
-                className="group rounded-2xl border border-border bg-card p-5 transition-base hover:-translate-y-0.5 hover:shadow-elevated hover:border-primary/30"
+                className="group relative rounded-2xl border border-border bg-card p-5 transition-base hover:-translate-y-0.5 hover:shadow-elevated hover:border-primary/30"
               >
                 <div className="flex items-start justify-between">
                   <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
                     <Bot className="h-5 w-5" />
                   </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-base">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={(e) => handleDelete(e, a.id, a.name)}
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-base"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-base">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
                 <h3 className="mt-4 font-semibold">{a.name}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Connected to {a.base_url || "Local API"}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate pr-8">Connected to {a.base_url || "Local API"}</p>
                 <div className="mt-4 flex items-center gap-3 text-xs">
                   <StatusPill status={a.status} color={a.status === "live" ? "success" : "muted"} />
                   <span className="text-muted-foreground">·</span>
@@ -94,7 +136,7 @@ const Dashboard = () => {
                     <p className="text-sm font-semibold">{a.endpoint_count}</p>
                   </div>
                   <Button asChild size="sm" variant="soft">
-                    <Link to={`/agents/builder?id=${a.id}`}>Open</Link>
+                    <Link to={`/agents/builder?id=${a.id}`}>Open Builder</Link>
                   </Button>
                 </div>
               </div>

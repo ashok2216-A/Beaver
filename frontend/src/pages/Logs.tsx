@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Filter, Download, Clock, CircleCheck, CircleX, ExternalLink } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+import { api, API_BASE_URL } from "@/lib/api";
 
 const statusColor = (s: number) =>
   s < 300 ? "bg-success/10 text-success" : s < 400 ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive";
@@ -37,7 +37,13 @@ const Logs = () => {
       subtitle="Complete audit trail of every message and API tool call."
       actions={
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => {
+              window.open(`${API_BASE_URL}/chat/${agentId}/logs/export/ndjson?admin_key=${localStorage.getItem("admin_key")}`, "_blank");
+            }}
+          >
             <Download className="h-4 w-4" /> Export
           </Button>
           <Button variant="outline" size="sm">

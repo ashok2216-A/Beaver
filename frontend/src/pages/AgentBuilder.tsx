@@ -104,7 +104,16 @@ const AgentBuilder = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">Test</Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => {
+              setMessages([{ role: "assistant", text: `Hi! I'm ${agent.name}. How can I help you with the API today?` }]);
+              toast.success("Chat reset for testing");
+            }}
+          >
+            Test
+          </Button>
           <Button asChild variant="hero" size="sm">
             <Link to={`/deploy?id=${agent.id}`}><Rocket className="h-4 w-4" /> Deploy</Link>
           </Button>
