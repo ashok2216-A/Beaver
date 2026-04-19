@@ -31,7 +31,7 @@ describe("Dashboard Page", () => {
       </QueryClientProvider>
     );
     
-    expect(screen.getByText(/Welcome back, Jamie/i)).toBeInTheDocument();
+    expect(screen.getByText(/Welcome back, Admin/i)).toBeInTheDocument();
   });
 
   it("renders the statistics cards", () => {
