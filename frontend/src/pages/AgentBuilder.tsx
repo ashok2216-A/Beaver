@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, Sparkles, User, ArrowLeft, Rocket, Settings2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
+import ReactMarkdown from "react-markdown";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -153,9 +154,13 @@ const AgentBuilder = () => {
                   <div className={`max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                     m.role === "user"
                       ? "bg-primary text-primary-foreground rounded-tr-sm"
-                      : "bg-background border border-border rounded-tl-sm shadow-sm"
+                      : "bg-background border border-border rounded-tl-sm shadow-sm prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-muted prose-pre:p-2 prose-pre:rounded-md"
                   }`}>
-                    {m.text}
+                    {m.role === "user" ? (
+                      m.text
+                    ) : (
+                      <ReactMarkdown>{m.text}</ReactMarkdown>
+                    )}
                   </div>
                 </div>
               ))}
@@ -219,9 +224,10 @@ const AgentBuilder = () => {
               </Field>
               <Field label="Model">
                 <select name="model_id" defaultValue={agent.model_id} className="settings-input">
-                  <option value="gemini-1.5-flash">gemini-1.5-flash</option>
-                  <option value="gemini-2.0-flash">gemini-2.0-flash</option>
-                  <option value="claude-3-5-sonnet">claude-3-5-sonnet</option>
+                  <option value="mistral/mistral-small-latest">mistral-small (Mistral)</option>
+                  <option value="mistral/mistral-large-latest">mistral-large (Mistral)</option>
+                  <option value="gemini/gemini-2.0-flash-lite">gemini-2.0-flash (Google)</option>
+                  <option value="openai/gpt-4o-mini">gpt-4o-mini (OpenAI)</option>
                 </select>
               </Field>
             </form>

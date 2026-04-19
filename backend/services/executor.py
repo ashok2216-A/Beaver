@@ -44,7 +44,7 @@ def _build_auth_headers(auth_type: str, auth_secret: str) -> dict[str, str]:
     return {}
 
 
-def call_api(
+async def call_api(
     base_url: str,
     path: str,
     method: str,
@@ -64,13 +64,22 @@ def call_api(
     resolved_path, leftover = _substitute_path_params(path, extracted_params)
     url = base_url.rstrip("/") + resolved_path
 
+    if not url.startswith(("http://", "https://")):
+        return {
+            "error": "invalid_url",
+            "detail": f"The constructed URL '{url}' is missing a protocol (http:// or https://). Please check the Agent's base_url setting."
+        }, 400, 0
+
     # Classify remaining params by their spec location
     loc_map: dict[str, str] = {p["name"]: p.get("in", "query") for p in endpoint_params}
     query_params: dict[str, Any] = {}
     body_params:  dict[str, Any] = {}
 
+    method_upper = method.upper()
+    default_loc = "body" if method_upper in ("POST", "PUT", "PATCH") else "query"
+
     for name, value in leftover.items():
-        location = loc_map.get(name, "query")
+        location = loc_map.get(name, default_loc)
         if location in ("query",):
             query_params[name] = value
         else:
@@ -84,14 +93,14 @@ def call_api(
 
     start = time.monotonic()
     try:
-        with httpx.Client(timeout=TIMEOUT, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True) as client:
             method_upper = method.upper()
             if method_upper == "GET":
-                r = client.get(url, params=query_params, headers=headers)
+                r = await client.get(url, params=query_params, headers=headers)
             elif method_upper == "DELETE":
-                r = client.delete(url, params=query_params, headers=headers)
+                r = await client.delete(url, params=query_params, headers=headers)
             elif method_upper in ("POST", "PUT", "PATCH"):
-                r = client.request(
+                r = await client.request(
                     method_upper,
                     url,
                     params=query_params,
@@ -99,7 +108,7 @@ def call_api(
                     headers=headers,
                 )
             else:
-                r = client.get(url, params=query_params, headers=headers)
+                r = await client.get(url, params=query_params, headers=headers)
 
         latency_ms = int((time.monotonic() - start) * 1000)
 

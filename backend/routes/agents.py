@@ -138,7 +138,7 @@ async def ingest_file(
         system_prompt="",
         auth_type="bearer",
         auth_secret="",
-        model_id="gemini-2.0-flash",
+        model_id="mistral/mistral-small-latest",
         status=AgentStatus.draft,
         api_spec="",
     )
@@ -165,9 +165,20 @@ async def ingest_url(body: IngestUrlRequest, db: Session = Depends(get_db)):
         except Exception as exc:
             raise HTTPException(status_code=422, detail=f"Could not parse fetched spec: {exc}")
 
-    base_url = body.base_url or (
-        spec.get("servers", [{}])[0].get("url", "") if "servers" in spec else ""
-    )
+    # Derive base_url: body -> spec.servers -> source URL domain
+    base_url = body.base_url
+    if not base_url:
+        if "servers" in spec and spec["servers"] and spec["servers"][0].get("url"):
+            base_url = spec["servers"][0]["url"]
+            # If server URL is relative (e.g. "/v1"), combine with source domain
+            if base_url.startswith("/"):
+                from urllib.parse import urljoin
+                base_url = urljoin(body.url, base_url)
+        else:
+            # Fallback to the domain of the spec source (e.g. http://localhost:8000)
+            from urllib.parse import urlparse
+            p = urlparse(body.url)
+            base_url = f"{p.scheme}://{p.netloc}"
 
     agent = Agent(
         name=body.name,
@@ -176,7 +187,7 @@ async def ingest_url(body: IngestUrlRequest, db: Session = Depends(get_db)):
         system_prompt="",
         auth_type="bearer",
         auth_secret="",
-        model_id="gemini-2.0-flash",
+        model_id="mistral/mistral-small-latest",
         status=AgentStatus.draft,
         api_spec="",
     )

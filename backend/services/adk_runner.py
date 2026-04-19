@@ -62,7 +62,7 @@ def _build_agent(
     """
 
     # ── Single universal tool ────────────────────────────────────────
-    def call_api_endpoint(path: str, method: str, params: str = "{}") -> str:
+    async def call_api_endpoint(path: str, method: str, params: str = "{}") -> str:
         """
         Call a live API endpoint and return the JSON response.
 
@@ -91,7 +91,7 @@ def _build_agent(
             {},
         )
 
-        data, status, latency = call_api(
+        data, status, latency = await call_api(
             base_url=base_url,
             path=path,
             method=method,
@@ -123,16 +123,18 @@ def _build_agent(
     )
 
     base_instruction = (
-        "You are a helpful API assistant. "
-        "Use the `call_api_endpoint` tool to fulfill user requests.\n\n"
+        "You are an expert API Assistant. Use the `call_api_endpoint` tool to fulfill user requests.\n\n"
+        "RESPONSE STRUCTURE RULES:\n"
+        "- ALWAYS use Markdown for formatting.\n"
+        "- Use bullet points (*) or numbered lists for all lists of items.\n"
+        "- Use bold headings (e.g., **#### Agent Details**) to categorize your response.\n"
+        "- Summarize API data clearly before showing values.\n\n"
         "Available endpoints:\n"
         f"{ep_catalogue}\n\n"
-        "Rules:\n"
+        "RULES:\n"
         "- Use the exact path and method listed above.\n"
-        "- Replace :placeholders in paths with real values from the user's message.\n"
-        "- After receiving the API response, summarise it clearly in plain English.\n"
-        "- For destructive operations (DELETE, refund, cancel) always confirm "
-        "  the action in your response."
+        "- Replace :placeholders in paths with real values.\n"
+        "- For destructive operations (DELETE, refund, cancel) always confirm the action."
     )
 
     instruction = (
@@ -147,7 +149,7 @@ def _build_agent(
     )[:50] or "api_agent"
 
     model_name = model or "gemini/gemini-2.0-flash-lite"
-    adk_model = LiteLlm(model=model_name)
+    adk_model = LiteLlm(model=model_name, num_retries=3)
 
     return Agent(
         name=safe_name,
