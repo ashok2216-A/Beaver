@@ -24,10 +24,11 @@ services:
         value: INFO
 
   # ── Frontend: Static Site ─────────────────────────────────────────────────
-  - type: static
+  - type: web
     name: api-agent-frontend
+    runtime: static
     buildCommand: cd frontend && npm install && npm run build
-    publishPath: frontend/dist
+    staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_BASE_URL
         value: https://api-agent-backend.onrender.com
