@@ -6,11 +6,15 @@ services:
     buildCommand: pip install -r backend/requirements.txt
     startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
       - key: DATABASE_URL
         fromDatabase:
           name: api2bot-db
           property: connectionString
       - key: GEMINI_API_KEY
+        sync: false # Set this in Render Dashboard
+      - key: MISTRAL_API_KEY
         sync: false # Set this in Render Dashboard
       - key: ALLOWED_ORIGINS
         value: "*" # Update this with your frontend URL later
