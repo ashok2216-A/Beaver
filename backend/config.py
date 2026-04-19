@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # ── LLM ───────────────────────────────────────────────────────
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.0-flash-lite"
+    gemini_model: str = "gemini/gemini-2.0-flash-lite"
 
     # ── Auth ──────────────────────────────────────────────────────
     secret_key: str = "change_me_in_production"

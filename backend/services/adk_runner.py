@@ -29,6 +29,7 @@ import os
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
+from google.adk.models.lite_llm import LiteLlm
 from google.genai import types as genai_types
 
 from config import get_settings
@@ -145,9 +146,12 @@ def _build_agent(
         for c in agent_name.lower().replace(" ", "_")
     )[:50] or "api_agent"
 
+    model_name = model or "gemini/gemini-2.0-flash-lite"
+    adk_model = LiteLlm(model=model_name)
+
     return Agent(
         name=safe_name,
-        model=model or "gemini-2.0-flash-lite",
+        model=adk_model,
         instruction=instruction,
         description=f"AI API agent — {agent_name}",
         tools=[call_api_endpoint],
