@@ -1,22 +1,27 @@
+import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Rocket, Globe, Code2, Check } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/CodeBlock";
 import { toast } from "sonner";
-import { useState } from "react";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 const Deploy = () => {
+  const [searchParams] = useSearchParams();
+  const agentId = searchParams.get("id") || "AGENT_ID";
   const [deployed, setDeployed] = useState(true);
 
-  const apiUrl = "https://api.agently.ai/v1/agents/agt_8f2k9d1m/chat";
-  const embed = `<script src="https://cdn.agently.ai/widget.js"
-  data-agent-id="agt_8f2k9d1m"
+  const apiUrl = `${API_BASE_URL}/chat/${agentId}`;
+  const embed = `<script src="${API_BASE_URL.replace("/api/v1", "")}/widget.js"
+  data-agent-id="${agentId}"
   data-theme="light"
   defer></script>`;
   const curl = `curl -X POST ${apiUrl} \\
-  -H "Authorization: Bearer $AGENTLY_API_KEY" \\
+  -H "Authorization: Bearer $YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{"message": "List my last 3 customers"}'`;
+  -d '{"message": "How can I help you today?"}'`;
 
   return (
     <AppShell title="Deploy your agent" subtitle="Ship as a hosted API or drop-in chat widget.">

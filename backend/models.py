@@ -40,7 +40,7 @@ class Agent(Base):
     system_prompt  = Column(Text, default="")
     auth_type      = Column(String(32), default="bearer")  # bearer | apikey | none
     auth_secret    = Column(Text, default="")              # encrypted in prod
-    model_id       = Column(String(64), default="gemini-1.5-flash")
+    model_id       = Column(String(64), default="gemini-2.0-flash-lite")
     status         = Column(SAEnum(AgentStatus), default=AgentStatus.draft, nullable=False)
     created_at     = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at     = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),

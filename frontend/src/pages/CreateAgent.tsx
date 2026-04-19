@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
 import { UploadCloud, Link2, FileJson, Sparkles, ArrowRight, Check } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const CreateAgent = () => {
@@ -20,23 +22,32 @@ const CreateAgent = () => {
     toast.success(`${files[0].name} ready to generate`);
   };
 
+  const { mutate: ingest, isPending } = useMutation({
+    mutationFn: async () => {
+      if (tab === "upload" && file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        return api.post<any>(`/agents/ingest/file?name=${encodeURIComponent(file.name)}`, formData);
+      } else if (tab === "url" && url) {
+        return api.post<any>("/agents/ingest/url", { url, name: "New Agent from URL" });
+      }
+      throw new Error("Missing file or URL");
+    },
+    onSuccess: (data) => {
+      toast.success("Agent generated successfully!");
+      navigate(`/agents/builder?id=${data.id}`);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to generate agent");
+    },
+  });
+
   const handleGenerate = () => {
     if (!file && !url) {
       toast.error("Upload a spec or paste a URL first");
       return;
     }
-    setGenerating(true);
-    setProgress(0);
-    const id = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) {
-          clearInterval(id);
-          setTimeout(() => navigate("/agents/builder"), 400);
-          return 100;
-        }
-        return p + 8;
-      });
-    }, 120);
+    ingest();
   };
 
   return (

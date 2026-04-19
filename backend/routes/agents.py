@@ -54,6 +54,13 @@ def _ingest_spec(agent: Agent, spec: dict | str, db: Session) -> Agent:
     db.flush()   # get agent.id without committing
 
     parsed = parse_openapi(spec)
+    if not parsed:
+        db.rollback()
+        raise HTTPException(
+            status_code=422,
+            detail="No valid endpoints found in the provided spec. Please ensure you are using a valid OpenAPI 3.x or Swagger 2.x schema."
+        )
+
     for ep in parsed:
         db.add(Endpoint(
             agent_id=agent.id,
@@ -131,7 +138,7 @@ async def ingest_file(
         system_prompt="",
         auth_type="bearer",
         auth_secret="",
-        model_id="gemini-1.5-flash",
+        model_id="gemini-2.0-flash",
         status=AgentStatus.draft,
         api_spec="",
     )
@@ -169,7 +176,7 @@ async def ingest_url(body: IngestUrlRequest, db: Session = Depends(get_db)):
         system_prompt="",
         auth_type="bearer",
         auth_secret="",
-        model_id="gemini-1.5-flash",
+        model_id="gemini-2.0-flash",
         status=AgentStatus.draft,
         api_spec="",
     )

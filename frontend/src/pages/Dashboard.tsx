@@ -3,23 +3,21 @@ import { Bot, MessageSquare, Zap, TrendingUp, MoreHorizontal, ArrowUpRight } fro
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 
-const stats = [
-  { label: "Active agents", value: "8", change: "+2 this week", icon: Bot },
-  { label: "Messages today", value: "12,847", change: "+18.2%", icon: MessageSquare },
-  { label: "API calls", value: "84,213", change: "+24.1%", icon: Zap },
-  { label: "Avg. response", value: "412ms", change: "-12ms", icon: TrendingUp },
-];
-
-const agents = [
-  { name: "Stripe Payments Agent", status: "Live", color: "success", created: "Apr 12, 2026", msgs: "4.2k", api: "Stripe v1" },
-  { name: "Notion Workspace Bot", status: "Live", color: "success", created: "Apr 10, 2026", msgs: "1.8k", api: "Notion v1" },
-  { name: "GitHub Issue Triager", status: "Draft", color: "muted", created: "Apr 09, 2026", msgs: "—", api: "GitHub v3" },
-  { name: "Linear PM Assistant", status: "Live", color: "success", created: "Apr 02, 2026", msgs: "920", api: "Linear" },
-  { name: "Internal HR Helpdesk", status: "Paused", color: "warning", created: "Mar 28, 2026", msgs: "612", api: "Custom" },
-  { name: "Shopify Store Manager", status: "Live", color: "success", created: "Mar 21, 2026", msgs: "3.1k", api: "Shopify" },
-];
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 const Dashboard = () => {
+  const { data: agents = [], isLoading } = useQuery({
+    queryKey: ["agents"],
+    queryFn: () => api.get<any[]>("/agents"),
+  });
+
+  const stats = [
+    { label: "Active agents", value: agents.length.toString(), change: "+0 this week", icon: Bot },
+    { label: "Messages today", value: "0", change: "+0%", icon: MessageSquare },
+    { label: "API calls", value: "0", change: "+0%", icon: Zap },
+    { label: "Avg. response", value: "0ms", change: "-0ms", icon: TrendingUp },
+  ];
   return (
     <AppShell
       title="Welcome back, Jamie 👋"
@@ -59,37 +57,43 @@ const Dashboard = () => {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {agents.map((a) => (
-            <div
-              key={a.name}
-              className="group rounded-2xl border border-border bg-card p-5 transition-base hover:-translate-y-0.5 hover:shadow-elevated hover:border-primary/30"
-            >
-              <div className="flex items-start justify-between">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
-                  <Bot className="h-5 w-5" />
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading agents...</p>
+          ) : agents.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No agents created yet.</p>
+          ) : (
+            agents.map((a) => (
+              <div
+                key={a.id}
+                className="group rounded-2xl border border-border bg-card p-5 transition-base hover:-translate-y-0.5 hover:shadow-elevated hover:border-primary/30"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
+                    <Bot className="h-5 w-5" />
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-base">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-base">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </div>
-              <h3 className="mt-4 font-semibold">{a.name}</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Connected to {a.api}</p>
-              <div className="mt-4 flex items-center gap-3 text-xs">
-                <StatusPill status={a.status} color={a.color} />
-                <span className="text-muted-foreground">·</span>
-                <span className="text-muted-foreground">{a.created}</span>
-              </div>
-              <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Messages</p>
-                  <p className="text-sm font-semibold">{a.msgs}</p>
+                <h3 className="mt-4 font-semibold">{a.name}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Connected to {a.base_url || "Local API"}</p>
+                <div className="mt-4 flex items-center gap-3 text-xs">
+                  <StatusPill status={a.status} color={a.status === "live" ? "success" : "muted"} />
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-muted-foreground">{new Date(a.created_at).toLocaleDateString()}</span>
                 </div>
-                <Button asChild size="sm" variant="soft">
-                  <Link to="/agents/builder">Open</Link>
-                </Button>
+                <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Endpoints</p>
+                    <p className="text-sm font-semibold">{a.endpoint_count}</p>
+                  </div>
+                  <Button asChild size="sm" variant="soft">
+                    <Link to={`/agents/builder?id=${a.id}`}>Open</Link>
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </AppShell>

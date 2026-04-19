@@ -25,11 +25,13 @@ import time
 import uuid
 from typing import Any
 
+import os
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types as genai_types
 
+from config import get_settings
 from services.executor import call_api
 
 log = logging.getLogger(__name__)
@@ -112,28 +114,30 @@ def _build_agent(
             return json.dumps({"data": str(data), "status_code": status})
 
     # ── Endpoint catalogue for the instruction ───────────────────────
+    # We avoid { } because ADK 1.31.0 aggressively tries to resolve them as context variables.
+    # We use :placeholder style which Gemini understands natively.
     ep_catalogue = "\n".join(
-        f"  [{ep['method']}] {ep['path']}  —  {ep.get('summary') or ep.get('description', '')}"
+        f"  [{ep['method']}] {ep['path'].replace('{', ':').replace('}', '')}  —  {ep.get('summary') or ep.get('description', '')}"
         for ep in endpoints
     )
 
-    default_instruction = (
+    base_instruction = (
         "You are a helpful API assistant. "
-        "Use the `call_api_endpoint` tool to fulfil user requests.\n\n"
+        "Use the `call_api_endpoint` tool to fulfill user requests.\n\n"
         "Available endpoints:\n"
         f"{ep_catalogue}\n\n"
         "Rules:\n"
         "- Use the exact path and method listed above.\n"
-        "- Replace {{placeholders}} in paths with values from the user's message.\n"
+        "- Replace :placeholders in paths with real values from the user's message.\n"
         "- After receiving the API response, summarise it clearly in plain English.\n"
         "- For destructive operations (DELETE, refund, cancel) always confirm "
         "  the action in your response."
     )
 
     instruction = (
-        f"{system_prompt}\n\nAvailable endpoints:\n{ep_catalogue}"
+        f"{system_prompt}\n\n{base_instruction}"
         if system_prompt
-        else default_instruction
+        else base_instruction
     )
 
     safe_name = "".join(
@@ -143,7 +147,7 @@ def _build_agent(
 
     return Agent(
         name=safe_name,
-        model=model or "gemini-2.0-flash",
+        model=model or "gemini-2.0-flash-lite",
         instruction=instruction,
         description=f"AI API agent — {agent_name}",
         tools=[call_api_endpoint],
@@ -189,12 +193,16 @@ async def run_agent_async(
         session_service=_session_service,
     )
 
-    # Create a new session for this turn
-    _session_service.create_session(
-        app_name=APP_NAME,
-        user_id="user",
-        session_id=session_id,
-    )
+    # Ensure the session exists (create if missing, ignore if exists)
+    try:
+        await _session_service.get_session(app_name=APP_NAME, session_id=session_id)
+    except Exception:
+        # Session doesn't exist, create it
+        await _session_service.create_session(
+            app_name=APP_NAME,
+            user_id="user",
+            session_id=session_id,
+        )
 
     message = genai_types.Content(
         role="user",
@@ -203,6 +211,11 @@ async def run_agent_async(
 
     final_text = ""
     error_msg = ""
+
+    settings = get_settings()
+    # Propagate the API key to the environment for google-adk
+    if settings.gemini_api_key:
+        os.environ["GOOGLE_API_KEY"] = settings.gemini_api_key
 
     try:
         async for event in runner.run_async(
@@ -219,7 +232,7 @@ async def run_agent_async(
     except Exception as exc:
         log.exception("ADK runner error for agent '%s'", agent_name)
         error_msg = str(exc)
-        final_text = "Sorry, an error occurred while processing your request."
+        final_text = f"Sorry, an error occurred while processing your request: {error_msg}"
 
     last_call = tool_log[-1] if tool_log else {}
 

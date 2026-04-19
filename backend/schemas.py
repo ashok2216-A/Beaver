@@ -32,7 +32,7 @@ class AgentCreate(BaseModel):
     system_prompt: str = ""
     auth_type: str = "bearer"          # bearer | apikey | none
     auth_secret: str = ""
-    model_id: str = "gemini-1.5-flash"
+    model_id: str = "gemini-2.0-flash-lite"
 
     @field_validator("name")
     @classmethod

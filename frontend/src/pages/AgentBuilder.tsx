@@ -1,20 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, Sparkles, User, ArrowLeft, Rocket, Settings2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
-
-const endpoints = [
-  { method: "GET", path: "/v1/customers", desc: "List all customers" },
-  { method: "POST", path: "/v1/customers", desc: "Create a customer" },
-  { method: "GET", path: "/v1/customers/{id}", desc: "Retrieve a customer" },
-  { method: "POST", path: "/v1/charges", desc: "Create a charge" },
-  { method: "GET", path: "/v1/charges/{id}", desc: "Retrieve a charge" },
-  { method: "POST", path: "/v1/refunds", desc: "Issue a refund" },
-  { method: "GET", path: "/v1/products", desc: "List products" },
-  { method: "POST", path: "/v1/subscriptions", desc: "Create subscription" },
-  { method: "DELETE", path: "/v1/subscriptions/{id}", desc: "Cancel subscription" },
-];
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 const methodColor: Record<string, string> = {
   GET: "bg-success/10 text-success",
@@ -28,32 +19,64 @@ interface Msg {
   text: string;
 }
 
-const initial: Msg[] = [
-  { role: "assistant", text: "Hi! I'm your Stripe API agent. Ask me to list customers, issue refunds, manage subscriptions, and more." },
-];
-
 const AgentBuilder = () => {
-  const [messages, setMessages] = useState<Msg[]>(initial);
+  const [searchParams] = useSearchParams();
+  const agentId = searchParams.get("id");
+  const queryClient = useQueryClient();
+
+  const { data: agent, isLoading } = useQuery({
+    queryKey: ["agent", agentId],
+    queryFn: () => api.get<any>(`/agents/${agentId}`),
+    enabled: !!agentId,
+  });
+
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
-  const [selected, setSelected] = useState<string | null>("/v1/customers");
+  const [selected, setSelected] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (agent && messages.length === 0) {
+      setMessages([{ role: "assistant", text: `Hi! I'm ${agent.name}. How can I help you with the API today?` }]);
+      if (agent.endpoints?.length > 0) setSelected(agent.endpoints[0].path);
+    }
+  }, [agent]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  const { mutate: sendMessage, isPending: isSending } = useMutation({
+    mutationFn: (text: string) => api.post<any>(`/chat/${agentId}`, { message: text }),
+    onSuccess: (data) => {
+      setMessages((m) => [...m, { role: "assistant", text: data.answer }]);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to send message");
+    },
+  });
+
+  const { mutate: updateSettings } = useMutation({
+    mutationFn: (updates: any) => api.patch<any>(`/agents/${agentId}`, updates),
+    onSuccess: () => {
+      toast.success("Settings saved");
+      queryClient.invalidateQueries({ queryKey: ["agent", agentId] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to save settings");
+    },
+  });
+
   const send = () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isSending) return;
     const userMsg: Msg = { role: "user", text: input };
     setMessages((m) => [...m, userMsg]);
+    sendMessage(input);
     setInput("");
-    setTimeout(() => {
-      setMessages((m) => [
-        ...m,
-        { role: "assistant", text: "Calling `GET /v1/customers?limit=3` … done. Found 3 customers — would you like me to display them?" },
-      ]);
-    }, 700);
   };
+
+  if (isLoading) return <div className="h-screen flex items-center justify-center">Loading agent...</div>;
+  if (!agent) return <div className="h-screen flex items-center justify-center">Agent not found.</div>;
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -67,8 +90,8 @@ const AgentBuilder = () => {
           <Logo />
           <div className="h-5 w-px bg-border" />
           <div>
-            <p className="text-sm font-semibold leading-none">Stripe Payments Agent</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Draft · auto-saved</p>
+            <p className="text-sm font-semibold leading-none">{agent.name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{agent.status} · auto-saved</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -85,16 +108,16 @@ const AgentBuilder = () => {
         <aside className="hidden lg:flex flex-col border-r border-border bg-sidebar min-h-0">
           <div className="p-4 border-b border-sidebar-border">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Endpoints</p>
-            <p className="text-xs text-muted-foreground mt-1">{endpoints.length} parsed from spec</p>
+            <p className="text-xs text-muted-foreground mt-1">{agent.endpoints?.length || 0} parsed from spec</p>
             <div className="relative mt-3">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <input placeholder="Filter endpoints" className="h-8 w-full rounded-md border border-border bg-background pl-8 pr-2 text-xs outline-none focus:border-primary/40" />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {endpoints.map((ep) => (
+            {agent.endpoints?.map((ep: any) => (
               <button
-                key={ep.path + ep.method}
+                key={ep.id}
                 onClick={() => setSelected(ep.path)}
                 className={`w-full text-left rounded-lg border p-2.5 transition-base ${
                   selected === ep.path
@@ -108,7 +131,7 @@ const AgentBuilder = () => {
                   </span>
                   <span className="font-mono text-xs truncate">{ep.path}</span>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground truncate">{ep.desc}</p>
+                <p className="mt-1 text-xs text-muted-foreground truncate">{ep.summary}</p>
               </button>
             ))}
           </div>
@@ -136,6 +159,16 @@ const AgentBuilder = () => {
                   </div>
                 </div>
               ))}
+              {isSending && (
+                <div className="flex gap-3 animate-pulse">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div className="bg-background border border-border rounded-2xl rounded-tl-sm px-4 py-3 text-sm shadow-sm">
+                    Thinking...
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <div className="border-t border-border bg-background/80 backdrop-blur p-4">
@@ -146,14 +179,14 @@ const AgentBuilder = () => {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
                   rows={1}
-                  placeholder="Ask your agent anything... (try: 'list my last 3 customers')"
+                  placeholder={`Ask ${agent.name} anything...`}
                   className="flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground max-h-32"
                 />
-                <Button variant="hero" size="icon" onClick={send} className="h-9 w-9">
+                <Button variant="hero" size="icon" onClick={send} className="h-9 w-9" disabled={isSending}>
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="mt-2 text-center text-xs text-muted-foreground">Agent calls real endpoints in test mode · Press ⏎ to send</p>
+              <p className="mt-2 text-center text-xs text-muted-foreground">ADK Runner powered agent · Press ⏎ to send</p>
             </div>
           </div>
         </section>
@@ -165,40 +198,36 @@ const AgentBuilder = () => {
             <p className="text-sm font-semibold">Agent settings</p>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-5">
-            <Field label="Name">
-              <input defaultValue="Stripe Payments Agent" className="settings-input" />
-            </Field>
-            <Field label="System prompt" hint="Defines your agent's personality and rules.">
-              <textarea
-                rows={5}
-                defaultValue="You are a helpful Stripe operations assistant. Always confirm before issuing refunds. Format currency as USD."
-                className="settings-input resize-none leading-relaxed"
-              />
-            </Field>
-            <Field label="API base URL">
-              <input defaultValue="https://api.stripe.com" className="settings-input font-mono text-xs" />
-            </Field>
-            <Field label="Authentication">
-              <select className="settings-input">
-                <option>Bearer token</option>
-                <option>API key</option>
-                <option>OAuth 2.0</option>
-                <option>None</option>
-              </select>
-            </Field>
-            <Field label="Secret">
-              <input type="password" defaultValue="sk_test_••••••••••••" className="settings-input font-mono text-xs" />
-            </Field>
-            <Field label="Model">
-              <select className="settings-input">
-                <option>gpt-5 (recommended)</option>
-                <option>gpt-5-mini</option>
-                <option>claude-sonnet-4.5</option>
-              </select>
-            </Field>
+            <form id="settings-form" onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              updateSettings(Object.fromEntries(formData));
+            }}>
+              <Field label="Name">
+                <input name="name" defaultValue={agent.name} className="settings-input" />
+              </Field>
+              <Field label="System prompt" hint="Defines your agent's personality and rules.">
+                <textarea
+                  name="system_prompt"
+                  rows={5}
+                  defaultValue={agent.system_prompt}
+                  className="settings-input resize-none leading-relaxed"
+                />
+              </Field>
+              <Field label="API base URL">
+                <input name="base_url" defaultValue={agent.base_url} className="settings-input font-mono text-xs" />
+              </Field>
+              <Field label="Model">
+                <select name="model_id" defaultValue={agent.model_id} className="settings-input">
+                  <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                  <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                  <option value="claude-3-5-sonnet">claude-3-5-sonnet</option>
+                </select>
+              </Field>
+            </form>
           </div>
           <div className="p-4 border-t border-sidebar-border">
-            <Button variant="hero" className="w-full">Save changes</Button>
+            <Button type="submit" form="settings-form" variant="hero" className="w-full">Save changes</Button>
           </div>
         </aside>
       </div>
