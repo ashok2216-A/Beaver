@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     # ── LLM ───────────────────────────────────────────────────────
     gemini_api_key: str = ""
+    mistral_api_key: str = ""
     gemini_model: str = "gemini/gemini-2.0-flash-lite"
 
     # ── Auth ──────────────────────────────────────────────────────

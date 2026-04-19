@@ -217,9 +217,11 @@ async def run_agent_async(
     error_msg = ""
 
     settings = get_settings()
-    # Propagate the API key to the environment for google-adk
+    # Propagate API keys to the environment for LiteLLM
     if settings.gemini_api_key:
         os.environ["GOOGLE_API_KEY"] = settings.gemini_api_key
+    if settings.mistral_api_key:
+        os.environ["MISTRAL_API_KEY"] = settings.mistral_api_key
 
     try:
         async for event in runner.run_async(
