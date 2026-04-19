@@ -24,7 +24,7 @@ services:
         value: INFO
 
   # ── Frontend: Static Site ─────────────────────────────────────────────────
-  - type: static_site
+  - type: static
     name: api-agent-frontend
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
@@ -34,8 +34,9 @@ services:
           type: web
           name: api-agent-backend
           property: host
-    rewriteRules:
-      - source: /*
+    routes:
+      - type: rewrite
+        source: /*
         destination: /index.html
 
 # ── Database: PostgreSQL ────────────────────────────────────────────────────
