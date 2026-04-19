@@ -34,7 +34,15 @@ const AgentBuilder = () => {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Filter endpoints based on search query
+  const filteredEndpoints = agent?.endpoints?.filter((ep: any) => 
+    ep.path.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    ep.method.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    ep.summary.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
 
   useEffect(() => {
     if (agent && messages.length === 0) {
@@ -98,7 +106,7 @@ const AgentBuilder = () => {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">Test</Button>
           <Button asChild variant="hero" size="sm">
-            <Link to="/deploy"><Rocket className="h-4 w-4" /> Deploy</Link>
+            <Link to={`/deploy?id=${agent.id}`}><Rocket className="h-4 w-4" /> Deploy</Link>
           </Button>
         </div>
       </header>
@@ -112,11 +120,16 @@ const AgentBuilder = () => {
             <p className="text-xs text-muted-foreground mt-1">{agent.endpoints?.length || 0} parsed from spec</p>
             <div className="relative mt-3">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input placeholder="Filter endpoints" className="h-8 w-full rounded-md border border-border bg-background pl-8 pr-2 text-xs outline-none focus:border-primary/40" />
+              <input 
+                placeholder="Filter endpoints" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 w-full rounded-md border border-border bg-background pl-8 pr-2 text-xs outline-none focus:border-primary/40" 
+              />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {agent.endpoints?.map((ep: any) => (
+            {filteredEndpoints.map((ep: any) => (
               <button
                 key={ep.id}
                 onClick={() => setSelected(ep.path)}
@@ -135,6 +148,9 @@ const AgentBuilder = () => {
                 <p className="mt-1 text-xs text-muted-foreground truncate">{ep.summary}</p>
               </button>
             ))}
+            {filteredEndpoints.length === 0 && (
+              <p className="p-4 text-center text-xs text-muted-foreground italic">No matching endpoints.</p>
+            )}
           </div>
         </aside>
 
@@ -214,7 +230,7 @@ const AgentBuilder = () => {
               <Field label="System prompt" hint="Defines your agent's personality and rules.">
                 <textarea
                   name="system_prompt"
-                  rows={5}
+                  rows={4}
                   defaultValue={agent.system_prompt}
                   className="settings-input resize-none leading-relaxed"
                 />
@@ -222,14 +238,30 @@ const AgentBuilder = () => {
               <Field label="API base URL">
                 <input name="base_url" defaultValue={agent.base_url} className="settings-input font-mono text-xs" />
               </Field>
-              <Field label="Model">
-                <select name="model_id" defaultValue={agent.model_id} className="settings-input">
-                  <option value="mistral/mistral-small-latest">mistral-small (Mistral)</option>
-                  <option value="mistral/mistral-large-latest">mistral-large (Mistral)</option>
-                  <option value="gemini/gemini-2.0-flash-lite">gemini-2.0-flash (Google)</option>
-                  <option value="openai/gpt-4o-mini">gpt-4o-mini (OpenAI)</option>
-                </select>
-              </Field>
+              <div className="space-y-4 pt-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Authentication</p>
+                <Field label="Auth Type">
+                  <select name="auth_type" defaultValue={agent.auth_type} className="settings-input">
+                    <option value="none">None</option>
+                    <option value="bearer">Bearer Token</option>
+                    <option value="apikey">API Key (Header)</option>
+                  </select>
+                </Field>
+                <Field label="Auth Secret" hint="Token or secret key for this API.">
+                  <input type="password" name="auth_secret" defaultValue={agent.auth_secret} className="settings-input font-mono text-xs" />
+                </Field>
+              </div>
+              <div className="space-y-4 pt-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Engine</p>
+                <Field label="Model">
+                  <select name="model_id" defaultValue={agent.model_id} className="settings-input">
+                    <option value="mistral/mistral-small-latest">mistral-small (Mistral)</option>
+                    <option value="mistral/mistral-large-latest">mistral-large (Mistral)</option>
+                    <option value="gemini/gemini-2.0-flash-lite">gemini-2.0-flash (Google)</option>
+                    <option value="openai/gpt-4o-mini">gpt-4o-mini (OpenAI)</option>
+                  </select>
+                </Field>
+              </div>
             </form>
           </div>
           <div className="p-4 border-t border-sidebar-border">

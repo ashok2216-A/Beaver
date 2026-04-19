@@ -133,3 +133,10 @@ class PaginatedLogs(BaseModel):
 
 class MessageOut(BaseModel):
     message: str
+
+
+class StatsOut(BaseModel):
+    agent_count: int
+    message_count: int
+    total_latency_ms: int
+    avg_latency_ms: int

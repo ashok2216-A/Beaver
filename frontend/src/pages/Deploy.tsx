@@ -1,46 +1,77 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Rocket, Globe, Code2, Check } from "lucide-react";
+import { useSearchParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Rocket, Globe, Code2, Check, ArrowLeft, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/CodeBlock";
+import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 const Deploy = () => {
   const [searchParams] = useSearchParams();
-  const agentId = searchParams.get("id") || "AGENT_ID";
-  const [deployed, setDeployed] = useState(true);
+  const agentId = searchParams.get("id");
+  const [isRedeploying, setIsRedeploying] = useState(false);
+
+  const { data: agent, isLoading } = useQuery({
+    queryKey: ["agent", agentId],
+    queryFn: () => api.get<any>(`/agents/${agentId}`),
+    enabled: !!agentId,
+  });
+
+  if (isLoading) return <div className="h-screen flex items-center justify-center">Loading deployment info...</div>;
+  if (!agent) return <div className="h-screen flex items-center justify-center">Agent not found.</div>;
 
   const apiUrl = `${API_BASE_URL}/chat/${agentId}`;
   const embed = `<script src="${API_BASE_URL.replace("/api/v1", "")}/widget.js"
   data-agent-id="${agentId}"
   data-theme="light"
   defer></script>`;
+  
   const curl = `curl -X POST ${apiUrl} \\
-  -H "Authorization: Bearer $YOUR_API_KEY" \\
+  -H "X-Admin-Key: YOUR_MASTER_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"message": "How can I help you today?"}'`;
 
+  const handleRedeploy = () => {
+    setIsRedeploying(true);
+    setTimeout(() => {
+      setIsRedeploying(false);
+      toast.success("Agent redeployed successfully");
+    }, 2000);
+  };
+
   return (
-    <AppShell title="Deploy your agent" subtitle="Ship as a hosted API or drop-in chat widget.">
+    <AppShell 
+      title="Deploy your agent" 
+      subtitle="Ship as a hosted API or drop-in chat widget."
+      actions={
+        <Button asChild variant="ghost" size="sm">
+          <Link to={`/agents/builder?id=${agentId}`}><ArrowLeft className="h-4 w-4" /> Back to Builder</Link>
+        </Button>
+      }
+    >
       <div className="mx-auto max-w-4xl space-y-8">
         {/* Status banner */}
         <div className="rounded-2xl border border-success/30 bg-success/5 p-5 flex items-center gap-4">
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-success text-success-foreground shadow-sm">
-            <Check className="h-5 w-5" />
+            {isRedeploying ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
           </div>
           <div className="flex-1">
-            <p className="font-semibold">Agent is live</p>
-            <p className="text-sm text-muted-foreground">Deployed 2 minutes ago to production region · us-east-1</p>
+            <p className="font-semibold">Agent is {agent.status || "live"}</p>
+            <p className="text-sm text-muted-foreground">
+              Last updated {new Date(agent.updated_at).toLocaleString()} · v1.0.{agent.id}
+            </p>
           </div>
           <Button
-            variant={deployed ? "outline" : "hero"}
-            onClick={() => { setDeployed(!deployed); toast.success(deployed ? "Agent paused" : "Agent redeployed"); }}
+            variant="hero"
+            disabled={isRedeploying}
+            onClick={handleRedeploy}
           >
             <Rocket className="h-4 w-4" />
-            {deployed ? "Redeploy" : "Deploy now"}
+            {isRedeploying ? "Redeploying..." : "Redeploy now"}
           </Button>
         </div>
 
@@ -68,7 +99,7 @@ const Deploy = () => {
           <div className="mt-4 grid sm:grid-cols-3 gap-3">
             <CustomizeCard label="Theme" value="Light" />
             <CustomizeCard label="Position" value="Bottom-right" />
-            <CustomizeCard label="Greeting" value="Hi! How can I help?" />
+            <CustomizeCard label="Greeting" value={`Hi! I'm ${agent.name}`} />
           </div>
         </Section>
       </div>

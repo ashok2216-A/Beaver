@@ -26,9 +26,10 @@ from models import Agent, Endpoint, AgentStatus
 from schemas import (
     AgentCreate, AgentOut, AgentDetail, AgentUpdate,
     EndpointOut, IngestUrlRequest, MessageOut,
-    IngestPreviewRequest, IngestPreviewOut,
+    IngestPreviewRequest, IngestPreviewOut, StatsOut,
 )
 from services.parser import parse_openapi
+from sqlalchemy import func
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/agents", tags=["Agents"])
@@ -239,6 +240,25 @@ async def ingest_url(body: IngestUrlRequest, db: Session = Depends(get_db)):
     agent = _ingest_spec(agent, spec, db)
     log.info("Ingested URL agent id=%s url=%s", agent.id, body.url)
     return _agent_out(agent)
+
+
+@router.get("/stats", response_model=StatsOut)
+def get_global_stats(db: Session = Depends(get_db)):
+    """Return workspace-wide statistics for the dashboard."""
+    from models import Agent, Log
+    
+    agent_count = db.query(func.count(Agent.id)).scalar() or 0
+    message_count = db.query(func.count(Log.id)).scalar() or 0
+    
+    avg_latency = db.query(func.avg(Log.latency_ms)).scalar() or 0
+    total_latency = db.query(func.sum(Log.latency_ms)).scalar() or 0
+    
+    return StatsOut(
+        agent_count=agent_count,
+        message_count=message_count,
+        total_latency_ms=int(total_latency),
+        avg_latency_ms=int(avg_latency)
+    )
 
 
 @router.get("", response_model=list[AgentOut])

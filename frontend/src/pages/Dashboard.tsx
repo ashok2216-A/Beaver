@@ -7,20 +7,26 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 const Dashboard = () => {
-  const { data: agents = [], isLoading } = useQuery({
+  const { data: agents = [], isLoading: loadingAgents } = useQuery({
     queryKey: ["agents"],
     queryFn: () => api.get<any[]>("/agents"),
   });
 
+  const { data: statsData } = useQuery({
+    queryKey: ["stats"],
+    queryFn: () => api.get<any>("/agents/stats"),
+  });
+
   const stats = [
     { label: "Active agents", value: agents.length.toString(), change: "+0 this week", icon: Bot },
-    { label: "Messages today", value: "0", change: "+0%", icon: MessageSquare },
-    { label: "API calls", value: "0", change: "+0%", icon: Zap },
-    { label: "Avg. response", value: "0ms", change: "-0ms", icon: TrendingUp },
+    { label: "Messages today", value: statsData?.message_count?.toString() || "0", change: "+0%", icon: MessageSquare },
+    { label: "API calls", value: statsData?.message_count?.toString() || "0", change: "+0%", icon: Zap },
+    { label: "Avg. response", value: `${statsData?.avg_latency_ms || 0}ms`, change: "-0ms", icon: TrendingUp },
   ];
+
   return (
     <AppShell
-      title="Welcome back, Jamie 👋"
+      title="Welcome back, Admin 👋"
       subtitle="Here's what's happening across your agents today."
       actions={
         <Button asChild variant="hero">
@@ -57,7 +63,7 @@ const Dashboard = () => {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {isLoading ? (
+          {loadingAgents ? (
             <p className="text-sm text-muted-foreground">Loading agents...</p>
           ) : agents.length === 0 ? (
             <p className="text-sm text-muted-foreground">No agents created yet.</p>
