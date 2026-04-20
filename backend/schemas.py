@@ -135,13 +135,14 @@ class LogOut(BaseModel):
     id: int
     agent_id: int
     user_input: str
-    matched_path: str
-    method: str
-    status_code: int
-    latency_ms: int
-    api_response: str
-    llm_thought: str
-    error: str
+    matched_path: Optional[str] = ""
+    method: Optional[str] = ""
+    status_code: int = 0
+    latency_ms: int = 0
+    api_response: Optional[str] = ""
+    llm_thought: Optional[str] = ""
+    error: Optional[str] = ""
+    agent_name: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

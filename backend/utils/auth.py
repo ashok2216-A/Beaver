@@ -96,6 +96,8 @@ async def get_current_user(
             db.add(user)
             db.commit()
             db.refresh(user)
+
+        log.info(f"Authenticated request from user: {user.id}")
         return user
 
     # 3. Legacy Admin Key Fallback (Optional, for transition)

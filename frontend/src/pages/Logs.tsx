@@ -1,7 +1,7 @@
 import { useState, Fragment } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, Filter, Download, Clock, CircleCheck, CircleX, ExternalLink } from "lucide-react";
+import { ChevronDown, Filter, Download, Clock, CircleCheck, CircleX, ExternalLink, Bot } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { api, API_BASE_URL } from "@/lib/api";
@@ -27,8 +27,14 @@ const Logs = () => {
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["logs", agentId, page],
-    queryFn: () => api.get<any>(`/chat/${agentId}/logs?page=${page}&per_page=10`),
-    enabled: !!agentId,
+    queryFn: () => {
+      const endpoint = agentId 
+        ? `/chat/${agentId}/logs?page=${page}&per_page=10`
+        : `/chat/logs/all?page=${page}&per_page=10`;
+      return api.get<any>(endpoint);
+    },
+    // Always enabled now, so the sidebar link works!
+    enabled: true,
   });
 
   const logs = data?.items || [];
@@ -37,8 +43,8 @@ const Logs = () => {
 
   return (
     <AppShell
-      title="Activity Logs"
-      subtitle="Complete audit trail of every message and API tool call."
+      title={agentId ? "Agent Activity" : "Global Activity"}
+      subtitle={agentId ? "Audit trail for this specific agent." : "Unified history across all your agents."}
       actions={
         <div className="flex gap-2">
           <Button 
@@ -49,7 +55,11 @@ const Logs = () => {
                 toast.info("Preparing export...");
                 const token = await getToken();
                 
-                const blob = await fetch(`${API_BASE_URL}/chat/${agentId}/logs/export/ndjson`, {
+                const endpoint = agentId 
+                  ? `${API_BASE_URL}/chat/${agentId}/logs/export/ndjson`
+                  : `${API_BASE_URL}/chat/logs/export/all/ndjson`;
+
+                const blob = await fetch(endpoint, {
                    headers: { "Authorization": `Bearer ${token}` }
                 }).then(r => {
                   if (!r.ok) throw new Error("Fetch failed");
@@ -59,7 +69,7 @@ const Logs = () => {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `logs_agent_${agentId}.ndjson`;
+                a.download = agentId ? `logs_agent_${agentId}.ndjson` : `all_logs.ndjson`;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
@@ -91,6 +101,7 @@ const Logs = () => {
             <thead>
               <tr className="border-b border-border bg-secondary/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <th className="px-4 py-3 font-medium w-8"></th>
+                {!agentId && <th className="px-4 py-3 font-medium">Agent</th>}
                 <th className="px-4 py-3 font-medium">User input</th>
                 <th className="px-4 py-3 font-medium">API call</th>
                 <th className="px-4 py-3 font-medium">Status</th>
@@ -100,10 +111,10 @@ const Logs = () => {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">Loading logs...</td></tr>
+                <tr><td colSpan={agentId ? 6 : 7} className="px-6 py-10 text-center text-muted-foreground">Loading logs...</td></tr>
               ) : isError ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center">
+                  <td colSpan={agentId ? 6 : 7} className="px-6 py-10 text-center">
                     <div className="flex flex-col items-center gap-2">
                        <p className="text-destructive font-medium">Error: {errorMessage}</p>
                        <p className="text-xs text-muted-foreground">This agent may be orphaned. Try running the migration script.</p>
@@ -111,7 +122,7 @@ const Logs = () => {
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">No logs found for this agent.</td></tr>
+                <tr><td colSpan={agentId ? 6 : 7} className="px-6 py-10 text-center text-muted-foreground">No logs found.</td></tr>
               ) : (
                 logs.map((l: any) => (
                   <Fragment key={l.id}>
@@ -122,6 +133,11 @@ const Logs = () => {
                       <td className="px-4 py-3">
                         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-base ${open === l.id ? "rotate-180" : ""}`} />
                       </td>
+                      {!agentId && (
+                        <td className="px-4 py-3 font-medium text-primary flex items-center gap-2">
+                          <Bot className="h-3.5 w-3.5" /> {l.agent_name || "Unknown"}
+                        </td>
+                      )}
                       <td className="px-4 py-3 max-w-xs truncate">{l.user_input}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">

@@ -127,6 +127,46 @@ async def chat(
     )
 
 
+@router.get("/chat/logs/all", response_model=PaginatedLogs)
+def get_all_logs(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Unified log list across all agents owned by the user."""
+    log.info(f"Fetching all logs for user={user.id}")
+    
+    # Query joined logs and agents
+    base_q = (
+        db.query(Log, Agent.name.label("agent_name"))
+          .join(Agent, Log.agent_id == Agent.id)
+          .filter(Agent.owner_id == user.id)
+    )
+    
+    total = base_q.count()
+    items = (
+        base_q.order_by(Log.created_at.desc())
+              .offset((page - 1) * per_page)
+              .limit(per_page)
+              .all()
+    )
+    
+    # Map results to schema, including the agent_name from the join
+    out_items = []
+    for l, agent_name in items:
+        obj = LogOut.model_validate(l)
+        obj.agent_name = agent_name
+        out_items.append(obj)
+
+    return PaginatedLogs(
+        total=total,
+        page=page,
+        per_page=per_page,
+        items=out_items,
+    )
+
+
 # ─── Logs ─────────────────────────────────────────────────────────────────────
 
 @router.get("/chat/{agent_id}/logs", response_model=PaginatedLogs)
@@ -139,8 +179,13 @@ def get_logs(
 ):
     """Paginated log list for an agent (newest first)."""
     _get_agent_or_404(agent_id, user, db)
+    
+    log.info(f"Fetching logs for agent_id={agent_id} by user={user.id}")
     base_q = db.query(Log).filter(Log.agent_id == agent_id)
     total  = base_q.count()
+    
+    log.info(f"Found {total} total logs for agent_id={agent_id}")
+    
     items  = (
         base_q.order_by(Log.created_at.desc())
               .offset((page - 1) * per_page)
@@ -172,6 +217,35 @@ def get_log(
     if not entry:
         raise HTTPException(status_code=404, detail="Log entry not found")
     return LogOut.model_validate(entry)
+
+
+@router.get("/chat/logs/export/all/ndjson")
+def export_all_logs(
+    user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Stream all logs across all of user's agents as NDJSON."""
+    logs = (
+        db.query(Log, Agent.name.label("agent_name"))
+          .join(Agent, Log.agent_id == Agent.id)
+          .filter(Agent.owner_id == user.id)
+          .order_by(Log.created_at)
+          .all()
+    )
+
+    def _stream():
+        for l, agent_name in logs:
+            row = LogOut.model_validate(l)
+            row.agent_name = agent_name
+            yield row.model_dump_json() + "\n"
+
+    return StreamingResponse(
+        _stream(),
+        media_type="application/x-ndjson",
+        headers={
+            "Content-Disposition": 'attachment; filename="all_logs.ndjson"'
+        },
+    )
 
 
 @router.get("/chat/{agent_id}/logs/export/ndjson")
