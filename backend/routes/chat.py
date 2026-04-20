@@ -34,8 +34,12 @@ def _get_agent_or_404(agent_id: int, user: User, db: Session) -> Agent:
     if not obj:
         raise HTTPException(status_code=404, detail="Agent not found")
     
-    # Ownership Check
-    if obj.owner_id and obj.owner_id != user.id:
+    # Strict Ownership Check: Agent must have an owner, and it must be the current user
+    if obj.owner_id is None:
+        log.warning(f"Attempt to access orphaned agent {agent_id} in chat/logs")
+        raise HTTPException(status_code=403, detail="This agent is orphaned and must be claimed.")
+    
+    if obj.owner_id != user.id:
         raise HTTPException(status_code=403, detail="Forbidden: You do not own this agent")
     
     return obj

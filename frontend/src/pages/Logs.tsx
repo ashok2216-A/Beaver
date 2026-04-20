@@ -25,7 +25,7 @@ const Logs = () => {
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState<number | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["logs", agentId, page],
     queryFn: () => api.get<any>(`/chat/${agentId}/logs?page=${page}&per_page=10`),
     enabled: !!agentId,
@@ -33,6 +33,7 @@ const Logs = () => {
 
   const logs = data?.items || [];
   const total = data?.total || 0;
+  const errorMessage = error instanceof Error ? error.message : "Failed to load logs";
 
   return (
     <AppShell
@@ -100,6 +101,15 @@ const Logs = () => {
             <tbody>
               {isLoading ? (
                 <tr><td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">Loading logs...</td></tr>
+              ) : isError ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-10 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                       <p className="text-destructive font-medium">Error: {errorMessage}</p>
+                       <p className="text-xs text-muted-foreground">This agent may be orphaned. Try running the migration script.</p>
+                    </div>
+                  </td>
+                </tr>
               ) : logs.length === 0 ? (
                 <tr><td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">No logs found for this agent.</td></tr>
               ) : (

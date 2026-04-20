@@ -32,7 +32,7 @@ const Dashboard = () => {
   const { user } = useUser();
   const queryClient = useQueryClient();
   
-  const { data: agents = [], isLoading: loadingAgents } = useQuery({
+  const { data: agents = [], isLoading: loadingAgents, isError, error } = useQuery({
     queryKey: ["agents"],
     queryFn: () => api.get<any[]>("/agents"),
   });
@@ -111,11 +111,17 @@ const Dashboard = () => {
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
               <p className="mt-2 text-sm text-muted-foreground">Loading agents...</p>
             </div>
+          ) : isError ? (
+            <div className="col-span-full py-20 text-center rounded-2xl border border-destructive/20 bg-destructive/5">
+              <p className="text-destructive font-semibold">Failed to load agents</p>
+              <p className="mt-1 text-sm text-muted-foreground">Error: {error instanceof Error ? error.message : "Unknown error"}</p>
+            </div>
           ) : agents.length === 0 ? (
             <div className="col-span-full py-20 text-center rounded-2xl border border-dashed border-border bg-secondary/20">
               <Bot className="mx-auto h-10 w-10 text-muted-foreground opacity-20" />
-              <p className="mt-4 text-sm text-muted-foreground font-medium">No agents created yet.</p>
-              <Button asChild variant="soft" className="mt-4" size="sm">
+              <p className="mt-4 text-sm text-muted-foreground font-medium">No agents found in your workspace.</p>
+              <p className="mt-1 text-xs text-muted-foreground">If you have existing agents, you may need to run the migration script to claim them.</p>
+              <Button asChild variant="soft" className="mt-6" size="sm">
                 <Link to="/agents/new">Create your first agent</Link>
               </Button>
             </div>
