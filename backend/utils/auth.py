@@ -18,15 +18,28 @@ _jwks_cache: Optional[dict[str, Any]] = None
 async def get_jwks() -> dict[str, Any]:
     global _jwks_cache
     if _jwks_cache is None:
-        url = settings.clerk_jwks_url or f"https://clerk.custom-domain.com/.well-known/jwks.json" # Fallback/Placeholder
+        url = settings.clerk_jwks_url
+        
+        if not url or "..." in url or "custom-domain" in url:
+            log.error("Clerk JWKS URL is missing or set to a placeholder in .env")
+            raise HTTPException(
+                status_code=500, 
+                detail="Clerk authentication is not configured. Please set CLERK_JWKS_URL in your backend .env file."
+            )
+            
         try:
+            # Clerk WAF often blocks generic User-Agents, so we provide a browser-like one
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Agently/1.0"}
             async with httpx.AsyncClient() as client:
-                r = await client.get(url)
+                r = await client.get(url, headers=headers)
                 r.raise_for_status()
                 _jwks_cache = r.json()
+        except httpx.HTTPStatusError as e:
+            log.error(f"Clerk JWKS request failed with status {e.response.status_code}: {e.response.text}")
+            raise HTTPException(status_code=500, detail=f"Failed to fetch security keys from Clerk: {e}")
         except Exception as e:
-            log.error(f"Failed to fetch JWKS from Clerk: {e}")
-            raise HTTPException(status_code=500, detail="Internal authentication error")
+            log.error(f"Unexpected error fetching JWKS: {e}")
+            raise HTTPException(status_code=500, detail="Internal authentication configuration error")
     return _jwks_cache
 
 
@@ -38,7 +51,10 @@ async def verify_clerk_token(token: str) -> dict[str, Any]:
             token,
             jwks,
             algorithms=["RS256"],
-            options={"verify_aud": False} # Simplified for dev
+            options={
+                "verify_aud": False,
+                "leeway": 60
+            }
         )
         return payload
     except Exception as e:

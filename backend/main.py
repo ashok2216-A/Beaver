@@ -13,11 +13,10 @@ from fastapi import FastAPI, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from utils.auth import verify_admin_key
-
 from config import get_settings
 from database import Base, engine
-from routes import agents, chat
+from routes import agents, chat, auth
+from utils.auth import get_current_user
 
 # ─── Logging setup ────────────────────────────────────────────────────────────
 settings = get_settings()

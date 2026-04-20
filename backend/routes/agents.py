@@ -261,15 +261,28 @@ async def ingest_url(
 
 
 @router.get("/stats", response_model=StatsOut)
-def get_global_stats(db: Session = Depends(get_db)):
-    """Return workspace-wide statistics for the dashboard."""
+def get_global_stats(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Return statistics for the current user's agents."""
     from models import Agent, Log
     
-    agent_count = db.query(func.count(Agent.id)).scalar() or 0
-    message_count = db.query(func.count(Log.id)).scalar() or 0
+    # Count only agents owned by this user
+    agent_count = db.query(func.count(Agent.id)).filter(Agent.owner_id == user.id).scalar() or 0
     
-    avg_latency = db.query(func.avg(Log.latency_ms)).scalar() or 0
-    total_latency = db.query(func.sum(Log.latency_ms)).scalar() or 0
+    # Count only logs belonging to this user's agents
+    message_count = db.query(func.count(Log.id))\
+        .join(Agent, Log.agent_id == Agent.id)\
+        .filter(Agent.owner_id == user.id)\
+        .scalar() or 0
+    
+    # Calculate performance metrics for user's agents
+    metrics = db.query(
+        func.sum(Log.latency_ms),
+        func.avg(Log.latency_ms)
+    ).join(Agent, Log.agent_id == Agent.id)\
+     .filter(Agent.owner_id == user.id).first()
+    
+    total_latency = metrics[0] or 0
+    avg_latency = metrics[1] or 0
     
     return StatsOut(
         agent_count=agent_count,

@@ -31,8 +31,8 @@ const TokenSync = () => {
       }
     };
     sync();
-    // Refresh every minute to keep the token fresh
-    const interval = setInterval(sync, 60000);
+    // Refresh every 45 seconds to keep the token fresh (Clerk tokens expire every 60s)
+    const interval = setInterval(sync, 45000);
     return () => clearInterval(interval);
   }, [getToken, isLoaded, isSignedIn]);
   
