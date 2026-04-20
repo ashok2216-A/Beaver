@@ -18,6 +18,7 @@ class EndpointOut(BaseModel):
     description: str
     parameters: list[dict[str, Any]]
     request_body: dict[str, Any]
+    is_locked: bool = False
 
     model_config = {"from_attributes": True}
 

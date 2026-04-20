@@ -4,7 +4,7 @@ models.py — SQLAlchemy ORM models.
 from datetime import datetime, timezone
 from sqlalchemy import (
     Column, Integer, String, Text, ForeignKey,
-    DateTime, Enum as SAEnum, JSON,
+    DateTime, Enum as SAEnum, JSON, Boolean,
 )
 from sqlalchemy.orm import relationship
 import enum
@@ -89,6 +89,7 @@ class Endpoint(Base):
     description = Column(Text, default="")
     parameters  = Column(JSON, default=list)   # list[{name, in, required, schema}]
     request_body= Column(JSON, default=dict)   # simplified body schema
+    is_locked   = Column(Boolean, default=False)
 
     agent = relationship("Agent", back_populates="endpoints")
 

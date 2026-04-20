@@ -69,7 +69,11 @@ async def chat(
     """
     agent = _get_agent_or_404(agent_id, user, db)
 
-    endpoints = db.query(Endpoint).filter(Endpoint.agent_id == agent_id).all()
+    # Only fetch endpoints that are NOT locked
+    endpoints = db.query(Endpoint).filter(
+        Endpoint.agent_id == agent_id,
+        Endpoint.is_locked == False
+    ).all()
     if not endpoints:
         raise HTTPException(
             status_code=422,

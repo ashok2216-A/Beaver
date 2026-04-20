@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, Sparkles, User, ArrowLeft, Rocket, Settings2, Search } from "lucide-react";
+import { Send, Sparkles, User, ArrowLeft, Rocket, Settings2, Search, Lock, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import ReactMarkdown from "react-markdown";
@@ -76,6 +76,16 @@ const AgentBuilder = () => {
     },
   });
 
+  const { mutate: toggleLock } = useMutation({
+    mutationFn: (endpointId: number) => api.patch<any>(`/agents/${agentId}/endpoints/${endpointId}/toggle-lock`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["agent", agentId] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to toggle lock");
+    },
+  });
+
   const send = () => {
     if (!input.trim() || isSending) return;
     const userMsg: Msg = { role: "user", text: input };
@@ -142,17 +152,34 @@ const AgentBuilder = () => {
               <button
                 key={ep.id}
                 onClick={() => setSelected(ep.path)}
-                className={`w-full text-left rounded-lg border p-2.5 transition-base ${
+                className={`w-full text-left rounded-lg border p-2.5 transition-base relative group/item ${
                   selected === ep.path
                     ? "border-primary/40 bg-primary-soft"
                     : "border-transparent hover:bg-sidebar-accent/60"
-                }`}
+                } ${ep.is_locked ? "opacity-50" : ""}`}
               >
-                <div className="flex items-center gap-2">
-                  <span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold font-mono ${methodColor[ep.method]}`}>
-                    {ep.method}
-                  </span>
-                  <span className="font-mono text-xs truncate">{ep.path}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold font-mono ${methodColor[ep.method]}`}>
+                      {ep.method}
+                    </span>
+                    <span className="font-mono text-xs truncate">{ep.path}</span>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleLock(ep.id);
+                      toast.success(ep.is_locked ? "Endpoint unlocked" : "Endpoint locked");
+                    }}
+                    className={`h-6 w-6 flex items-center justify-center rounded-md border transition-base ${
+                      ep.is_locked 
+                        ? "border-destructive/30 bg-destructive/10 text-destructive"
+                        : "border-border bg-background text-muted-foreground hover:text-primary hover:border-primary/40"
+                    }`}
+                    title={ep.is_locked ? "Unlock endpoint" : "Lock endpoint"}
+                  >
+                    {ep.is_locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                  </button>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground truncate">{ep.summary}</p>
               </button>

@@ -343,3 +343,23 @@ def get_endpoints(agent_id: int, user: User = Depends(get_current_user), db: Ses
     agent = _get_agent_or_404(agent_id, user, db)
     eps = db.query(Endpoint).filter(Endpoint.agent_id == agent_id).all()
     return [EndpointOut.model_validate(ep) for ep in eps]
+
+
+@router.patch("/{agent_id}/endpoints/{endpoint_id}/toggle-lock", response_model=EndpointOut)
+def toggle_endpoint_lock(
+    agent_id: int, 
+    endpoint_id: int, 
+    user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Toggle the locked status of a specific endpoint."""
+    _get_agent_or_404(agent_id, user, db)
+    
+    endpoint = db.query(Endpoint).filter(Endpoint.id == endpoint_id, Endpoint.agent_id == agent_id).first()
+    if not endpoint:
+        raise HTTPException(status_code=404, detail="Endpoint not found for this agent")
+        
+    endpoint.is_locked = not endpoint.is_locked
+    db.commit()
+    db.refresh(endpoint)
+    return EndpointOut.model_validate(endpoint)

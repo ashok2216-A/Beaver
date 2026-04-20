@@ -14,6 +14,7 @@ import AgentBuilder from "./pages/AgentBuilder";
 import Deploy from "./pages/Deploy";
 import Logs from "./pages/Logs";
 import Settings from "./pages/Settings";
+import Agents from "./pages/Agents";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,7 +61,7 @@ const App = () => (
           
           {/* Protected Routes */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/agents" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/agents" element={<ProtectedRoute><Agents /></ProtectedRoute>} />
           <Route path="/agents/new" element={<ProtectedRoute><CreateAgent /></ProtectedRoute>} />
           <Route path="/agents/builder" element={<ProtectedRoute><AgentBuilder /></ProtectedRoute>} />
           <Route path="/deploy" element={<ProtectedRoute><Deploy /></ProtectedRoute>} />
