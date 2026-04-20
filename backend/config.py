@@ -23,7 +23,10 @@ class Settings(BaseSettings):
     gemini_model: str = "mistral/mistral-small-latest"
 
     # ── Auth ──────────────────────────────────────────────────────
-    admin_key: str = ""
+    clerk_publishable_key: str = ""
+    clerk_secret_key: str = ""
+    clerk_jwks_url: str = ""
+    admin_key: str = "" # Legacy
     secret_key: str = "change_me_in_production"
     access_token_expire_minutes: int = 60
 

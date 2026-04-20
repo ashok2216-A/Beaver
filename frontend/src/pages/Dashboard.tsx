@@ -1,13 +1,35 @@
 import { Link } from "react-router-dom";
-import { Bot, MessageSquare, Zap, TrendingUp, MoreHorizontal, ArrowUpRight, Trash2, Loader2 } from "lucide-react";
+import { 
+  Bot, 
+  MessageSquare, 
+  Zap, 
+  TrendingUp, 
+  MoreHorizontal, 
+  ArrowUpRight, 
+  Trash2, 
+  Loader2,
+  ExternalLink,
+  BarChart3,
+  Rocket
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useUser } from "@clerk/clerk-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const Dashboard = () => {
+  const { user } = useUser();
   const queryClient = useQueryClient();
   
   const { data: agents = [], isLoading: loadingAgents } = useQuery({
@@ -39,9 +61,7 @@ const Dashboard = () => {
     { label: "Avg. response", value: `${statsData?.avg_latency_ms || 0}ms`, change: "-0ms", icon: TrendingUp },
   ];
 
-  const handleDelete = (e: React.MouseEvent, id: number, name: string) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDelete = (id: number, name: string) => {
     if (confirm(`Are you sure you want to delete "${name}"? This cannot be undone.`)) {
       deleteAgent(id);
     }
@@ -49,7 +69,7 @@ const Dashboard = () => {
 
   return (
     <AppShell
-      title="Welcome back, Admin 👋"
+      title={`Welcome back, ${user?.firstName || "User"} 👋`}
       subtitle="Here's what's happening across your agents today."
       actions={
         <Button asChild variant="hero">
@@ -109,19 +129,38 @@ const Dashboard = () => {
                   <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
                     <Bot className="h-5 w-5" />
                   </div>
-                  <div className="flex gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={(e) => handleDelete(e, a.id, a.name)}
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-base"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-base">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground transition-base hover:bg-secondary">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link to={`/agents/builder?id=${a.id}`} className="cursor-pointer">
+                          <ExternalLink className="mr-2 h-4 w-4" /> Open Builder
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to={`/deploy?id=${a.id}`} className="cursor-pointer">
+                          <Rocket className="mr-2 h-4 w-4" /> Deployment
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => toast.info("Analytics coming soon")}>
+                        <BarChart3 className="mr-2 h-4 w-4" /> Analytics
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => handleDelete(a.id, a.name)}
+                        className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete Agent
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 <h3 className="mt-4 font-semibold">{a.name}</h3>
                 <p className="text-xs text-muted-foreground mt-0.5 truncate pr-8">Connected to {a.base_url || "Local API"}</p>

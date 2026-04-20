@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Rocket, Globe, Code2, Check, ArrowLeft, Loader2 } from "lucide-react";
@@ -31,7 +31,7 @@ const Deploy = () => {
   defer></script>`;
   
   const curl = `curl -X POST ${apiUrl} \\
-  -H "X-Admin-Key: YOUR_MASTER_KEY" \\
+  -H "X-API-Key: YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"message": "How can I help you today?"}'`;
 

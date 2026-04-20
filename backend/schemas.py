@@ -22,6 +22,30 @@ class EndpointOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ─── User & Auth ──────────────────────────────────────────────────────────────
+
+class UserOut(BaseModel):
+    id: str
+    email: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ApiKeyCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class ApiKeyOut(BaseModel):
+    id: int
+    name: str
+    key: Optional[str] = None  # Only populated once on creation
+    created_at: datetime
+    last_used_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
 # ─── Agent ────────────────────────────────────────────────────────────────────
 
 class AgentCreate(BaseModel):
@@ -53,6 +77,7 @@ class AgentUpdate(BaseModel):
 
 class AgentOut(BaseModel):
     id: int
+    owner_id: Optional[str] = None
     name: str
     description: str
     base_url: str

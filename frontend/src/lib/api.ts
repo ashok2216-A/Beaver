@@ -4,15 +4,20 @@ interface FetchOptions extends RequestInit {
   data?: any;
 }
 
+let clerkToken: string | null = null;
+
+export const setClerkToken = (token: string | null) => {
+  clerkToken = token;
+};
+
 async function request<T>(path: string, options: FetchOptions = {}): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
   const { data, ...init } = options;
 
-  const adminKey = localStorage.getItem("admin_key");
   const headers = { ...init.headers } as any;
 
-  if (adminKey) {
-    headers["X-Admin-Key"] = adminKey;
+  if (clerkToken) {
+    headers["Authorization"] = `Bearer ${clerkToken}`;
   }
 
   if (data) {

@@ -29,10 +29,35 @@ class HttpMethod(str, enum.Enum):
 
 # ─── Models ───────────────────────────────────────────────────────────────────
 
+class User(Base):
+    __tablename__ = "users"
+
+    id         = Column(String(255), primary_key=True)  # Clerk ID
+    email      = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    agents   = relationship("Agent", back_populates="owner", cascade="all, delete-orphan")
+    api_keys = relationship("ApiKey", back_populates="owner", cascade="all, delete-orphan")
+
+
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+
+    id           = Column(Integer, primary_key=True)
+    user_id      = Column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    key_hash     = Column(String(255), nullable=False, unique=True)
+    name         = Column(String(100), default="My API Key")
+    created_at   = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+
+    owner = relationship("User", back_populates="api_keys")
+
+
 class Agent(Base):
     __tablename__ = "agents"
 
     id             = Column(Integer, primary_key=True, index=True)
+    owner_id       = Column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     name           = Column(String(120), nullable=False)
     description    = Column(Text, default="")
     base_url       = Column(String(512), default="")
@@ -46,6 +71,7 @@ class Agent(Base):
     updated_at     = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
                             onupdate=lambda: datetime.now(timezone.utc))
 
+    owner     = relationship("User", back_populates="agents")
     endpoints = relationship("Endpoint", back_populates="agent",
                              cascade="all, delete-orphan")
     logs      = relationship("Log",      back_populates="agent",

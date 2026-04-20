@@ -18,9 +18,10 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Agent, Endpoint, Log
+from models import Agent, Endpoint, Log, User
 from schemas import ChatRequest, ChatResponse, LogOut, PaginatedLogs
 from services.agent import run_agent
+from utils.auth import get_current_user
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["Chat & Logs"])
@@ -28,10 +29,15 @@ router = APIRouter(tags=["Chat & Logs"])
 
 # ─── Helper ───────────────────────────────────────────────────────────────────
 
-def _get_agent_or_404(agent_id: int, db: Session) -> Agent:
+def _get_agent_or_404(agent_id: int, user: User, db: Session) -> Agent:
     obj = db.get(Agent, agent_id)
     if not obj:
         raise HTTPException(status_code=404, detail="Agent not found")
+    
+    # Ownership Check
+    if obj.owner_id and obj.owner_id != user.id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this agent")
+    
     return obj
 
 
@@ -42,6 +48,7 @@ async def chat(
     agent_id: int,
     req: ChatRequest,
     session_id: Optional[str] = Query(None, description="Optional session ID for multi-turn conversations"),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -56,7 +63,7 @@ async def chat(
     Pass `session_id` to maintain conversation context across turns.
     Omit it for a stateless single-turn request.
     """
-    agent = _get_agent_or_404(agent_id, db)
+    agent = _get_agent_or_404(agent_id, user, db)
 
     endpoints = db.query(Endpoint).filter(Endpoint.agent_id == agent_id).all()
     if not endpoints:
@@ -123,10 +130,11 @@ def get_logs(
     agent_id: int,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Paginated log list for an agent (newest first)."""
-    _get_agent_or_404(agent_id, db)
+    _get_agent_or_404(agent_id, user, db)
     base_q = db.query(Log).filter(Log.agent_id == agent_id)
     total  = base_q.count()
     items  = (
@@ -144,9 +152,14 @@ def get_logs(
 
 
 @router.get("/chat/{agent_id}/logs/{log_id}", response_model=LogOut)
-def get_log(agent_id: int, log_id: int, db: Session = Depends(get_db)):
+def get_log(
+    agent_id: int, 
+    log_id: int, 
+    user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
     """Return a single log entry."""
-    _get_agent_or_404(agent_id, db)
+    _get_agent_or_404(agent_id, user, db)
     entry = (
         db.query(Log)
           .filter(Log.id == log_id, Log.agent_id == agent_id)
@@ -158,9 +171,13 @@ def get_log(agent_id: int, log_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/chat/{agent_id}/logs/export/ndjson")
-def export_logs(agent_id: int, db: Session = Depends(get_db)):
+def export_logs(
+    agent_id: int, 
+    user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
     """Stream all logs for an agent as NDJSON (one JSON object per line)."""
-    _get_agent_or_404(agent_id, db)
+    _get_agent_or_404(agent_id, user, db)
     logs = (
         db.query(Log)
           .filter(Log.agent_id == agent_id)

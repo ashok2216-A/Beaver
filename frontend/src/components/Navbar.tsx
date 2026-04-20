@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
+import { SignedIn, SignedOut, UserButton, SignInButton } from "@clerk/clerk-react";
 
 export const Navbar = () => {
   return (
@@ -17,10 +18,20 @@ export const Navbar = () => {
             </nav>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="hidden sm:inline-flex">Sign in</Button>
-            <Button asChild variant="hero" size="sm">
-              <Link to="/dashboard">Get started</Link>
-            </Button>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <Button variant="ghost" size="sm" className="hidden sm:inline-flex">Sign in</Button>
+              </SignInButton>
+              <Button asChild variant="hero" size="sm">
+                <Link to="/dashboard">Get started</Link>
+              </Button>
+            </SignedOut>
+            <SignedIn>
+              <Button asChild variant="ghost" size="sm" className="mr-2">
+                <Link to="/dashboard">Go to Dashboard</Link>
+              </Button>
+              <UserButton afterSignOutUrl="/" />
+            </SignedIn>
           </div>
         </div>
       </div>

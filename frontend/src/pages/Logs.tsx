@@ -5,6 +5,8 @@ import { ChevronDown, Filter, Download, Clock, CircleCheck, CircleX, ExternalLin
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { api, API_BASE_URL } from "@/lib/api";
+import { useAuth } from "@clerk/clerk-react";
+import { toast } from "sonner";
 
 const statusColor = (s: number) =>
   s < 300 ? "bg-success/10 text-success" : s < 400 ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive";
@@ -17,6 +19,7 @@ const methodColor: Record<string, string> = {
 };
 
 const Logs = () => {
+  const { getToken } = useAuth();
   const [searchParams] = useSearchParams();
   const agentId = searchParams.get("id");
   const [page, setPage] = useState(1);
@@ -40,8 +43,31 @@ const Logs = () => {
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => {
-              window.open(`${API_BASE_URL}/chat/${agentId}/logs/export/ndjson?admin_key=${localStorage.getItem("admin_key")}`, "_blank");
+            onClick={async () => {
+              try {
+                toast.info("Preparing export...");
+                const token = await getToken();
+                
+                const blob = await fetch(`${API_BASE_URL}/chat/${agentId}/logs/export/ndjson`, {
+                   headers: { "Authorization": `Bearer ${token}` }
+                }).then(r => {
+                  if (!r.ok) throw new Error("Fetch failed");
+                  return r.blob();
+                });
+                
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `logs_agent_${agentId}.ndjson`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                toast.success("Logs exported");
+              } catch (e) {
+                console.error(e);
+                toast.error("Export failed");
+              }
             }}
           >
             <Download className="h-4 w-4" /> Export

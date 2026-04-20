@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { NavLink, Link } from "react-router-dom";
 import { LayoutDashboard, Bot, ScrollText, Settings, Plus, Search, Bell } from "lucide-react";
+import { UserButton } from "@clerk/clerk-react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -73,8 +74,8 @@ export const AppShell = ({ children, title, subtitle, actions }: AppShellProps) 
               <Button asChild variant="hero" size="sm">
                 <Link to="/agents/new"><Plus className="h-4 w-4" /> Create Agent</Link>
               </Button>
-              <div className="ml-2 h-9 w-9 rounded-full bg-gradient-primary text-primary-foreground inline-flex items-center justify-center text-sm font-semibold">
-                JS
+              <div className="ml-2">
+                <UserButton afterSignOutUrl="/" />
               </div>
             </div>
           </div>

@@ -95,17 +95,29 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+from utils.auth import get_current_user
+# ...
+from routes import agents, chat, auth
+
+# ...
+
 # ─── Routers ──────────────────────────────────────────────────────────────────
+
+app.include_router(
+    auth.router,
+    prefix="/api/v1",
+)
 
 app.include_router(
     agents.router, 
     prefix="/api/v1",
-    dependencies=[Depends(verify_admin_key)]
+    dependencies=[Depends(get_current_user)]
 )
+
 app.include_router(
     chat.router,   
     prefix="/api/v1",
-    dependencies=[Depends(verify_admin_key)]
+    dependencies=[Depends(get_current_user)]
 )
 
 
