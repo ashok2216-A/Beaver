@@ -1,5 +1,6 @@
 import logging
 import hashlib
+from datetime import datetime, timezone
 from typing import Optional, Any
 from fastapi import Header, Query, HTTPException, status, Depends
 from sqlalchemy.orm import Session
@@ -79,6 +80,8 @@ async def get_current_user(
         h = hash_key(x_api_key)
         key_obj = db.query(ApiKey).filter(ApiKey.key_hash == h).first()
         if key_obj:
+            key_obj.last_used_at = datetime.now(timezone.utc)
+            db.commit()
             return key_obj.owner
 
     # 2. Try Clerk JWT Authentication (Dashboard/Frontend)
