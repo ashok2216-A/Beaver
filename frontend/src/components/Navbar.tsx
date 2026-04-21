@@ -13,8 +13,7 @@ export const Navbar = () => {
             <nav className="hidden md:flex items-center gap-7 text-sm text-muted-foreground">
               <a href="#features" className="hover:text-foreground transition-base">Features</a>
               <a href="#demo" className="hover:text-foreground transition-base">Demo</a>
-              <a href="#pricing" className="hover:text-foreground transition-base">Pricing</a>
-              <a href="#" className="hover:text-foreground transition-base">Docs</a>
+              <a href="#integrations" className="hover:text-foreground transition-base">Ecosystem</a>
             </nav>
           </div>
           <div className="flex items-center gap-2">

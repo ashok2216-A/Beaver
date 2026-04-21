@@ -52,6 +52,7 @@ def _build_agent(
     base_url: str,
     auth_type: str,
     auth_secret: str,
+    auth_header: str | None,
     tool_log: list[dict],
 ) -> Agent:
     """
@@ -99,6 +100,7 @@ def _build_agent(
             extracted_params=params_dict,
             auth_type=auth_type,
             auth_secret=auth_secret,
+            auth_header=auth_header,
         )
 
         tool_log.append({
@@ -170,6 +172,7 @@ async def run_agent_async(
     base_url: str,
     auth_type: str,
     auth_secret: str,
+    auth_header: str | None,
     user_input: str,
     session_id: str | None = None,
 ) -> dict[str, Any]:
@@ -190,6 +193,7 @@ async def run_agent_async(
         base_url=base_url,
         auth_type=auth_type,
         auth_secret=auth_secret,
+        auth_header=auth_header,
         tool_log=tool_log,
     )
 

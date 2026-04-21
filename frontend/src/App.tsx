@@ -16,6 +16,9 @@ import Logs from "./pages/Logs";
 import Settings from "./pages/Settings";
 import Agents from "./pages/Agents";
 import NotFound from "./pages/NotFound";
+import Docs from "./pages/Docs";
+import About from "./pages/About";
+import Changelog from "./pages/Changelog";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +61,9 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/docs" element={<Docs />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/changelog" element={<Changelog />} />
           
           {/* Protected Routes */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

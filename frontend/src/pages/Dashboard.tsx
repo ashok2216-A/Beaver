@@ -12,6 +12,7 @@ import {
   BarChart3,
   Rocket
 } from "lucide-react";
+import { AgentAvatar } from "@/components/AgentAvatar";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import {
@@ -134,9 +135,7 @@ const Dashboard = () => {
                 className="group relative rounded-2xl border border-border bg-card p-5 transition-base hover:-translate-y-0.5 hover:shadow-elevated hover:border-primary/30"
               >
                 <div className="flex items-start justify-between">
-                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
-                    <Bot className="h-5 w-5" />
-                  </div>
+                  <AgentAvatar id={a.id} />
                   
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

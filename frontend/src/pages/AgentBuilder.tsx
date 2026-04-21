@@ -279,9 +279,12 @@ const AgentBuilder = () => {
                 <Field label="Auth Type">
                   <select name="auth_type" defaultValue={agent.auth_type} className="settings-input">
                     <option value="none">None</option>
-                    <option value="bearer">Bearer Token</option>
-                    <option value="apikey">API Key (Header)</option>
+                    <option value="bearer">Bearer Token (Authorization)</option>
+                    <option value="apikey">API Key (Custom Header)</option>
                   </select>
+                </Field>
+                <Field label="Custom Auth Header" hint="Specific header name (e.g. x-api-key). Leave empty for defaults.">
+                  <input name="auth_header" defaultValue={agent.auth_header} placeholder="x-api-key" className="settings-input font-mono text-xs" />
                 </Field>
                 <Field label="Auth Secret" hint="Token or secret key for this API.">
                   <input type="password" name="auth_secret" defaultValue={agent.auth_secret} className="settings-input font-mono text-xs" />

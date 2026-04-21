@@ -34,9 +34,15 @@ def _substitute_path_params(path: str, params: dict[str, Any]) -> tuple[str, dic
     return path, remaining
 
 
-def _build_auth_headers(auth_type: str, auth_secret: str) -> dict[str, str]:
+def _build_auth_headers(auth_type: str, auth_secret: str, auth_header: str | None = None) -> dict[str, str]:
     if not auth_secret:
         return {}
+    
+    # 1. Use custom header if provided
+    if auth_header:
+        return {auth_header: auth_secret}
+    
+    # 2. Fallback to standard headers
     if auth_type == "bearer":
         return {"Authorization": f"Bearer {auth_secret}"}
     if auth_type == "apikey":
@@ -52,6 +58,7 @@ async def call_api(
     extracted_params: dict[str, Any],# values from LLM
     auth_type: str = "bearer",
     auth_secret: str = "",
+    auth_header: str | None = None,
 ) -> tuple[Any, int, int]:
     """
     Execute an API call and return (response_data, status_code, latency_ms).
@@ -88,7 +95,7 @@ async def call_api(
     headers = {
         "Content-Type": "application/json",
         "Accept":       "application/json",
-        **_build_auth_headers(auth_type, auth_secret),
+        **_build_auth_headers(auth_type, auth_secret, auth_header),
     }
 
     start = time.monotonic()

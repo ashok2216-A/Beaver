@@ -64,6 +64,7 @@ class Agent(Base):
     api_spec       = Column(Text, nullable=False)          # raw JSON/YAML string
     system_prompt  = Column(Text, default="")
     auth_type      = Column(String(32), default="bearer")  # bearer | apikey | none
+    auth_header    = Column(String(100), nullable=True)    # optional custom header name (e.g. x-api-key)
     auth_secret    = Column(Text, default="")              # encrypted in prod
     model_id       = Column(String(64), default="gemini/gemini-2.0-flash-lite")
     status         = Column(SAEnum(AgentStatus), default=AgentStatus.draft, nullable=False)

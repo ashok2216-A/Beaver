@@ -16,6 +16,9 @@ const CreateAgent = () => {
   const [agentName, setAgentName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [description, setDescription] = useState("");
+  const [authType, setAuthType] = useState("bearer");
+  const [authHeader, setAuthHeader] = useState("");
+  const [authSecret, setAuthSecret] = useState("");
   const [isPreviewing, setIsPreviewing] = useState(false);
 
   const [dragOver, setDragOver] = useState(false);
@@ -63,7 +66,10 @@ const CreateAgent = () => {
           url, 
           name: agentName || "New Agent from URL",
           description,
-          base_url: baseUrl
+          base_url: baseUrl,
+          auth_type: authType,
+          auth_header: authHeader || null,
+          auth_secret: authSecret
         });
       }
       throw new Error("Missing file or URL");
@@ -206,6 +212,44 @@ const CreateAgent = () => {
                       rows={2}
                       className="w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus:border-primary/50"
                     />
+                  </div>
+
+                  {/* Auth Configuration */}
+                  <div className="pt-4 border-t border-border/50">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">Authentication Settings</p>
+                    <div className="grid gap-6 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-muted-foreground">Auth Type</label>
+                        <select 
+                          value={authType}
+                          onChange={(e) => setAuthType(e.target.value)}
+                          className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50"
+                        >
+                          <option value="none">None</option>
+                          <option value="bearer">Bearer Token (Authorization)</option>
+                          <option value="apikey">API Key (Custom Header)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-muted-foreground">Custom Header Name</label>
+                        <input 
+                          value={authHeader}
+                          onChange={(e) => setAuthHeader(e.target.value)}
+                          placeholder="x-api-key"
+                          className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50 font-mono"
+                        />
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <label className="text-xs font-semibold text-muted-foreground">Auth Secret / Token</label>
+                        <input 
+                          type="password"
+                          value={authSecret}
+                          onChange={(e) => setAuthSecret(e.target.value)}
+                          placeholder="paste-your-token-here"
+                          className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50 font-mono"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

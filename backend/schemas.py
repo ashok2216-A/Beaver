@@ -56,6 +56,7 @@ class AgentCreate(BaseModel):
     api_spec: dict[str, Any]           # parsed OpenAPI JSON
     system_prompt: str = ""
     auth_type: str = "bearer"          # bearer | apikey | none
+    auth_header: Optional[str] = None
     auth_secret: str = ""
     model_id: str = "gemini/gemini-2.0-flash-lite"
 
@@ -71,6 +72,7 @@ class AgentUpdate(BaseModel):
     base_url: Optional[str] = None
     system_prompt: Optional[str] = None
     auth_type: Optional[str] = None
+    auth_header: Optional[str] = None
     auth_secret: Optional[str] = None
     model_id: Optional[str] = None
     status: Optional[str] = None
@@ -86,6 +88,7 @@ class AgentOut(BaseModel):
     model_id: str
     system_prompt: str
     auth_type: str
+    auth_header: Optional[str] = None
     endpoint_count: int = 0
     created_at: datetime
     updated_at: datetime

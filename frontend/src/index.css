@@ -138,6 +138,19 @@
     background-size: 32px 32px;
     mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
   }
+  .modern-scrollbar::-webkit-scrollbar {
+    width: 5px;
+  }
+  .modern-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .modern-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 10px;
+  }
+  .modern-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.3);
+  }
 }
 
 @layer components {

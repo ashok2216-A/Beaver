@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { 
+  Cpu, 
+  Zap, 
+  Sparkles, 
+  Ghost, 
+  Smile, 
+  Terminal, 
+  Code, 
+  Database, 
+  Pencil,
   Bot, 
   MoreHorizontal, 
   Trash2, 
@@ -11,6 +20,7 @@ import {
   Search,
   Plus
 } from "lucide-react";
+import { AgentAvatar } from "@/components/AgentAvatar";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +32,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -30,6 +51,7 @@ import { toast } from "sonner";
 const Agents = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingAgent, setEditingAgent] = useState<any>(null);
   
   const { data: agents = [], isLoading: loadingAgents, isError, error } = useQuery({
     queryKey: ["agents"],
@@ -52,6 +74,19 @@ const Agents = () => {
       deleteAgent(id);
     }
   };
+
+  const { mutate: updateAgent, isPending: isUpdating } = useMutation({
+    mutationFn: ({ id, ...updates }: { id: number; name: string; description: string }) => 
+      api.patch(`/agents/${id}`, updates),
+    onSuccess: () => {
+      toast.success("Agent updated successfully");
+      setEditingAgent(null);
+      queryClient.invalidateQueries({ queryKey: ["agents"] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to update agent");
+    },
+  });
 
   const filteredAgents = agents.filter(a => 
     a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -111,9 +146,7 @@ const Agents = () => {
                 className="group relative rounded-2xl border border-border bg-card p-5 transition-base hover:-translate-y-0.5 hover:shadow-elevated hover:border-primary/30"
               >
                 <div className="flex items-start justify-between">
-                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
-                    <Bot className="h-5 w-5" />
-                  </div>
+                  <AgentAvatar id={a.id} name={a.name} />
                   
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -123,6 +156,13 @@ const Agents = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => setEditingAgent(a)}
+                        className="cursor-pointer"
+                      >
+                        <Pencil className="mr-2 h-4 w-4" /> Edit Details
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
                         <Link to={`/agents/builder?id=${a.id}`} className="cursor-pointer">
@@ -170,9 +210,74 @@ const Agents = () => {
           )}
         </div>
       </div>
+
+      {/* Edit Modal */}
+      <Dialog open={!!editingAgent} onOpenChange={(open) => !open && setEditingAgent(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Agent Details</DialogTitle>
+            <DialogDescription>
+              Update your agent's name and descriptive mission.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              updateAgent({
+                id: editingAgent.id,
+                name: formData.get("name") as string,
+                description: formData.get("description") as string,
+              });
+            }}
+            className="space-y-4 py-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="name">Agent Name</Label>
+              <Input id="name" name="name" defaultValue={editingAgent?.name} required placeholder="e.g. Finance Assistant" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea 
+                id="description" 
+                name="description" 
+                defaultValue={editingAgent?.description} 
+                placeholder="What does this agent do?"
+                rows={3}
+              />
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="ghost" onClick={() => setEditingAgent(null)} disabled={isUpdating}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="hero" disabled={isUpdating}>
+                {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 };
+
+// --- Sub-components ---
+
+const Check = ({ className }: { className?: string }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="3" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
 
 const StatusPill = ({ status, color }: { status: string; color: string }) => {
   const colorMap: Record<string, string> = {
