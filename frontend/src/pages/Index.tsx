@@ -308,7 +308,7 @@ const Index = () => {
                    
                    <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8 max-w-4xl mx-auto">
                      {/* SVG Connectors - Desktop only */}
-                     <svg className="hidden lg:block absolute top-1/2 left-0 w-full h-20 -translate-y-1/2 -z-10 opacity-20" viewBox="0 0 800 100">
+                     <svg className="hidden lg:block absolute top-[41%] left-0 w-full h-20 -translate-y-1/2 -z-10 opacity-20" viewBox="0 0 800 100">
                         <path d="M100 50 C 200 50, 200 50, 300 50 S 400 50, 500 50 S 600 50, 700 50" stroke="currentColor" fill="transparent" strokeWidth="2" strokeDasharray="6 6" />
                         <circle r="3" fill="currentColor" className="animate-follow-path-1">
                           <animateMotion dur="3s" repeatCount="indefinite" path="M100 50 C 200 50, 200 50, 300 50 S 400 50, 500 50 S 600 50, 700 50" />
@@ -529,6 +529,82 @@ const Index = () => {
         </div>
       </section>
 
+      {/* CONNECT EVERYTHING: INTEGRATIONS HUB [MOVED HERE] */}
+      <section id="integrations" className="py-40 border-t border-white/5 bg-background relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+        
+        <div className="container relative z-10">
+          <div className="mx-auto max-w-3xl text-center mb-24">
+            <p className="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-6">Connect Everything</p>
+            <h2 className="text-5xl md:text-6xl font-extrabold tracking-tighter">
+              World-Class Ecosystem
+            </h2>
+            <p className="mt-8 text-xl text-muted-foreground/80 leading-relaxed font-medium">
+              Agently Studio natively bridges your existing tech stack with any LLM, turning standard docs into actionable intelligence.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+            {connections.map((c) => (
+              <div
+                key={c.name}
+                className="group relative rounded-[2rem] border border-white/5 bg-card/30 p-8 shadow-sm transition-all duration-500 hover:border-primary/30 hover:bg-primary/5 min-h-[160px] overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-spotlight opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                <div className="flex items-start gap-6 relative z-10">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-secondary/50 p-3.5 ring-1 ring-white/10 transition-all duration-500 group-hover:scale-110 group-hover:bg-primary/10 group-hover:shadow-glow-sm">
+                    <img 
+                      src={c.logoUrl || `https://cdn.simpleicons.org/${c.slug}`} 
+                      alt={c.name}
+                      className="h-full w-full object-contain grayscale opacity-50 transition-all duration-500 group-hover:grayscale-0 group-hover:opacity-100 group-hover:drop-shadow-glow-sm"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=222&color=fff&bold=true`;
+                      }}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-extrabold text-xl tracking-tight transition-colors group-hover:text-primary">{c.name}</h3>
+                    <p className="mt-2 text-sm text-muted-foreground/70 leading-relaxed font-medium line-clamp-2 transition-colors group-hover:text-muted-foreground">
+                      {c.desc}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {/* Global Ecosystem Card */}
+            <div className="rounded-[2rem] glass-premium border border-white/10 p-6 flex flex-col group hover:border-primary/30 transition-all duration-500 overflow-hidden relative">
+              <div className="absolute inset-0 bg-spotlight opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+              <div className="absolute inset-0 dot-grid opacity-[0.03] group-hover:opacity-[0.07]" />
+              
+              <div className="relative z-10 flex flex-wrap gap-2 items-center justify-center">
+                {extraIntegrations.map((slug) => (
+                  <div key={slug} className="h-6 w-6 transition-all duration-700 hover:scale-125 hover:rotate-12 cursor-pointer">
+                    <img 
+                      src={`https://cdn.simpleicons.org/${slug}`} 
+                      alt={slug}
+                      className="h-full w-full object-contain grayscale opacity-30 transition-all duration-700 group-hover:grayscale-0 group-hover:opacity-100"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="absolute bottom-4 left-0 w-full text-center">
+                 <p className="text-[10px] font-bold text-muted-foreground/30 uppercase tracking-[0.2em] group-hover:text-muted-foreground transition-colors">Ecosystem Core</p>
+              </div>
+            </div>
+
+            {/* More CTA Card */}
+            <div className="rounded-[2rem] border border-dashed border-white/10 p-8 flex flex-col items-center justify-center text-center group hover:bg-primary/5 hover:border-primary/30 transition-all duration-500 min-h-[160px]">
+              <div className="h-12 w-12 rounded-2xl bg-secondary/50 flex items-center justify-center text-muted-foreground/50 group-hover:bg-primary/20 group-hover:text-primary transition-all duration-500 group-hover:scale-110">
+                <ArrowRight className="h-6 w-6" />
+              </div>
+              <p className="mt-4 text-sm font-bold text-muted-foreground/40 group-hover:text-primary transition-colors tracking-wide uppercase">Custom Integration</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* USE CASES */}
       <section className="py-24 border-t border-border">
         <div className="container max-w-6xl">
@@ -704,81 +780,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* INTEGRATIONS HUB */}
-      <section id="integrations" className="py-40 border-t border-white/5 bg-background relative overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-        
-        <div className="container relative z-10">
-          <div className="mx-auto max-w-3xl text-center mb-24">
-            <p className="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-6">Connect Everything</p>
-            <h2 className="text-5xl md:text-6xl font-extrabold tracking-tighter">
-              World-Class Ecosystem
-            </h2>
-            <p className="mt-8 text-xl text-muted-foreground/80 leading-relaxed font-medium">
-              Agently Studio natively bridges your existing tech stack with any LLM, turning standard docs into actionable intelligence.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-            {connections.map((c) => (
-              <div
-                key={c.name}
-                className="group relative rounded-[2rem] border border-white/5 bg-card/30 p-8 shadow-sm transition-all duration-500 hover:border-primary/30 hover:bg-primary/5 min-h-[160px] overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-spotlight opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                <div className="flex items-start gap-6 relative z-10">
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-secondary/50 p-3.5 ring-1 ring-white/10 transition-all duration-500 group-hover:scale-110 group-hover:bg-primary/10 group-hover:shadow-glow-sm">
-                    <img 
-                      src={c.logoUrl || `https://cdn.simpleicons.org/${c.slug}`} 
-                      alt={c.name}
-                      className="h-full w-full object-contain grayscale opacity-50 transition-all duration-500 group-hover:grayscale-0 group-hover:opacity-100 group-hover:drop-shadow-glow-sm"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=222&color=fff&bold=true`;
-                      }}
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-extrabold text-xl tracking-tight transition-colors group-hover:text-primary">{c.name}</h3>
-                    <p className="mt-2 text-sm text-muted-foreground/70 leading-relaxed font-medium line-clamp-2 transition-colors group-hover:text-muted-foreground">
-                      {c.desc}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            
-            {/* Global Ecosystem Card */}
-            <div className="rounded-[2rem] glass-premium border border-white/10 p-6 flex flex-col group hover:border-primary/30 transition-all duration-500 overflow-hidden relative">
-              <div className="absolute inset-0 bg-spotlight opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-              <div className="absolute inset-0 dot-grid opacity-[0.03] group-hover:opacity-[0.07]" />
-              
-              <div className="relative z-10 flex flex-wrap gap-2 items-center justify-center">
-                {extraIntegrations.map((slug) => (
-                  <div key={slug} className="h-6 w-6 transition-all duration-700 hover:scale-125 hover:rotate-12 cursor-pointer">
-                    <img 
-                      src={`https://cdn.simpleicons.org/${slug}`} 
-                      alt={slug}
-                      className="h-full w-full object-contain grayscale opacity-30 transition-all duration-700 group-hover:grayscale-0 group-hover:opacity-100"
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="absolute bottom-4 left-0 w-full text-center">
-                 <p className="text-[10px] font-bold text-muted-foreground/30 uppercase tracking-[0.2em] group-hover:text-muted-foreground transition-colors">Ecosystem Core</p>
-              </div>
-            </div>
-
-            {/* More CTA Card */}
-            <div className="rounded-[2rem] border border-dashed border-white/10 p-8 flex flex-col items-center justify-center text-center group hover:bg-primary/5 hover:border-primary/30 transition-all duration-500 min-h-[160px]">
-              <div className="h-12 w-12 rounded-2xl bg-secondary/50 flex items-center justify-center text-muted-foreground/50 group-hover:bg-primary/20 group-hover:text-primary transition-all duration-500 group-hover:scale-110">
-                <ArrowRight className="h-6 w-6" />
-              </div>
-              <p className="mt-4 text-sm font-bold text-muted-foreground/40 group-hover:text-primary transition-colors tracking-wide uppercase">Custom Integration</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* FINAL CALL TO ACTION: ELEGANT PORTAL DESIGN */}
       <section className="py-40 relative overflow-hidden bg-background">
