@@ -16,7 +16,7 @@ const sections = [
     id: "getting-started", 
     title: "Getting Started", 
     icon: Rocket,
-    content: "Upload your OpenAPI or Swagger specification file to Agently Studio. We support both JSON and YAML formats. Once uploaded, our engine automatically parses your endpoints and converts them into semantic tools for your AI agent."
+    content: "Upload your OpenAPI or Swagger specification file to API Studio. We support both JSON and YAML formats. Once uploaded, our engine automatically parses your endpoints and converts them into semantic tools for your AI agent."
   },
   { 
     id: "authentication", 

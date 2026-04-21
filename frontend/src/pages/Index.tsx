@@ -71,7 +71,7 @@ const useCases = [
 
 const testimonials = [
   {
-    quote: "We connected our custom CRM API to Agently Studio, and within an hour we had a working Slack bot for our sales team. The dynamic tool routing is magic.",
+    quote: "We connected our custom CRM API to API Studio, and within an hour we had a working Slack bot for our sales team. The dynamic tool routing is magic.",
     author: "Sarah J.",
     role: "Lead Engineer",
   },
@@ -214,7 +214,7 @@ const Index = () => {
             </h1>
             
             <p className="mt-8 text-xl md:text-2xl text-muted-foreground leading-relaxed max-w-2xl mx-auto font-medium">
-              Agently Studio is the ultimate playground for turning OpenAPI documentation into reliable, tool-calling agents for any LLM.
+              API Studio is the ultimate playground for turning OpenAPI documentation into reliable, tool-calling agents for any LLM.
             </p>
             
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-5">
@@ -540,7 +540,7 @@ const Index = () => {
               World-Class Ecosystem
             </h2>
             <p className="mt-8 text-xl text-muted-foreground/80 leading-relaxed font-medium">
-              Agently Studio natively bridges your existing tech stack with any LLM, turning standard docs into actionable intelligence.
+              API Studio natively bridges your existing tech stack with any LLM, turning standard docs into actionable intelligence.
             </p>
           </div>
 
@@ -758,7 +758,7 @@ const Index = () => {
                   <span className="text-gradient">Super-Agent Era</span>
                 </h2>
                 <p className="text-xl text-muted-foreground/80 leading-relaxed font-medium max-w-md">
-                  Everything you need to know about building, deploying, and securing your AI agents with Agently Studio.
+                  Everything you need to know about building, deploying, and securing your AI agents with API Studio.
                 </p>
                 
                 {/* Decorative Watermark */}

@@ -10,7 +10,7 @@ export const Footer = () => (
         <div className="md:col-span-5 space-y-8 text-left">
           <Logo />
           <p className="text-muted-foreground/70 leading-relaxed max-w-sm font-medium text-lg">
-            Empowering engineers to bridge the gap between static APIs and autonomous reasoning agents.
+            Empowering engineers to bridge the gap between static APIs and autonomous reasoning agents with API Studio.
           </p>
           <div className="flex gap-4">
              {[
@@ -56,7 +56,7 @@ export const Footer = () => (
 
       <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
         <p className="text-[11px] text-muted-foreground/30 font-bold uppercase tracking-widest">
-          © {new Date().getFullYear()} Agently Studio. Built for the agent-first world.
+          © {new Date().getFullYear()} API Studio. Built for the agent-first world.
         </p>
         <div className="flex gap-8 text-[11px] uppercase tracking-[0.2em] text-muted-foreground/20 font-extrabold">
            <span className="hover:text-primary cursor-pointer transition-colors">System Status</span>
