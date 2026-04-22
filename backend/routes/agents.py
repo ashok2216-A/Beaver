@@ -267,33 +267,72 @@ async def ingest_url(
 
 @router.get("/stats", response_model=StatsOut)
 def get_global_stats(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Return statistics for the current user's agents."""
+    """Return statistics for the current user's agents with weekly trends."""
     from models import Agent, Log
+    from datetime import datetime, timedelta, timezone
     
-    # Count only agents owned by this user
+    now = datetime.now(timezone.utc)
+    week_ago = now - timedelta(days=7)
+    two_weeks_ago = now - timedelta(days=14)
+    
+    # 1. Agent counts
     agent_count = db.query(func.count(Agent.id)).filter(Agent.owner_id == user.id).scalar() or 0
+    agents_last_week = db.query(func.count(Agent.id))\
+        .filter(Agent.owner_id == user.id, Agent.created_at < week_ago)\
+        .scalar() or 0
+    agent_new = agent_count - agents_last_week
     
-    # Count only logs belonging to this user's agents
-    message_count = db.query(func.count(Log.id))\
+    # 2. Message counts (Current week vs Previous week)
+    msg_this_week = db.query(func.count(Log.id))\
+        .join(Agent, Log.agent_id == Agent.id)\
+        .filter(Agent.owner_id == user.id, Log.created_at >= week_ago)\
+        .scalar() or 0
+        
+    msg_prev_week = db.query(func.count(Log.id))\
+        .join(Agent, Log.agent_id == Agent.id)\
+        .filter(Agent.owner_id == user.id, Log.created_at < week_ago, Log.created_at >= two_weeks_ago)\
+        .scalar() or 0
+        
+    total_messages = db.query(func.count(Log.id))\
         .join(Agent, Log.agent_id == Agent.id)\
         .filter(Agent.owner_id == user.id)\
         .scalar() or 0
-    
-    # Calculate performance metrics for user's agents
-    metrics = db.query(
-        func.sum(Log.latency_ms),
+
+    # 3. Latency
+    latency_stats = db.query(
         func.avg(Log.latency_ms)
     ).join(Agent, Log.agent_id == Agent.id)\
      .filter(Agent.owner_id == user.id).first()
     
-    total_latency = metrics[0] or 0
-    avg_latency = metrics[1] or 0
+    avg_latency = int(latency_stats[0] or 0)
     
+    latency_prev = db.query(
+        func.avg(Log.latency_ms)
+    ).join(Agent, Log.agent_id == Agent.id)\
+     .filter(Agent.owner_id == user.id, Log.created_at < week_ago, Log.created_at >= two_weeks_ago)\
+     .scalar() or 0
+     
+    # 4. Calculate Trends
+    def pct_change(curr, prev):
+        if prev == 0: return "+100%" if curr > 0 else "+0%"
+        change = ((curr - prev) / prev) * 100
+        return f"{'+' if change >= 0 else ''}{int(change)}%"
+
+    message_trend = pct_change(msg_this_week, msg_prev_week)
+    agent_trend = f"+{agent_new} this week"
+    
+    latency_diff = avg_latency - int(latency_prev)
+    latency_trend = f"{'+' if latency_diff > 0 else ''}{latency_diff}ms"
+    if latency_prev == 0: latency_trend = "-0ms"
+
     return StatsOut(
         agent_count=agent_count,
-        message_count=message_count,
-        total_latency_ms=int(total_latency),
-        avg_latency_ms=int(avg_latency)
+        message_count=total_messages,
+        total_latency_ms=0, # unused in UI
+        avg_latency_ms=avg_latency,
+        agent_trend=agent_trend,
+        message_trend=message_trend,
+        latency_trend=latency_trend
     )
 
 

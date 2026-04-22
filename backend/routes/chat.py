@@ -47,38 +47,28 @@ def _get_agent_or_404(agent_id: int, user: User, db: Session) -> Agent:
 
 # ─── Chat ─────────────────────────────────────────────────────────────────────
 
-@router.post("/chat/{agent_id}", response_model=ChatResponse)
+@router.post("/chat/{agent_id}")
 async def chat(
     agent_id: int,
     req: ChatRequest,
+    stream: bool = Query(False, description="Enable character-by-character streaming response"),
     session_id: Optional[str] = Query(None, description="Optional session ID for multi-turn conversations"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Send a natural-language message to an ADK-powered agent.
-
-    The agent will:
-      1. Understand the intent and select the right API endpoint.
-      2. Extract parameters from the message.
-      3. Call the real API via the `call_api_endpoint` tool.
-      4. Return a human-readable answer + raw API response.
-
-    Pass `session_id` to maintain conversation context across turns.
-    Omit it for a stateless single-turn request.
+    Send a message to an agent. 
+    Supports streaming if `stream=true` is passed.
     """
     agent = _get_agent_or_404(agent_id, user, db)
 
-    # Only fetch endpoints that are NOT locked
     endpoints = db.query(Endpoint).filter(
         Endpoint.agent_id == agent_id,
         Endpoint.is_locked == False
     ).all()
+    
     if not endpoints:
-        raise HTTPException(
-            status_code=422,
-            detail="This agent has no parsed endpoints. Upload a valid OpenAPI spec first.",
-        )
+        raise HTTPException(status_code=422, detail="No endpoints available.")
 
     endpoint_list = [
         {
@@ -92,19 +82,53 @@ async def chat(
         for ep in endpoints
     ]
 
-    # Run the ADK agent (async — no blocking)
-    result = await run_agent(
-        user_input=req.message,
-        endpoints=endpoint_list,
-        base_url=agent.base_url,
-        system_prompt=agent.system_prompt,
-        auth_type=agent.auth_type,
-        auth_header=agent.auth_header,
-        auth_secret=agent.auth_secret,
-        agent_name=agent.name,
-        model=agent.model_id,
-        session_id=session_id,
-    )
+    params = {
+        "user_input": req.message,
+        "endpoints": endpoint_list,
+        "base_url": agent.base_url,
+        "system_prompt": agent.system_prompt,
+        "auth_type": agent.auth_type,
+        "auth_header": agent.auth_header,
+        "auth_secret": agent.auth_secret,
+        "agent_name": agent.name,
+        "model": agent.model_id,
+        "session_id": session_id,
+    }
+
+    if stream:
+        from services.agent import run_agent_stream
+        
+        async def event_generator():
+            gen = await run_agent_stream(**params)
+            async for chunk_str in gen:
+                yield chunk_str
+                try:
+                    # Persist log when we hit the final chunk
+                    data = json.loads(chunk_str)
+                    if data.get("type") == "final":
+                        res = data["data"]
+                        matched = res.get("endpoint") or {}
+                        log_entry = Log(
+                            agent_id=agent_id,
+                            user_input=req.message,
+                            matched_path=matched.get("path", ""),
+                            method=matched.get("method", ""),
+                            status_code=res.get("status_code", 0),
+                            latency_ms=res.get("latency_ms", 0),
+                            api_response=json.dumps(res.get("api_response"), default=str)[:4096],
+                            llm_thought="ADK Stream",
+                            error=res.get("error", ""),
+                        )
+                        db.add(log_entry)
+                        db.commit()
+                except Exception as e:
+                    log.error(f"Failed to log streaming request: {e}")
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+    # Non-streaming (Original)
+    from services.agent import run_agent
+    result = await run_agent(**params)
 
     # Persist log entry
     matched = result.get("endpoint") or {}

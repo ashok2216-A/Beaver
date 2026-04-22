@@ -129,6 +129,7 @@ def _build_agent(
         "RESPONSE STRUCTURE RULES:\n"
         "- ALWAYS use Markdown for formatting.\n"
         "- Use bullet points (*) or numbered lists for all lists of items.\n"
+        "- Use Markdown tables for structured data (like lists of customers, payments, etc.).\n"
         "- Use bold headings (e.g., **#### Agent Details**) to categorize your response.\n"
         "- Summarize API data clearly before showing values.\n\n"
         "Available endpoints:\n"
@@ -164,7 +165,7 @@ def _build_agent(
 
 # ─── Async runner ─────────────────────────────────────────────────────────────
 
-async def run_agent_async(
+async def run_agent_stream(
     agent_name: str,
     model: str,
     system_prompt: str,
@@ -175,12 +176,13 @@ async def run_agent_async(
     auth_header: str | None,
     user_input: str,
     session_id: str | None = None,
-) -> dict[str, Any]:
+):
     """
-    Run an ADK agent turn and return a structured result dict.
-
-    Returns keys: answer, endpoint, api_response, status_code,
-                  latency_ms, llm_thought, error
+    Async generator that yields JSON chunks as the agent runs.
+    Chunks:
+      - {"type": "token", "text": "..."}
+      - {"type": "tool", "data": {...}}
+      - {"type": "final", "data": {...}}
     """
     tool_log: list[dict] = []
     session_id = session_id or str(uuid.uuid4())
@@ -203,31 +205,19 @@ async def run_agent_async(
         session_service=_session_service,
     )
 
-    # Ensure the session exists (create if missing, ignore if exists)
     try:
         await _session_service.get_session(app_name=APP_NAME, session_id=session_id)
     except Exception:
-        # Session doesn't exist, create it
-        await _session_service.create_session(
-            app_name=APP_NAME,
-            user_id="user",
-            session_id=session_id,
-        )
+        await _session_service.create_session(app_name=APP_NAME, user_id="user", session_id=session_id)
 
-    message = genai_types.Content(
-        role="user",
-        parts=[genai_types.Part(text=user_input)],
-    )
+    message = genai_types.Content(role="user", parts=[genai_types.Part(text=user_input)])
+    
+    settings = get_settings()
+    if settings.gemini_api_key: os.environ["GOOGLE_API_KEY"] = settings.gemini_api_key
+    if settings.mistral_api_key: os.environ["MISTRAL_API_KEY"] = settings.mistral_api_key
 
     final_text = ""
     error_msg = ""
-
-    settings = get_settings()
-    # Propagate API keys to the environment for LiteLLM
-    if settings.gemini_api_key:
-        os.environ["GOOGLE_API_KEY"] = settings.gemini_api_key
-    if settings.mistral_api_key:
-        os.environ["MISTRAL_API_KEY"] = settings.mistral_api_key
 
     try:
         async for event in runner.run_async(
@@ -235,31 +225,76 @@ async def run_agent_async(
             session_id=session_id,
             new_message=message,
         ):
+            # Capture tokens for streaming
             if event.is_final_response():
                 if event.content and event.content.parts:
-                    final_text = "".join(
-                        p.text for p in event.content.parts
-                        if hasattr(p, "text") and p.text
-                    )
+                    for part in event.content.parts:
+                        if hasattr(part, "text") and part.text:
+                            final_text += part.text
+                            yield json.dumps({"type": "token", "text": part.text}) + "\n"
+            
+            # Optionally capture tool calls as they happen
+            if hasattr(event, "call") and event.call:
+                 yield json.dumps({"type": "status", "text": f"Calling {event.call.function_name}..."}) + "\n"
+
     except Exception as exc:
-        log.exception("ADK runner error for agent '%s'", agent_name)
+        log.exception("Stream error")
         error_msg = str(exc)
-        final_text = f"Sorry, an error occurred while processing your request: {error_msg}"
+        yield json.dumps({"type": "error", "text": error_msg}) + "\n"
 
     last_call = tool_log[-1] if tool_log else {}
+    yield json.dumps({
+        "type": "final",
+        "data": {
+            "answer":       final_text,
+            "endpoint":     {"path": last_call["path"], "method": last_call["method"]} if last_call else None,
+            "api_response": last_call.get("response"),
+            "status_code":  last_call.get("status_code", 0),
+            "latency_ms":   last_call.get("latency_ms", 0),
+            "error":        error_msg,
+        }
+    }) + "\n"
 
-    return {
-        "answer":       final_text,
-        "endpoint":     {"path": last_call["path"], "method": last_call["method"]} if last_call else None,
-        "api_response": last_call.get("response"),
-        "status_code":  last_call.get("status_code", 0),
-        "latency_ms":   last_call.get("latency_ms", 0),
-        "llm_thought":  f"ADK agent — {len(tool_log)} tool call(s)",
-        "error":        error_msg,
-    }
+
+async def run_agent_async(
+    agent_name: str,
+    model: str,
+    system_prompt: str,
+    endpoints: list[dict],
+    base_url: str,
+    auth_type: str,
+    auth_secret: str,
+    auth_header: str | None,
+    user_input: str,
+    session_id: str | None = None,
+) -> dict[str, Any]:
+    """Non-streaming version for backward compatibility."""
+    final_text = ""
+    last_call = None
+    error_msg = ""
+    
+    async for chunk_str in run_agent_stream(
+        agent_name=agent_name,
+        model=model,
+        system_prompt=system_prompt,
+        endpoints=endpoints,
+        base_url=base_url,
+        auth_type=auth_type,
+        auth_secret=auth_secret,
+        auth_header=auth_header,
+        user_input=user_input,
+        session_id=session_id,
+    ):
+        chunk = json.loads(chunk_str)
+        if chunk["type"] == "final":
+            return chunk["data"]
+        if chunk["type"] == "error":
+            error_msg = chunk["text"]
+            
+    return {"answer": final_text or "Error", "error": error_msg}
 
 
-# ─── Sync wrapper (for non-async callers) ────────────────────────────────────
+# ─── Async runner ─────────────────────────────────────────────────────────────
 
 def run_agent_sync(*args, **kwargs) -> dict[str, Any]:
     """Blocking wrapper around run_agent_async for synchronous contexts."""

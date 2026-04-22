@@ -149,7 +149,7 @@ const Logs = () => {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(l.status_code)}`}>
-                          {l.status_code}
+                          {l.status_code === 0 ? "-" : l.status_code}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{l.latency_ms}ms</td>

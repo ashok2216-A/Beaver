@@ -14,8 +14,8 @@ const CodeBlock = ({ code, language = "bash" }: { code: string; language?: strin
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <div className="relative rounded-xl bg-[#0d0d0f] border border-white/8 overflow-hidden my-3">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-white/5">
+    <div className="relative rounded-xl bg-[#0d0d0f] shadow-lg overflow-hidden my-3">
+      <div className="flex items-center justify-between px-4 py-2 bg-white/2">
         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{language}</span>
         <button onClick={copy} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
           {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-zinc-500" />}
@@ -105,7 +105,7 @@ const endpoints = [
     {
       "id": "agt_02HABC...",
       "name": "Notion Bot",
-      "status": "draft",
+      "status": "Draft",
       "endpoint_count": 17,
       "created_at": "2026-04-20T12:00:00Z"
     }
@@ -290,21 +290,21 @@ const ApiReference = () => {
 
           {/* ── Quick info strip ── */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
-            <div className="rounded-2xl border border-white/5 bg-card p-5 flex items-start gap-3">
+            <div className="rounded-2xl bg-card p-5 flex items-start gap-3 shadow-soft">
               <Globe className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50 mb-1">Base URL</p>
                 <code className="font-mono text-sm text-foreground">api-agent-backend.onrender.com</code>
               </div>
             </div>
-            <div className="rounded-2xl border border-white/5 bg-card p-5 flex items-start gap-3">
+            <div className="rounded-2xl bg-card p-5 flex items-start gap-3 shadow-soft">
               <Shield className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50 mb-1">Authentication</p>
                 <code className="font-mono text-sm text-foreground">Authorization: Bearer &lt;token&gt;</code>
               </div>
             </div>
-            <div className="rounded-2xl border border-white/5 bg-card p-5 flex items-start gap-3">
+            <div className="rounded-2xl bg-card p-5 flex items-start gap-3 shadow-soft">
               <Zap className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50 mb-1">Rate Limit</p>
@@ -336,8 +336,8 @@ const ApiReference = () => {
                 <button
                   key={i}
                   onClick={() => { setActive(i); setActiveTab("curl"); }}
-                  className={`w-full text-left px-4 py-3.5 rounded-xl border transition-all duration-200 ${
-                    active === i ? "border-primary/30 bg-primary/5" : "border-transparent hover:border-white/5 hover:bg-white/2"
+                  className={`w-full text-left px-4 py-3.5 rounded-xl transition-all duration-200 ${
+                    active === i ? "bg-primary/5 shadow-[0_0_0_1px_rgba(var(--primary),0.2)]" : "hover:bg-white/2"
                   }`}
                 >
                   <div className="flex items-center gap-3 mb-1">
@@ -352,7 +352,7 @@ const ApiReference = () => {
             {/* Detail Panel */}
             <div className="lg:col-span-3 space-y-5">
               {/* Title row */}
-              <div className="rounded-2xl border border-white/5 bg-card p-7">
+              <div className="rounded-2xl bg-card p-7 shadow-soft">
                 <div className="flex items-center gap-3 mb-2">
                   <Badge method={ep.method} />
                   <code className="font-mono text-sm text-foreground">{ep.path}</code>
@@ -366,13 +366,13 @@ const ApiReference = () => {
                 <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground/50 mb-4">Parameters</h3>
                 <div className="space-y-3">
                   {ep.params.map((p, i) => (
-                    <div key={i} className="flex items-start gap-3 pb-3 border-b border-white/5 last:border-0 last:pb-0">
+                    <div key={i} className="flex items-start gap-3 pb-3 bg-white/2 p-3 rounded-xl last:pb-0">
                       <code className="text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded mt-0.5 flex-shrink-0">{p.name}</code>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-[10px] text-muted-foreground/50 font-mono">{p.type}</span>
                           {p.required && (
-                            <span className="text-[9px] font-black uppercase tracking-widest text-rose-400 bg-rose-400/10 border border-rose-400/20 px-1.5 py-0.5 rounded">required</span>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-rose-400 bg-rose-400/10 px-1.5 py-0.5 rounded">required</span>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">{p.desc}</p>
@@ -383,8 +383,8 @@ const ApiReference = () => {
               </div>
 
               {/* Code tabs */}
-              <div className="rounded-2xl border border-white/5 bg-card p-6">
-                <div className="flex gap-1 mb-4 border-b border-white/5 pb-3">
+              <div className="rounded-2xl bg-card p-6 shadow-soft">
+                <div className="flex gap-1 mb-4 pb-3 shadow-[0_1px_0_0_rgba(255,255,255,0.05)]">
                   {(["curl", ...(ep.body ? ["body"] : []), "response"] as const).map((tab) => (
                     <button
                       key={tab}
@@ -407,20 +407,19 @@ const ApiReference = () => {
             </div>
           </div>
 
-          {/* ── Response Headers ── */}
           <div className="mb-12">
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
               <ArrowRight className="h-5 w-5 text-primary" /> Response Headers
             </h2>
-            <div className="rounded-2xl border border-white/5 bg-card overflow-hidden">
+            <div className="rounded-2xl bg-card overflow-hidden shadow-soft">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/5 bg-white/2">
+                  <tr className="bg-white/2">
                     <th className="text-left px-6 py-3 text-xs font-black uppercase tracking-widest text-muted-foreground/40 w-1/3">Header</th>
                     <th className="text-left px-6 py-3 text-xs font-black uppercase tracking-widest text-muted-foreground/40">Description</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-transparent">
                   {[
                     { header: "X-RateLimit-Limit", desc: "Maximum number of requests allowed per minute for your plan." },
                     { header: "X-RateLimit-Remaining", desc: "Number of requests remaining in the current rate limit window." },
@@ -443,16 +442,16 @@ const ApiReference = () => {
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-primary" /> Error Codes
             </h2>
-            <div className="rounded-2xl border border-white/5 bg-card overflow-hidden">
+            <div className="rounded-2xl bg-card overflow-hidden shadow-soft">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/5 bg-white/2">
+                  <tr className="bg-white/2">
                     <th className="text-left px-6 py-3 text-xs font-black uppercase tracking-widest text-muted-foreground/40 w-1/6">Code</th>
                     <th className="text-left px-6 py-3 text-xs font-black uppercase tracking-widest text-muted-foreground/40 w-1/4">Status</th>
                     <th className="text-left px-6 py-3 text-xs font-black uppercase tracking-widest text-muted-foreground/40">Meaning</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-transparent">
                   {errorCodes.map((e, i) => (
                     <tr key={i} className="hover:bg-white/2 transition-colors">
                       <td className="px-6 py-4">
@@ -486,7 +485,7 @@ const ApiReference = () => {
               { icon: Terminal, title: "Versioning", body: "The current API version is v1. Breaking changes are announced 90 days in advance. Pin versions with the Accept-Version: v1 request header." },
               { icon: CheckCircle2, title: "Idempotency", body: "For POST requests, supply an Idempotency-Key header to safely retry failed requests without creating duplicate resources." },
             ].map((card, i) => (
-              <div key={i} className="rounded-2xl border border-white/5 bg-card p-6 space-y-3">
+              <div key={i} className="rounded-2xl bg-card p-6 space-y-3 shadow-soft">
                 <card.icon className="h-5 w-5 text-primary" />
                 <h3 className="font-bold">{card.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{card.body}</p>
@@ -495,7 +494,7 @@ const ApiReference = () => {
           </div>
 
           {/* ── CTA ── */}
-          <div className="mt-14 rounded-2xl border border-primary/20 bg-primary/5 p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="mt-14 rounded-2xl bg-primary/5 p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-glow-sm">
             <div>
               <h3 className="text-xl font-bold mb-1">Need help integrating?</h3>
               <p className="text-sm text-muted-foreground">Our team can walk you through complex integrations and custom deployment setups.</p>

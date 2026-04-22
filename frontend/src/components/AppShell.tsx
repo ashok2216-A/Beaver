@@ -1,16 +1,16 @@
 import { ReactNode } from "react";
 import { NavLink, Link } from "react-router-dom";
-import { LayoutDashboard, Bot, ScrollText, Settings, Plus, Search, Bell } from "lucide-react";
+import { Grid2X2, Cpu, FileCode2, Settings2, Plus, Search, Bell } from "lucide-react";
 import { UserButton } from "@clerk/clerk-react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/agents", label: "Agents", icon: Bot },
-  { to: "/logs", label: "Logs", icon: ScrollText },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/dashboard", label: "Dashboard", icon: Grid2X2 },
+  { to: "/agents", label: "Agents", icon: Cpu },
+  { to: "/logs", label: "Logs", icon: FileCode2 },
+  { to: "/settings", label: "Settings", icon: Settings2 },
 ];
 
 interface AppShellProps {
@@ -24,8 +24,8 @@ export const AppShell = ({ children, title, subtitle, actions }: AppShellProps) 
   return (
     <div className="min-h-screen flex w-full bg-background">
       {/* Sidebar */}
-      <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-        <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
+      <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar shadow-[4px_0_24px_rgba(0,0,0,0.02),1px_0_0_rgba(0,0,0,0.05)] z-50">
+        <div className="h-16 flex items-center px-6">
           <Logo />
         </div>
         <nav className="flex-1 p-3 space-y-1">
@@ -37,17 +37,26 @@ export const AppShell = ({ children, title, subtitle, actions }: AppShellProps) 
                 cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-base",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/60",
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
                 )
               }
             >
-              <item.icon className="h-4 w-4" />
-              {item.label}
+              {({ isActive }) => (
+                <>
+                  <div className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+                    isActive ? "bg-primary/10 text-primary shadow-[0_0_12px_rgba(var(--primary),0.1)]" : "bg-secondary/40 text-muted-foreground group-hover:bg-secondary group-hover:text-foreground"
+                  )}>
+                    <item.icon className="h-4 w-4" />
+                  </div>
+                  {item.label}
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
-        <div className="p-3 border-t border-sidebar-border">
+        <div className="p-3">
           <div className="rounded-xl bg-gradient-primary p-4 text-primary-foreground shadow-glow">
             <p className="text-sm font-semibold">Upgrade to Pro</p>
             <p className="mt-1 text-xs text-primary-foreground/80">Unlimited agents & priority support.</p>
@@ -58,7 +67,7 @@ export const AppShell = ({ children, title, subtitle, actions }: AppShellProps) 
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 shrink-0 border-b border-border bg-background/80 backdrop-blur sticky top-0 z-40">
+        <header className="h-16 shrink-0 bg-background/80 backdrop-blur sticky top-0 z-40 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
           <div className="h-full flex items-center justify-between gap-4 px-6">
             <div className="flex items-center gap-3 flex-1 max-w-md">
               <div className="relative w-full">
@@ -82,7 +91,7 @@ export const AppShell = ({ children, title, subtitle, actions }: AppShellProps) 
         </header>
 
         {(title || actions) && (
-          <div className="border-b border-border px-6 py-6 bg-gradient-card">
+          <div className="px-6 py-6 bg-gradient-card shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
                 {title && <h1 className="text-2xl font-bold tracking-tight">{title}</h1>}

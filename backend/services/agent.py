@@ -42,3 +42,30 @@ async def run_agent(
         user_input=user_input,
         session_id=session_id,
     )
+
+
+async def run_agent_stream(
+    user_input: str,
+    endpoints: list[dict],
+    base_url: str,
+    system_prompt: str = "",
+    auth_type: str = "bearer",
+    auth_header: str | None = None,
+    auth_secret: str = "",
+    agent_name: str = "agent",
+    model: str = "gemini-2.0-flash",
+    session_id: str | None = None,
+):
+    from services.adk_runner import run_agent_stream as adk_stream
+    return adk_stream(
+        agent_name=agent_name,
+        model=model,
+        system_prompt=system_prompt,
+        endpoints=endpoints,
+        base_url=base_url,
+        auth_type=auth_type,
+        auth_header=auth_header,
+        auth_secret=auth_secret,
+        user_input=user_input,
+        session_id=session_id,
+    )

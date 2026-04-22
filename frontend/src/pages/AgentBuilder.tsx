@@ -5,8 +5,11 @@ import { Send, Sparkles, User, ArrowLeft, Rocket, Settings2, Search, Lock, Unloc
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import ReactMarkdown from "react-markdown";
-import { api } from "@/lib/api";
+import remarkGfm from "remark-gfm";
+import { api, API_BASE_URL } from "@/lib/api";
 import { toast } from "sonner";
+import { AgentAvatar } from "@/components/AgentAvatar";
+import { useAuth } from "@clerk/clerk-react";
 
 const methodColor: Record<string, string> = {
   GET: "bg-success/10 text-success",
@@ -55,15 +58,8 @@ const AgentBuilder = () => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  const { mutate: sendMessage, isPending: isSending } = useMutation({
-    mutationFn: (text: string) => api.post<any>(`/chat/${agentId}`, { message: text }),
-    onSuccess: (data) => {
-      setMessages((m) => [...m, { role: "assistant", text: data.answer }]);
-    },
-    onError: (err: any) => {
-      toast.error(err.message || "Failed to send message");
-    },
-  });
+  const { getToken } = useAuth();
+  const [isSending, setIsSending] = useState(false);
 
   const { mutate: updateSettings } = useMutation({
     mutationFn: (updates: any) => api.patch<any>(`/agents/${agentId}`, updates),
@@ -86,12 +82,67 @@ const AgentBuilder = () => {
     },
   });
 
-  const send = () => {
+  const send = async () => {
     if (!input.trim() || isSending) return;
     const userMsg: Msg = { role: "user", text: input };
     setMessages((m) => [...m, userMsg]);
-    sendMessage(input);
     setInput("");
+    setIsSending(true);
+
+    try {
+      const token = await getToken();
+      // Create a placeholder for the assistant response
+      setMessages((m) => [...m, { role: "assistant", text: "" }]);
+      
+      const response = await fetch(`${API_BASE_URL}/chat/${agentId}?stream=true`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message: input }),
+      });
+
+      if (!response.ok) throw new Error("Stream failed");
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullText = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n");
+          
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const data = JSON.parse(line);
+              if (data.type === "token") {
+                fullText += data.text;
+                setMessages((m) => {
+                  const newMsgs = [...m];
+                  newMsgs[newMsgs.length - 1].text = fullText;
+                  return newMsgs;
+                });
+              }
+              if (data.type === "error") {
+                toast.error(data.text);
+              }
+            } catch (e) {
+              // Ignore partial JSON or noise
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send message");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   if (isLoading) return <div className="h-screen flex items-center justify-center">Loading agent...</div>;
@@ -100,17 +151,17 @@ const AgentBuilder = () => {
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Top bar */}
-      <header className="h-14 shrink-0 border-b border-border bg-background flex items-center justify-between px-4">
+      <header className="h-14 shrink-0 bg-background flex items-center justify-between px-4 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] z-10">
         <div className="flex items-center gap-4">
           <Button asChild variant="ghost" size="sm">
             <Link to="/dashboard"><ArrowLeft className="h-4 w-4" /> Back</Link>
           </Button>
-          <div className="h-5 w-px bg-border" />
+          <div className="h-5 w-px opacity-0" />
           <Logo />
-          <div className="h-5 w-px bg-border" />
+          <div className="h-5 w-px opacity-0" />
           <div>
             <p className="text-sm font-semibold leading-none">{agent.name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{agent.status} · auto-saved</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{agent.status.charAt(0).toUpperCase() + agent.status.slice(1)} · auto-saved</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -133,8 +184,8 @@ const AgentBuilder = () => {
       {/* 3-panel */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] min-h-0">
         {/* Left: endpoints */}
-        <aside className="hidden lg:flex flex-col border-r border-border bg-sidebar min-h-0">
-          <div className="p-4 border-b border-sidebar-border">
+        <aside className="hidden lg:flex flex-col bg-sidebar min-h-0 shadow-[1px_0_0_0_rgba(0,0,0,0.05)]">
+          <div className="p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Endpoints</p>
             <p className="text-xs text-muted-foreground mt-1">{agent.endpoints?.length || 0} parsed from spec</p>
             <div className="relative mt-3">
@@ -143,7 +194,7 @@ const AgentBuilder = () => {
                 placeholder="Filter endpoints" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 w-full rounded-md border border-border bg-background pl-8 pr-2 text-xs outline-none focus:border-primary/40" 
+                className="h-8 w-full rounded-md bg-background pl-8 pr-2 text-xs outline-none shadow-sm focus:ring-1 focus:ring-primary/20" 
               />
             </div>
           </div>
@@ -196,13 +247,13 @@ const AgentBuilder = () => {
             <div className="mx-auto max-w-3xl space-y-6">
               {messages.map((m, i) => (
                 <div key={i} className={`flex gap-3 animate-fade-in ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                    m.role === "user"
-                      ? "bg-secondary"
-                      : "bg-gradient-primary text-primary-foreground shadow-glow"
-                  }`}>
-                    {m.role === "user" ? <User className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                  </div>
+                  {m.role === "user" ? (
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary">
+                      <User className="h-4 w-4" />
+                    </div>
+                  ) : (
+                    <AgentAvatar id={Number(agentId)} name={agent.name} size="sm" className="h-9 w-9" />
+                  )}
                   <div className={`max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                     m.role === "user"
                       ? "bg-primary text-primary-foreground rounded-tr-sm"
@@ -211,26 +262,16 @@ const AgentBuilder = () => {
                     {m.role === "user" ? (
                       m.text
                     ) : (
-                      <ReactMarkdown>{m.text}</ReactMarkdown>
+                      m.text ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.text}</ReactMarkdown> : <span className="text-muted-foreground animate-pulse italic">Thinking...</span>
                     )}
                   </div>
                 </div>
               ))}
-              {isSending && (
-                <div className="flex gap-3 animate-pulse">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
-                    <Sparkles className="h-4 w-4" />
-                  </div>
-                  <div className="bg-background border border-border rounded-2xl rounded-tl-sm px-4 py-3 text-sm shadow-sm">
-                    Thinking...
-                  </div>
-                </div>
-              )}
             </div>
           </div>
-          <div className="border-t border-border bg-background/80 backdrop-blur p-4">
+          <div className="bg-background/80 backdrop-blur p-4 shadow-[0_-1px_0_0_rgba(0,0,0,0.05)]">
             <div className="mx-auto max-w-3xl">
-              <div className="flex items-end gap-2 rounded-2xl border border-border bg-background p-2 shadow-sm focus-within:border-primary/40 focus-within:ring-soft transition-base">
+              <div className="flex items-end gap-2 rounded-2xl bg-background p-2 shadow-sm ring-1 ring-black/5 focus-within:ring-primary/40 transition-base">
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -249,8 +290,8 @@ const AgentBuilder = () => {
         </section>
 
         {/* Right: settings */}
-        <aside className="hidden lg:flex flex-col border-l border-border bg-sidebar min-h-0">
-          <div className="p-4 border-b border-sidebar-border flex items-center gap-2">
+        <aside className="hidden lg:flex flex-col bg-sidebar min-h-0 shadow-[-1px_0_0_0_rgba(0,0,0,0.05)]">
+          <div className="p-4 flex items-center gap-2">
             <Settings2 className="h-4 w-4 text-muted-foreground" />
             <p className="text-sm font-semibold">Agent settings</p>
           </div>
@@ -303,7 +344,7 @@ const AgentBuilder = () => {
               </div>
             </form>
           </div>
-          <div className="p-4 border-t border-sidebar-border">
+          <div className="p-4">
             <Button type="submit" form="settings-form" variant="hero" className="w-full">Save changes</Button>
           </div>
         </aside>
@@ -313,7 +354,8 @@ const AgentBuilder = () => {
         .settings-input {
           width: 100%;
           background: hsl(var(--background));
-          border: 1px solid hsl(var(--border));
+          border: none;
+          box-shadow: 0 0 0 1px hsl(var(--border) / 0.5);
           border-radius: 0.5rem;
           padding: 0.5rem 0.75rem;
           font-size: 0.875rem;

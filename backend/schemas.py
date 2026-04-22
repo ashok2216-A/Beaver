@@ -170,3 +170,6 @@ class StatsOut(BaseModel):
     message_count: int
     total_latency_ms: int
     avg_latency_ms: int
+    agent_trend: str = "+0"
+    message_trend: str = "+0%"
+    latency_trend: str = "-0ms"
