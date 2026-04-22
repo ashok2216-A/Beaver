@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
-import { 
-  Bot, 
-  MessageSquare, 
-  Zap, 
-  TrendingUp, 
-  MoreHorizontal, 
-  ArrowUpRight, 
-  Trash2, 
+import {
+  Bot,
+  MessageSquare,
+  Zap,
+  TrendingUp,
+  MoreHorizontal,
+  ArrowUpRight,
+  Trash2,
   Loader2,
   ExternalLink,
   BarChart3,
@@ -32,7 +32,7 @@ import { toast } from "sonner";
 const Dashboard = () => {
   const { user } = useUser();
   const queryClient = useQueryClient();
-  
+
   const { data: agents = [], isLoading: loadingAgents, isError, error } = useQuery({
     queryKey: ["agents"],
     queryFn: () => api.get<any[]>("/agents"),
@@ -136,7 +136,7 @@ const Dashboard = () => {
               >
                 <div className="flex items-start justify-between">
                   <AgentAvatar id={a.id} />
-                  
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground transition-base hover:bg-secondary">
