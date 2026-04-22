@@ -111,7 +111,7 @@ const pricingTiers = [
   },
   {
     name: "Pro",
-    price: "29",
+    price: "16",
     desc: "For production-ready teams scaling their AI automation.",
     features: [
       "Unlimited AI Agents",
@@ -267,7 +267,7 @@ const Index = () => {
         </div>
       </section>
 
-      <section id="features" className="py-40 relative">
+      <section id="features" className="pt-20 pb-40 relative">
         <div className="container">
           <div className="mx-auto max-w-2xl text-center mb-24 animate-fade-in-up">
             <p className="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-4">Core Platform</p>
