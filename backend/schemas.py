@@ -93,7 +93,11 @@ class AgentOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = {
+        "from_attributes": True,
+        # SEC-1: Explicitly block secret fields from ever being serialized
+        "json_schema_extra": {"description": "Public agent representation. auth_secret is never exposed."},
+    }
 
 
 class AgentDetail(AgentOut):

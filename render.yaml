@@ -17,7 +17,7 @@ services:
       - key: MISTRAL_API_KEY
         sync: false # Set this in Render Dashboard
       - key: ALLOWED_ORIGINS
-        value: "*" # Update this with your frontend URL later
+        value: "https://api-agent-frontend.onrender.com" # Restrict to your frontend domain
       - key: APP_ENV
         value: production
       - key: LOG_LEVEL

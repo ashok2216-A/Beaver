@@ -74,8 +74,12 @@ async def call_api(
     if not url.startswith(("http://", "https://")):
         return {
             "error": "invalid_url",
-            "detail": f"The constructed URL '{url}' is missing a protocol (http:// or https://). Please check the Agent's base_url setting."
+            "detail": f"The constructed URL is missing a protocol (http:// or https://). Please check the Agent's base_url setting."
         }, 400, 0
+
+    # SEC-13: Warn when credentials are sent over unencrypted HTTP
+    if url.startswith("http://") and auth_secret:
+        log.warning("API call with credentials sent over unencrypted HTTP: %s", url.split("?")[0])
 
     # Classify remaining params by their spec location
     loc_map: dict[str, str] = {p["name"]: p.get("in", "query") for p in endpoint_params}

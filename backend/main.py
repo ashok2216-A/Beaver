@@ -4,6 +4,11 @@ main.py — Application entry point.
 Start with:
   uvicorn main:app --reload                   # dev
   uvicorn main:app --host 0.0.0.0 --port 8000 # prod
+
+Security hardening:
+  - Rate limiting via slowapi (SEC-5)
+  - Docs disabled in production (SEC-10)
+  - Timing headers hidden in production (SEC-14)
 """
 import logging
 import time
@@ -12,6 +17,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from config import get_settings
 from database import Base, engine
@@ -27,6 +36,10 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 log = logging.getLogger(__name__)
+
+
+# ─── Rate Limiter ─────────────────────────────────────────────────────────────
+limiter = Limiter(key_func=get_remote_address)
 
 
 # ─── Lifespan ─────────────────────────────────────────────────────────────────
@@ -46,21 +59,26 @@ app = FastAPI(
     title="api2bot Studio API",
     description="Turn any OpenAPI spec into a production-ready AI agent.",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    # SEC-10: Disable interactive API docs in production
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
     lifespan=lifespan,
 )
 
+# Attach rate limiter to the app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
 # ─── CORS ─────────────────────────────────────────────────────────────────────
 
-# For development, we allow everything. For production, we use strict settings.
-if settings.app_env.lower() == "production":
+if settings.is_production:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-API-Key"],
     )
 else:
     app.add_middleware(
@@ -72,14 +90,29 @@ else:
     )
 
 
-# ─── Request timing middleware ─────────────────────────────────────────────────
+# ─── Request timing middleware (dev only) ──────────────────────────────────────
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
     start = time.monotonic()
     response = await call_next(request)
     elapsed_ms = int((time.monotonic() - start) * 1000)
-    response.headers["X-Process-Time-Ms"] = str(elapsed_ms)
+    # SEC-14: Only expose timing info in development
+    if not settings.is_production:
+        response.headers["X-Process-Time-Ms"] = str(elapsed_ms)
+    return response
+
+
+# ─── Security headers middleware ───────────────────────────────────────────────
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    if settings.is_production:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 
@@ -87,18 +120,13 @@ async def add_process_time_header(request: Request, call_next):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    log.exception("Unhandled exception on %s %s", request.method, request.url)
+    log.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    # SEC-12: Never leak internal details to clients
     return JSONResponse(
         status_code=500,
-        content={"detail": "An internal server error occurred. Check server logs."},
+        content={"detail": "An internal server error occurred."},
     )
 
-
-from utils.auth import get_current_user
-# ...
-from routes import agents, chat, auth
-
-# ...
 
 # ─── Routers ──────────────────────────────────────────────────────────────────
 
@@ -128,7 +156,6 @@ def root():
         "service": "api2bot-studio",
         "version": "1.0.0",
         "status":  "running",
-        "env":     settings.app_env,
     }
 
 

@@ -11,11 +11,14 @@ GET  /chat/{agent_id}/logs/export/ndjson   Stream all logs as NDJSON
 from __future__ import annotations
 import json
 import logging
+import re
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from database import get_db
 from models import Agent, Endpoint, Log, User
@@ -25,6 +28,14 @@ from utils.auth import get_current_user
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["Chat & Logs"])
+limiter = Limiter(key_func=get_remote_address)
+
+
+def _sanitize_input(text: str) -> str:
+    """Strip null bytes, control characters, and excessive whitespace."""
+    text = text.replace("\x00", "")  # null bytes
+    text = re.sub(r"[\x01-\x08\x0b\x0c\x0e-\x1f]", "", text)  # control chars
+    return text.strip()
 
 
 # ─── Helper ───────────────────────────────────────────────────────────────────
@@ -48,7 +59,9 @@ def _get_agent_or_404(agent_id: int, user: User, db: Session) -> Agent:
 # ─── Chat ─────────────────────────────────────────────────────────────────────
 
 @router.post("/chat/{agent_id}")
+@limiter.limit("10/minute")
 async def chat(
+    request: Request,
     agent_id: int,
     req: ChatRequest,
     stream: bool = Query(False, description="Enable character-by-character streaming response"),
@@ -59,6 +72,7 @@ async def chat(
     """
     Send a message to an agent. 
     Supports streaming if `stream=true` is passed.
+    Rate limited to 10 requests/minute per IP.
     """
     agent = _get_agent_or_404(agent_id, user, db)
 
@@ -83,7 +97,7 @@ async def chat(
     ]
 
     params = {
-        "user_input": req.message,
+        "user_input": _sanitize_input(req.message),
         "endpoints": endpoint_list,
         "base_url": agent.base_url,
         "system_prompt": agent.system_prompt,
@@ -164,7 +178,7 @@ def get_all_logs(
     db: Session = Depends(get_db),
 ):
     """Unified log list across all agents owned by the user."""
-    log.info(f"Fetching all logs for user={user.id}")
+    log.debug("Fetching all logs for authenticated user")
     
     # Query joined logs and agents
     base_q = (
@@ -209,11 +223,9 @@ def get_logs(
     """Paginated log list for an agent (newest first)."""
     _get_agent_or_404(agent_id, user, db)
     
-    log.info(f"Fetching logs for agent_id={agent_id} by user={user.id}")
+    log.debug(f"Fetching logs for agent_id={agent_id}")
     base_q = db.query(Log).filter(Log.agent_id == agent_id)
     total  = base_q.count()
-    
-    log.info(f"Found {total} total logs for agent_id={agent_id}")
     
     items  = (
         base_q.order_by(Log.created_at.desc())

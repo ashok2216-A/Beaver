@@ -45,7 +45,19 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.app_env.lower() == "production"
 
+    def validate_production_security(self) -> None:
+        """Raise if dangerous defaults are used in production."""
+        if self.is_production:
+            weak_secrets = {"change_me_in_production", "supersecretchangeme-in-production-use-openssl-rand-hex-32", ""}
+            if self.secret_key in weak_secrets:
+                raise RuntimeError(
+                    "FATAL: SECRET_KEY is set to a default/weak value. "
+                    "Generate a strong key with: python -c \"import secrets; print(secrets.token_hex(32))\""
+                )
+
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    s = Settings()
+    s.validate_production_security()
+    return s

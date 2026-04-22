@@ -1,6 +1,6 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { NavLink, Link } from "react-router-dom";
-import { Grid2X2, Cpu, FileCode2, Settings2, Plus, Search, Bell } from "lucide-react";
+import { Grid2X2, Cpu, FileCode2, Settings2, Plus, Search, Bell, ChevronLeft, ChevronRight } from "lucide-react";
 import { UserButton } from "@clerk/clerk-react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -21,48 +21,77 @@ interface AppShellProps {
 }
 
 export const AppShell = ({ children, title, subtitle, actions }: AppShellProps) => {
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    return saved === "true";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("sidebar-collapsed", String(isCollapsed));
+  }, [isCollapsed]);
+
   return (
     <div className="min-h-screen flex w-full bg-background">
       {/* Sidebar */}
-      <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar shadow-[4px_0_24px_rgba(0,0,0,0.02),1px_0_0_rgba(0,0,0,0.05)] z-50">
-        <div className="h-16 flex items-center px-6">
-          <Logo />
+      <aside className={cn(
+        "hidden lg:flex flex-col bg-sidebar shadow-[4px_0_24px_rgba(0,0,0,0.02),1px_0_0_rgba(0,0,0,0.05)] z-50 transition-all duration-300 ease-in-out relative",
+        isCollapsed ? "w-20" : "w-64 shrink-0"
+      )}>
+        <div className={cn(
+          "h-16 flex items-center transition-all duration-300",
+          isCollapsed ? "justify-center px-0" : "px-6"
+        )}>
+          <Logo compact={isCollapsed} />
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        
+        <nav className="flex-1 p-3 space-y-2">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
+              title={isCollapsed ? item.label : undefined}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-base",
+                  "flex items-center gap-3 rounded-xl px-2 py-2 text-sm font-semibold transition-all duration-200 group",
                   isActive
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+                    ? "bg-primary/5 text-primary shadow-sm"
+                    : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground",
+                  isCollapsed ? "justify-center" : ""
                 )
               }
             >
               {({ isActive }) => (
                 <>
                   <div className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
-                    isActive ? "bg-primary/10 text-primary shadow-[0_0_12px_rgba(var(--primary),0.1)]" : "bg-secondary/40 text-muted-foreground group-hover:bg-secondary group-hover:text-foreground"
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-300",
+                    isActive ? "bg-primary text-white shadow-glow" : "bg-secondary/40 text-muted-foreground group-hover:bg-secondary group-hover:text-foreground"
                   )}>
-                    <item.icon className="h-4 w-4" />
+                    <item.icon className="h-4.5 w-4.5" />
                   </div>
-                  {item.label}
+                  {!isCollapsed && <span className="truncate">{item.label}</span>}
                 </>
               )}
             </NavLink>
           ))}
         </nav>
-        <div className="p-3">
-          <div className="rounded-xl bg-gradient-primary p-4 text-primary-foreground shadow-glow">
-            <p className="text-sm font-semibold">Upgrade to Pro</p>
-            <p className="mt-1 text-xs text-primary-foreground/80">Unlimited agents & priority support.</p>
-            <Button size="sm" variant="secondary" className="mt-3 w-full">Upgrade</Button>
+
+        {!isCollapsed && (
+          <div className="p-3">
+            <div className="rounded-[1.5rem] bg-gradient-primary p-5 text-primary-foreground shadow-glow animate-fade-in">
+              <p className="text-sm font-bold">Upgrade to Pro</p>
+              <p className="mt-1.5 text-[11px] text-primary-foreground/70 leading-relaxed">Unlimited agents & priority support.</p>
+              <Button size="sm" variant="secondary" className="mt-4 w-full rounded-xl font-bold shadow-sm">Upgrade</Button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Toggle Button */}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="absolute -right-3 top-20 h-6 w-6 bg-white border border-border rounded-full flex items-center justify-center shadow-soft hover:scale-110 transition-transform z-[60]"
+        >
+          {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
+        </button>
       </aside>
 
       {/* Main */}
