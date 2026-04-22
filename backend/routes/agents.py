@@ -360,6 +360,9 @@ def update_agent(agent_id: int, data: AgentUpdate, user: User = Depends(get_curr
     for field, value in update_data.items():
         if field == "status":
             setattr(agent, field, AgentStatus(value))
+        # SEC-1: Prevent overwriting auth_secret with empty string from UI
+        elif field == "auth_secret" and value == "":
+            continue
         else:
             setattr(agent, field, value)
     db.commit()
