@@ -7,7 +7,7 @@
               Connect to any API
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              API Studio turns any documentation into a functional tool. 
+              Beaver turns any documentation into a functional tool. 
               Works with your existing stack out of the box.
             </p>
           </div>

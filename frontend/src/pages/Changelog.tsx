@@ -33,7 +33,7 @@ const changes = [
   {
     date: "April 15, 2026",
     title: "Public Beta Launch",
-    description: "API Studio is officially live! Connect any OpenAPI spec and generate your first AI agent 10x faster than manually writing LangChain tools.",
+    description: "Beaver is officially live! Connect any OpenAPI spec and generate your first AI agent 10x faster than manually writing LangChain tools.",
     icon: Bot,
     tags: ["Launch"]
   }
@@ -48,7 +48,7 @@ const Changelog = () => {
           <div className="mb-16">
             <h1 className="text-4xl font-bold tracking-tight mb-4">Changelog</h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              New features, improvements, and fixes for the API Studio platform.
+              New features, improvements, and fixes for the Beaver platform.
             </p>
           </div>
 

@@ -23,7 +23,7 @@ const About = () => {
           <div className="text-center mb-16">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">Built for the future of APIs</h1>
             <p className="text-xl text-muted-foreground leading-relaxed">
-              API Studio was born out of a simple problem: AI agents are hard to build, and APIs are even harder to integrate. We're here to change that.
+              Beaver was born out of a simple problem: AI agents are hard to build, and APIs are even harder to integrate. We're here to change that.
             </p>
           </div>
 

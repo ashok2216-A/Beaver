@@ -30,7 +30,7 @@ async def get_jwks() -> dict[str, Any]:
             
         try:
             # Clerk WAF often blocks generic User-Agents, so we provide a browser-like one
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) API Studio/1.0"}
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Beaver/1.0"}
             async with httpx.AsyncClient() as client:
                 r = await client.get(url, headers=headers)
                 r.raise_for_status()
