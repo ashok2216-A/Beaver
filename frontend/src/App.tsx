@@ -18,7 +18,9 @@ import Agents from "./pages/Agents";
 import NotFound from "./pages/NotFound";
 import Docs from "./pages/Docs";
 import About from "./pages/About";
-import Changelog from "./pages/Changelog";
+import ApiReference from "./pages/ApiReference";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 
 const queryClient = new QueryClient();
 
@@ -63,7 +65,9 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/docs" element={<Docs />} />
           <Route path="/about" element={<About />} />
-          <Route path="/changelog" element={<Changelog />} />
+          <Route path="/api-reference" element={<ApiReference />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
           
           {/* Protected Routes */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

@@ -32,23 +32,22 @@ export const Footer = () => (
               <li><a href="#features" className="hover:text-primary transition-colors">Features</a></li>
               <li><a href="#demo" className="hover:text-primary transition-colors">Live Demo</a></li>
               <li><a href="#integrations" className="hover:text-primary transition-colors">Integrations</a></li>
-              <li><Link to="/changelog" className="hover:text-primary transition-colors">Changelog</Link></li>
+
             </ul>
           </div>
           <div className="space-y-6">
             <h4 className="font-extrabold text-xs uppercase tracking-[0.25em] text-foreground/40">Resources</h4>
             <ul className="space-y-4 text-sm font-bold tracking-tight text-muted-foreground/60">
               <li><Link to="/docs" className="hover:text-primary transition-colors">Documentation</Link></li>
-              <li><a href="#" className="hover:text-primary transition-colors">API Reference</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Status</a></li>
+              <li><Link to="/api-reference" className="hover:text-primary transition-colors">API Reference</Link></li>
             </ul>
           </div>
           <div className="space-y-6">
             <h4 className="font-extrabold text-xs uppercase tracking-[0.25em] text-foreground/40">Legal</h4>
             <ul className="space-y-4 text-sm font-bold tracking-tight text-muted-foreground/60">
               <li><Link to="/about" className="hover:text-primary transition-colors">About Us</Link></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Terms of Service</a></li>
+              <li><Link to="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="hover:text-primary transition-colors">Terms of Service</Link></li>
             </ul>
           </div>
         </div>
@@ -59,7 +58,6 @@ export const Footer = () => (
           © {new Date().getFullYear()} Beaver. Built for the agent-first world.
         </p>
         <div className="flex gap-8 text-[11px] uppercase tracking-[0.2em] text-muted-foreground/20 font-extrabold">
-           <span className="hover:text-primary cursor-pointer transition-colors">System Status</span>
            <span className="hover:text-primary cursor-pointer transition-colors">Security Audit</span>
         </div>
       </div>
