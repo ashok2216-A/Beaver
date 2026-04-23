@@ -239,11 +239,14 @@ def get_agent(agent_id: int, user: User = Depends(get_current_user), db: Session
 def update_agent(agent_id: int, data: AgentUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     agent = _get_agent_or_404(agent_id, user, db)
     update_data = data.model_dump(exclude_none=True)
+    log.info(f"Updating agent {agent_id}: fields={list(update_data.keys())}")
     for field, value in update_data.items():
         if field == "status":
             setattr(agent, field, AgentStatus(value))
-        elif field == "auth_secret" and value == "":
-            continue
+        elif field == "auth_secret":
+            if value == "": continue
+            log.info(f"Updating auth_secret for agent {agent_id}, length={len(value)}")
+            setattr(agent, field, value.strip())
         else:
             setattr(agent, field, value)
     db.commit()

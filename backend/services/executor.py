@@ -34,7 +34,7 @@ def _substitute_path_params(path: str, params: dict[str, Any]) -> tuple[str, dic
     return path, remaining
 
 
-def _build_auth_headers(auth_type: str, auth_secret: str, auth_header: str | None = None) -> dict[str, str]:
+def _build_auth_headers(auth_type: str, auth_secret: str, url: str, auth_header: str | None = None) -> dict[str, str]:
     if not auth_secret:
         return {}
     
@@ -47,7 +47,18 @@ def _build_auth_headers(auth_type: str, auth_secret: str, auth_header: str | Non
     
     # 2. Fallback to standard headers
     if a_type == "bearer":
-        return {"Authorization": f"Bearer {auth_secret}"}
+        # Handle cases where user might have pasted "Bearer <token>" or "token <token>"
+        token = auth_secret
+        if token.lower().startswith("bearer "):
+            token = token[7:].strip()
+        elif token.lower().startswith("token "):
+            token = token[6:].strip()
+        
+        # GitHub specifically prefers "token <token>" for classic PATs
+        if "github.com" in url.lower():
+            return {"Authorization": f"token {token}"}
+            
+        return {"Authorization": f"Bearer {token}"}
     if a_type == "apikey":
         return {"X-API-Key": auth_secret}
     return {}
@@ -107,7 +118,7 @@ async def call_api(
         "User-Agent":   "api2bot-studio/1.0",
         "Content-Type": "application/json",
         "Accept":       "application/json",
-        **_build_auth_headers(auth_type, auth_secret, auth_header),
+        **_build_auth_headers(auth_type, auth_secret, url, auth_header),
     }
     
     # GitHub specific headers
@@ -116,6 +127,10 @@ async def call_api(
         # Star endpoint specifically often prefers this Accept header
         if "/starred/" in url.lower():
             headers["Accept"] = "application/vnd.github+json"
+
+    # Debug: Log final headers (masked)
+    safe_headers = {k: (v if k.lower() != "authorization" else f"{v[:12]}...") for k, v in headers.items()}
+    log.info(f"EXECUTOR: Request Headers: {json.dumps(safe_headers)}")
 
     start = time.monotonic()
     try:
@@ -126,11 +141,13 @@ async def call_api(
             elif method_upper == "DELETE":
                 r = await client.delete(url, params=query_params, headers=headers)
             elif method_upper in ("POST", "PUT", "PATCH"):
+                # Ensure we send an empty JSON body {} instead of None for methods that usually expect a body,
+                # as some APIs (like GitHub starring) require Content-Length: 0 or an empty body.
                 r = await client.request(
                     method_upper,
                     url,
                     params=query_params,
-                    json=body_params or None,
+                    json=body_params if body_params else ({}),
                     headers=headers,
                 )
             else:

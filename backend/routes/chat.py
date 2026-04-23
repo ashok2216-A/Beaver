@@ -161,7 +161,7 @@ async def chat(
                             status_code=res.get("status_code", 0),
                             latency_ms=res.get("latency_ms", 0),
                             api_response=json.dumps(res.get("api_response"), default=str)[:4096],
-                            llm_thought="ADK Stream",
+                            llm_thought=f"Auth: {agent.auth_type} | SecretLen: {len(agent.auth_secret)}",
                             error=res.get("error", ""),
                         )
                         db.add(log_entry)
@@ -185,7 +185,7 @@ async def chat(
         status_code=result.get("status_code", 0),
         latency_ms=result.get("latency_ms", 0),
         api_response=json.dumps(result.get("api_response"), default=str)[:4096],
-        llm_thought=result.get("llm_thought", ""),
+        llm_thought=f"Auth: {agent.auth_type} | SecretLen: {len(agent.auth_secret)}",
         error=result.get("error", ""),
     )
     db.add(log_entry)
