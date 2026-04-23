@@ -7,9 +7,9 @@ import logging
 
 import httpx
 import yaml
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Query
 from sqlalchemy.orm import Session, defer
-from sqlalchemy import func, case, distinct
+from sqlalchemy import func, case, distinct, or_
 
 from database import get_db
 from models import Agent, Endpoint, AgentStatus, User, Log
@@ -17,6 +17,7 @@ from schemas import (
     AgentCreate, AgentOut, AgentDetail, AgentUpdate,
     EndpointOut, IngestUrlRequest, MessageOut,
     IngestPreviewRequest, IngestPreviewOut, StatsOut,
+    PaginatedEndpoints,
 )
 from services.parser import parse_openapi
 from utils.auth import get_current_user
@@ -39,7 +40,7 @@ def _get_agent_or_404(agent_id: int, user: User, db: Session) -> Agent:
 
 
 def _ingest_spec(agent: Agent, spec: dict | str, db: Session) -> Agent:
-    """Parse spec, persist endpoints, attach to agent."""
+    """Parse spec, persist endpoints using bulk insert, attach to agent."""
     if isinstance(spec, dict):
         raw = json.dumps(spec)
     else:
@@ -57,16 +58,20 @@ def _ingest_spec(agent: Agent, spec: dict | str, db: Session) -> Agent:
             detail="No valid endpoints found in the provided spec."
         )
 
+    # Use bulk_insert_mappings for GitHub-scale APIs (1000+ endpoints)
+    endpoints = []
     for ep in parsed:
-        db.add(Endpoint(
-            agent_id=agent.id,
-            path=ep["path"],
-            method=ep["method"],
-            summary=ep["summary"],
-            description=ep["description"],
-            parameters=ep["parameters"],
-            request_body=ep["request_body"],
-        ))
+        endpoints.append({
+            "agent_id": agent.id,
+            "path": ep["path"],
+            "method": ep["method"],
+            "summary": ep.get("summary", ""),
+            "description": ep.get("description", ""),
+            "parameters": ep.get("parameters", []),
+            "request_body": ep.get("request_body", {}),
+        })
+    
+    db.bulk_insert_mappings(Endpoint, endpoints)
     db.commit()
     db.refresh(agent)
     return agent
@@ -83,6 +88,7 @@ def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
         model_id=agent.model_id,
         system_prompt=agent.system_prompt,
         auth_type=agent.auth_type,
+        auth_header=agent.auth_header,
         endpoint_count=ep_count if ep_count is not None else len(agent.endpoints),
         created_at=agent.created_at,
         updated_at=agent.updated_at,
@@ -105,6 +111,7 @@ def create_agent(
         system_prompt=data.system_prompt,
         auth_type=data.auth_type,
         auth_secret=data.auth_secret,
+        auth_header=data.auth_header,
         model_id=data.model_id,
         status=AgentStatus.draft,
         api_spec="",
@@ -161,7 +168,6 @@ def get_global_stats(user: User = Depends(get_current_user), db: Session = Depen
     week_ago = now - timedelta(days=7)
     two_weeks_ago = now - timedelta(days=14)
     
-    # High-Performance: Single query for all aggregate metrics using conditional aggregation
     stats = db.query(
         func.count(distinct(Agent.id)).label("agent_total"),
         func.count(distinct(case((Agent.created_at >= week_ago, Agent.id)))).label("agent_new"),
@@ -207,7 +213,6 @@ def get_global_stats(user: User = Depends(get_current_user), db: Session = Depen
 @router.get("", response_model=list[AgentOut])
 def list_agents(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Return all agents owned by the user, ordered by creation date."""
-    # Optimize: Use defer(Agent.api_spec) to avoid fetching large blobs in the list view
     results = db.query(
         Agent, 
         func.count(Endpoint.id).label("ep_count")
@@ -223,10 +228,11 @@ def list_agents(user: User = Depends(get_current_user), db: Session = Depends(ge
 
 @router.get("/{agent_id}", response_model=AgentDetail)
 def get_agent(agent_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Return full agent detail. NOTE: For performance, full endpoints are NOT returned here."""
     agent = _get_agent_or_404(agent_id, user, db)
     base = _agent_out(agent)
-    endpoints = [EndpointOut.model_validate(ep) for ep in agent.endpoints]
-    return AgentDetail(**base.model_dump(), endpoints=endpoints)
+    # Return empty endpoints here; frontend should use /endpoints for paginated list
+    return AgentDetail(**base.model_dump(), endpoints=[])
 
 
 @router.patch("/{agent_id}", response_model=AgentOut)
@@ -253,8 +259,55 @@ def delete_agent(agent_id: int, user: User = Depends(get_current_user), db: Sess
     return MessageOut(message=f"Agent {agent_id} deleted.")
 
 
-@router.get("/{agent_id}/endpoints", response_model=list[EndpointOut])
-def get_endpoints(agent_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    agent = _get_agent_or_404(agent_id, user, db)
-    eps = db.query(Endpoint).filter(Endpoint.agent_id == agent_id).all()
-    return [EndpointOut.model_validate(ep) for ep in eps]
+@router.get("/{agent_id}/endpoints", response_model=PaginatedEndpoints)
+def get_endpoints(
+    agent_id: int, 
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    q: str = Query(None),
+    method: str = Query(None),
+    user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Return paginated and searchable endpoints for an agent."""
+    _get_agent_or_404(agent_id, user, db)
+    
+    query = db.query(Endpoint).filter(Endpoint.agent_id == agent_id)
+    
+    if q:
+        search_filter = or_(
+            Endpoint.path.ilike(f"%{q}%"),
+            Endpoint.summary.ilike(f"%{q}%"),
+        )
+        query = query.filter(search_filter)
+    
+    if method and method.upper() != "ALL":
+        query = query.filter(Endpoint.method == method.upper())
+    
+    total = query.count()
+    items = query.order_by(Endpoint.path).offset((page - 1) * per_page).limit(per_page).all()
+    
+    return PaginatedEndpoints(
+        total=total,
+        page=page,
+        per_page=per_page,
+        items=[EndpointOut.model_validate(ep) for ep in items]
+    )
+
+
+@router.patch("/{agent_id}/endpoints/{endpoint_id}/toggle-lock", response_model=EndpointOut)
+def toggle_endpoint_lock(
+    agent_id: int, 
+    endpoint_id: int, 
+    user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    _get_agent_or_404(agent_id, user, db)
+    endpoint = db.query(Endpoint).filter(Endpoint.id == endpoint_id, Endpoint.agent_id == agent_id).first()
+    if not endpoint:
+        raise HTTPException(status_code=404, detail="Endpoint not found")
+        
+    endpoint.is_locked = not endpoint.is_locked
+    db.commit()
+    db.refresh(endpoint)
+    return EndpointOut.model_validate(endpoint)

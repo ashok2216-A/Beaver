@@ -23,6 +23,13 @@ class EndpointOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PaginatedEndpoints(BaseModel):
+    total: int
+    page: int
+    per_page: int
+    items: list[EndpointOut]
+
+
 # ─── User & Auth ──────────────────────────────────────────────────────────────
 
 class UserOut(BaseModel):

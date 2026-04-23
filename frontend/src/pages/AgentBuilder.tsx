@@ -16,6 +16,7 @@ const methodColor: Record<string, string> = {
   POST: "bg-primary/10 text-primary",
   DELETE: "bg-destructive/10 text-destructive",
   PUT: "bg-warning/10 text-warning",
+  PATCH: "bg-slate-500/10 text-slate-600",
 };
 
 interface Msg {
@@ -34,25 +35,44 @@ const AgentBuilder = () => {
     enabled: !!agentId,
   });
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [selectedMethod, setSelectedMethod] = useState("ALL");
+
+  // Simple debounce for search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1); // Reset page on search
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const { data: endpointsData, isLoading: loadingEndpoints } = useQuery({
+    queryKey: ["endpoints", agentId, debouncedSearch, page, selectedMethod],
+    queryFn: () => api.get<any>(`/agents/${agentId}/endpoints?page=${page}&per_page=50&q=${debouncedSearch}&method=${selectedMethod}`),
+    enabled: !!agentId,
+  });
+
+  const endpoints = endpointsData?.items || [];
+
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Filter endpoints based on search query
-  const filteredEndpoints = agent?.endpoints?.filter((ep: any) => 
-    ep.path.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    ep.method.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    ep.summary.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
 
   useEffect(() => {
     if (agent && messages.length === 0) {
       setMessages([{ role: "assistant", text: `Hi! I'm ${agent.name}. How can I help you with the API today?` }]);
-      if (agent.endpoints?.length > 0) setSelected(agent.endpoints[0].path);
     }
   }, [agent]);
+
+  useEffect(() => {
+    if (endpoints.length > 0 && !selected) {
+      setSelected(endpoints[0].path);
+    }
+  }, [endpoints, selected]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -187,7 +207,7 @@ const AgentBuilder = () => {
         <aside className="hidden lg:flex flex-col bg-sidebar min-h-0 shadow-[1px_0_0_0_rgba(0,0,0,0.05)]">
           <div className="p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Endpoints</p>
-            <p className="text-xs text-muted-foreground mt-1">{agent.endpoints?.length || 0} parsed from spec</p>
+            <p className="text-xs text-muted-foreground mt-1">{endpointsData?.total || 0} parsed from spec</p>
             <div className="relative mt-3">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <input 
@@ -197,46 +217,105 @@ const AgentBuilder = () => {
                 className="h-8 w-full rounded-md bg-background pl-8 pr-2 text-xs outline-none shadow-sm focus:ring-1 focus:ring-primary/20" 
               />
             </div>
+            <div className="flex flex-wrap gap-1 mt-3">
+              {["ALL", "GET", "POST", "PUT", "PATCH", "DELETE"].map((m) => {
+                const isActive = selectedMethod === m;
+                const colorClass = m === "ALL" 
+                  ? (isActive ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-sidebar-accent border-border")
+                  : (isActive ? methodColor[m] : "bg-background text-muted-foreground hover:bg-sidebar-accent border-border");
+                
+                return (
+                  <button
+                    key={m}
+                    onClick={() => {
+                      setSelectedMethod(m);
+                      setPage(1);
+                    }}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition-base border ${colorClass} ${
+                      isActive ? "shadow-sm border-transparent" : "border-transparent"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {filteredEndpoints.map((ep: any) => (
-              <button
-                key={ep.id}
-                onClick={() => setSelected(ep.path)}
-                className={`w-full text-left rounded-lg border p-2.5 transition-base relative group/item ${
-                  selected === ep.path
-                    ? "border-primary/40 bg-primary-soft"
-                    : "border-transparent hover:bg-sidebar-accent/60"
-                } ${ep.is_locked ? "opacity-50" : ""}`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 overflow-hidden">
-                    <span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold font-mono ${methodColor[ep.method]}`}>
-                      {ep.method}
-                    </span>
-                    <span className="font-mono text-xs truncate">{ep.path}</span>
-                  </div>
+            {loadingEndpoints ? (
+              <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
+                <p className="text-[10px] font-bold uppercase tracking-widest">Searching...</p>
+              </div>
+            ) : (
+              <>
+                {endpoints.map((ep: any) => (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleLock(ep.id);
-                      toast.success(ep.is_locked ? "Endpoint unlocked" : "Endpoint locked");
-                    }}
-                    className={`h-6 w-6 flex items-center justify-center rounded-md border transition-base ${
-                      ep.is_locked 
-                        ? "border-destructive/30 bg-destructive/10 text-destructive"
-                        : "border-border bg-background text-muted-foreground hover:text-primary hover:border-primary/40"
-                    }`}
-                    title={ep.is_locked ? "Unlock endpoint" : "Lock endpoint"}
+                    key={ep.id}
+                    onClick={() => setSelected(ep.path)}
+                    className={`w-full text-left rounded-lg border p-2.5 transition-base relative group/item ${
+                      selected === ep.path
+                        ? "border-primary/40 bg-primary-soft"
+                        : "border-transparent hover:bg-sidebar-accent/60"
+                    } ${ep.is_locked ? "opacity-50" : ""}`}
                   >
-                    {ep.is_locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold font-mono ${methodColor[ep.method]}`}>
+                          {ep.method}
+                        </span>
+                        <span className="font-mono text-xs truncate">{ep.path}</span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleLock(ep.id);
+                          toast.success(ep.is_locked ? "Endpoint unlocked" : "Endpoint locked");
+                        }}
+                        className={`h-6 w-6 flex items-center justify-center rounded-md border transition-base ${
+                          ep.is_locked 
+                            ? "border-destructive/30 bg-destructive/10 text-destructive"
+                            : "border-border bg-background text-muted-foreground hover:text-primary hover:border-primary/40"
+                        }`}
+                        title={ep.is_locked ? "Unlock endpoint" : "Lock endpoint"}
+                      >
+                        {ep.is_locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                      </button>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground truncate">{ep.summary}</p>
                   </button>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground truncate">{ep.summary}</p>
-              </button>
-            ))}
-            {filteredEndpoints.length === 0 && (
-              <p className="p-4 text-center text-xs text-muted-foreground italic">No matching endpoints.</p>
+                ))}
+                {endpoints.length === 0 && (
+                  <p className="p-4 text-center text-xs text-muted-foreground italic">No matching endpoints.</p>
+                )}
+                
+                {/* Pagination Controls */}
+                {endpointsData?.total > 0 && (
+                  <div className="mt-4 flex items-center justify-between px-2 pb-4">
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-8 w-8 rounded-lg"
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                    </Button>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      Page {page} of {Math.ceil(endpointsData.total / 50)}
+                    </span>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-8 w-8 rounded-lg"
+                      onClick={() => setPage(p => p + 1)}
+                      disabled={page * 50 >= endpointsData.total}
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5 rotate-180" />
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </aside>
