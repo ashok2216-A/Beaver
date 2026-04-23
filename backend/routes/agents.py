@@ -311,3 +311,39 @@ def toggle_endpoint_lock(
     db.commit()
     db.refresh(endpoint)
     return EndpointOut.model_validate(endpoint)
+
+
+@router.patch("/{agent_id}/endpoints/lock-all", response_model=MessageOut)
+def lock_all_endpoints(
+    agent_id: int, 
+    method: str = Query(None),
+    user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Lock endpoints for an agent, optionally filtered by method."""
+    _get_agent_or_404(agent_id, user, db)
+    query = db.query(Endpoint).filter(Endpoint.agent_id == agent_id)
+    if method and method.upper() != "ALL":
+        query = query.filter(Endpoint.method == method.upper())
+    
+    query.update({"is_locked": True}, synchronize_session=False)
+    db.commit()
+    return MessageOut(message="Endpoints locked")
+
+
+@router.patch("/{agent_id}/endpoints/unlock-all", response_model=MessageOut)
+def unlock_all_endpoints(
+    agent_id: int, 
+    method: str = Query(None),
+    user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Unlock endpoints for an agent, optionally filtered by method."""
+    _get_agent_or_404(agent_id, user, db)
+    query = db.query(Endpoint).filter(Endpoint.agent_id == agent_id)
+    if method and method.upper() != "ALL":
+        query = query.filter(Endpoint.method == method.upper())
+    
+    query.update({"is_locked": False}, synchronize_session=False)
+    db.commit()
+    return MessageOut(message="Endpoints unlocked")

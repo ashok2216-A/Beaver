@@ -38,14 +38,17 @@ def _build_auth_headers(auth_type: str, auth_secret: str, auth_header: str | Non
     if not auth_secret:
         return {}
     
+    # Normalize auth_type to lowercase for case-insensitive comparison
+    a_type = (auth_type or "bearer").lower()
+    
     # 1. Use custom header if provided
     if auth_header:
         return {auth_header: auth_secret}
     
     # 2. Fallback to standard headers
-    if auth_type == "bearer":
+    if a_type == "bearer":
         return {"Authorization": f"Bearer {auth_secret}"}
-    if auth_type == "apikey":
+    if a_type == "apikey":
         return {"X-API-Key": auth_secret}
     return {}
 
@@ -68,6 +71,10 @@ async def call_api(
       - query params → sent as URL query string
       - body params  → sent as JSON body
     """
+    # Debug: Check if auth_secret is present
+    masked_secret = f"{auth_secret[:2]}...{auth_secret[-2:]}" if len(auth_secret) > 4 else "too short"
+    log.info(f"EXECUTOR: Calling {method} {path} | AuthType: {auth_type} | Secret: {masked_secret} (len={len(auth_secret)})")
+
     resolved_path, leftover = _substitute_path_params(path, extracted_params)
     url = base_url.rstrip("/") + resolved_path
 
@@ -97,10 +104,18 @@ async def call_api(
             body_params[name] = value
 
     headers = {
+        "User-Agent":   "api2bot-studio/1.0",
         "Content-Type": "application/json",
         "Accept":       "application/json",
         **_build_auth_headers(auth_type, auth_secret, auth_header),
     }
+    
+    # GitHub specific headers
+    if "github.com" in url.lower():
+        headers["X-GitHub-Api-Version"] = "2022-11-28"
+        # Star endpoint specifically often prefers this Accept header
+        if "/starred/" in url.lower():
+            headers["Accept"] = "application/vnd.github+json"
 
     start = time.monotonic()
     try:

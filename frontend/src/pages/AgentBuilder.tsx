@@ -95,10 +95,26 @@ const AgentBuilder = () => {
   const { mutate: toggleLock } = useMutation({
     mutationFn: (endpointId: number) => api.patch<any>(`/agents/${agentId}/endpoints/${endpointId}/toggle-lock`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["agent", agentId] });
+      queryClient.invalidateQueries({ queryKey: ["endpoints", agentId] });
     },
     onError: (err: any) => {
       toast.error(err.message || "Failed to toggle lock");
+    },
+  });
+
+  const { mutate: lockAll } = useMutation({
+    mutationFn: () => api.patch<any>(`/agents/${agentId}/endpoints/lock-all?method=${selectedMethod}`),
+    onSuccess: () => {
+      toast.success(`All ${selectedMethod === 'ALL' ? '' : selectedMethod} endpoints locked`);
+      queryClient.invalidateQueries({ queryKey: ["endpoints", agentId] });
+    },
+  });
+
+  const { mutate: unlockAll } = useMutation({
+    mutationFn: () => api.patch<any>(`/agents/${agentId}/endpoints/unlock-all?method=${selectedMethod}`),
+    onSuccess: () => {
+      toast.success(`All ${selectedMethod === 'ALL' ? '' : selectedMethod} endpoints unlocked`);
+      queryClient.invalidateQueries({ queryKey: ["endpoints", agentId] });
     },
   });
 
@@ -208,6 +224,7 @@ const AgentBuilder = () => {
           <div className="p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Endpoints</p>
             <p className="text-xs text-muted-foreground mt-1">{endpointsData?.total || 0} parsed from spec</p>
+            
             <div className="relative mt-3">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <input 
@@ -217,6 +234,7 @@ const AgentBuilder = () => {
                 className="h-8 w-full rounded-md bg-background pl-8 pr-2 text-xs outline-none shadow-sm focus:ring-1 focus:ring-primary/20" 
               />
             </div>
+            
             <div className="flex flex-wrap gap-1 mt-3">
               {["ALL", "GET", "POST", "PUT", "PATCH", "DELETE"].map((m) => {
                 const isActive = selectedMethod === m;
@@ -239,6 +257,43 @@ const AgentBuilder = () => {
                   </button>
                 );
               })}
+            </div>
+
+            {/* Context-aware Bulk Actions */}
+            <div className="mt-3 flex items-center justify-between border-t border-dashed pt-3">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Bulk {selectedMethod === "ALL" ? "All" : selectedMethod}
+              </span>
+              <div className="flex gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10" 
+                  title={`Lock all ${selectedMethod === "ALL" ? "" : selectedMethod} endpoints`}
+                  onClick={() => {
+                    const msg = selectedMethod === "ALL" 
+                      ? "Are you sure you want to lock ALL endpoints?" 
+                      : `Lock all ${selectedMethod} endpoints?`;
+                    if (confirm(msg)) lockAll();
+                  }}
+                >
+                  <Lock className="h-3.5 w-3.5" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10" 
+                  title={`Unlock all ${selectedMethod === "ALL" ? "" : selectedMethod} endpoints`}
+                  onClick={() => {
+                    const msg = selectedMethod === "ALL" 
+                      ? "Unlock ALL endpoints?" 
+                      : `Unlock all ${selectedMethod} endpoints?`;
+                    if (confirm(msg)) unlockAll();
+                  }}
+                >
+                  <Unlock className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1">

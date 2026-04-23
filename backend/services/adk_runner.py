@@ -134,9 +134,9 @@ def _build_agent(
         "- Summarize API data clearly before showing values.\n\n"
         "Available endpoints:\n"
         f"{ep_catalogue}\n\n"
-        "RULES:\n"
         "- Use the exact path and method listed above.\n"
         "- Replace :placeholders in paths with real values.\n"
+        "- AUTHENTICATION: This is handled automatically by the platform. NEVER ask the user for API keys or tokens.\n"
         "- For destructive operations (DELETE, refund, cancel) always confirm the action."
     )
 

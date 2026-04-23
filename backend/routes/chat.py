@@ -76,13 +76,44 @@ async def chat(
     """
     agent = _get_agent_or_404(agent_id, user, db)
 
-    endpoints = db.query(Endpoint).filter(
+    # Step 1: Fetch all unlocked endpoint metadata (minimal columns) to avoid bloating memory
+    all_metadata = db.query(
+        Endpoint.id, Endpoint.path, Endpoint.method, Endpoint.summary
+    ).filter(
         Endpoint.agent_id == agent_id,
         Endpoint.is_locked == False
     ).all()
+
+    if not all_metadata:
+        raise HTTPException(status_code=422, detail="No unlocked endpoints available.")
+
+    # Step 2: Rank endpoints by relevance to user input
+    user_input = _sanitize_input(req.message).lower()
+    keywords = [w for w in re.findall(r'\w+', user_input) if len(w) > 2]
     
-    if not endpoints:
-        raise HTTPException(status_code=422, detail="No endpoints available.")
+    ranked_endpoints = []
+    for ep in all_metadata:
+        score = 0
+        path_lower = ep.path.lower()
+        summary_lower = (ep.summary or "").lower()
+        
+        # Exact keyword matches in path or summary get high priority
+        for kw in keywords:
+            if kw in path_lower: score += 10
+            if kw in summary_lower: score += 5
+            
+        # Bonus for shorter paths (usually more root-level/common)
+        score += max(0, 5 - (ep.path.count('/') * 0.5))
+        
+        if score > 0 or len(all_metadata) <= 15:
+            ranked_endpoints.append((score, ep.id))
+
+    # Sort by score and take top 15
+    ranked_endpoints.sort(key=lambda x: x[0], reverse=True)
+    top_ids = [item[1] for item in ranked_endpoints[:15]]
+
+    # Step 3: Fetch full details only for the most relevant endpoints
+    endpoints = db.query(Endpoint).filter(Endpoint.id.in_(top_ids)).all()
 
     endpoint_list = [
         {
