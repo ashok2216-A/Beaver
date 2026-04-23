@@ -456,6 +456,7 @@ const AgentBuilder = () => {
                     <option value="none">None</option>
                     <option value="bearer">Bearer Token (Authorization)</option>
                     <option value="apikey">API Key (Custom Header)</option>
+                    <option value="query_key">API Key (Query Parameter)</option>
                   </select>
                 </Field>
                 <Field label="Custom Auth Header" hint="Specific header name (e.g. x-api-key). Leave empty for defaults.">

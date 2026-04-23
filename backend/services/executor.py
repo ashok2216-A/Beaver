@@ -12,7 +12,7 @@ import json
 import logging
 import re
 import time
-from typing import Any
+from typing import Any, Optional
 
 import httpx
 
@@ -69,9 +69,9 @@ async def call_api(
     method: str,
     endpoint_params: list[dict],     # parameter defs from spec
     extracted_params: dict[str, Any],# values from LLM
-    auth_type: str = "bearer",
+    auth_type: str = "bearer",       # bearer | apikey | query_key | none
     auth_secret: str = "",
-    auth_header: str | None = None,
+    auth_header: Optional[str] = None, # name of header or query param
 ) -> tuple[Any, int, int]:
     """
     Execute an API call and return (response_data, status_code, latency_ms).
@@ -119,6 +119,11 @@ async def call_api(
         "Accept":       "application/json",
         **_build_auth_headers(auth_type, auth_secret, url, auth_header),
     }
+
+    # Support Query Parameter Auth (e.g. ?api_key=...)
+    if (auth_type or "").lower() == "query_key" and auth_secret:
+        param_name = auth_header or "api_key"
+        query_params[param_name] = auth_secret
     
     # GitHub specific headers
     if "github.com" in url.lower():
