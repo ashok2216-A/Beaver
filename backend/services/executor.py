@@ -38,29 +38,28 @@ def _build_auth_headers(auth_type: str, auth_secret: str, url: str, auth_header:
     if not auth_secret:
         return {}
     
-    # Normalize auth_type to lowercase for case-insensitive comparison
+    # Normalize inputs
     a_type = (auth_type or "bearer").lower()
+    header_name = auth_header or "Authorization"
     
-    # 1. Use custom header if provided
-    if auth_header:
-        return {auth_header: auth_secret}
-    
-    # 2. Fallback to standard headers
-    if a_type == "bearer":
-        # Handle cases where user might have pasted "Bearer <token>" or "token <token>"
-        token = auth_secret
-        if token.lower().startswith("bearer "):
-            token = token[7:].strip()
-        elif token.lower().startswith("token "):
-            token = token[6:].strip()
-        
+    # Clean the secret (token)
+    token = auth_secret.strip()
+    if token.lower().startswith("bearer "):
+        token = token[7:].strip()
+    elif token.lower().startswith("token "):
+        token = token[6:].strip()
+
+    # If we are using the standard 'Authorization' header (either by choice or default)
+    if header_name.lower() == "authorization":
         # GitHub specifically prefers "token <token>" for classic PATs
         if "github.com" in url.lower():
             return {"Authorization": f"token {token}"}
-            
         return {"Authorization": f"Bearer {token}"}
-    if a_type == "apikey":
-        return {"X-API-Key": auth_secret}
+
+    # If it's a truly custom header (e.g. x-api-key)
+    if a_type == "apikey" or auth_header:
+        return {header_name: auth_secret} # use original secret for non-Authorization headers
+
     return {}
 
 
@@ -147,7 +146,7 @@ async def call_api(
                     method_upper,
                     url,
                     params=query_params,
-                    json=body_params if body_params else ({}),
+                    json=body_params or None,
                     headers=headers,
                 )
             else:
