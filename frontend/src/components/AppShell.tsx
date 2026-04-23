@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect } from "react";
 import { NavLink, Link } from "react-router-dom";
-import { Grid2X2, Cpu, FileCode2, Settings2, Plus, Search, Bell, ChevronLeft, ChevronRight } from "lucide-react";
+import { Grid2X2, Cpu, FileCode2, Settings2, Plus, Search, Bell, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { UserButton } from "@clerk/clerk-react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,11 @@ export const AppShell = ({ children, title, subtitle, actions }: AppShellProps) 
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem("sidebar-collapsed");
     return saved === "true";
+  });
+
+  const [showUpgradeCard, setShowUpgradeCard] = useState(() => {
+    const saved = localStorage.getItem("show-upgrade-card");
+    return saved !== "false";
   });
 
   useEffect(() => {
@@ -75,9 +80,19 @@ export const AppShell = ({ children, title, subtitle, actions }: AppShellProps) 
           ))}
         </nav>
 
-        {!isCollapsed && (
+        {!isCollapsed && showUpgradeCard && (
           <div className="p-3">
-            <div className="rounded-[1.5rem] bg-gradient-primary p-5 text-primary-foreground shadow-glow animate-fade-in">
+            <div className="relative rounded-[1.5rem] bg-gradient-primary p-5 text-primary-foreground shadow-glow">
+              <button 
+                onClick={() => {
+                  setShowUpgradeCard(false);
+                  localStorage.setItem("show-upgrade-card", "false");
+                }}
+                className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10 transition-colors"
+                title="Dismiss"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
               <p className="text-sm font-bold">Upgrade to Pro</p>
               <p className="mt-1.5 text-[11px] text-primary-foreground/70 leading-relaxed">Unlimited agents & priority support.</p>
               <Button size="sm" variant="secondary" className="mt-4 w-full rounded-xl font-bold shadow-sm">Upgrade</Button>

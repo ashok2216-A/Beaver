@@ -68,7 +68,7 @@ class Agent(Base):
     auth_secret    = Column(Text, default="")              # encrypted in prod
     model_id       = Column(String(64), default="gemini/gemini-2.0-flash-lite")
     status         = Column(SAEnum(AgentStatus), default=AgentStatus.draft, nullable=False)
-    created_at     = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at     = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
     updated_at     = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
                             onupdate=lambda: datetime.now(timezone.utc))
 
@@ -108,6 +108,6 @@ class Log(Base):
     api_response = Column(Text, default="")
     llm_thought  = Column(Text, default="")
     error        = Column(Text, default="")
-    created_at   = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at   = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     agent = relationship("Agent", back_populates="logs")

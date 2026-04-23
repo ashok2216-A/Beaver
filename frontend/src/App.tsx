@@ -22,7 +22,16 @@ import ApiReference from "./pages/ApiReference";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60, // 1 minute
+      gcTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false, // Prevent background refetches when switching tabs/windows
+      retry: 1, // Limit retries to prevent long loading states on failure
+    },
+  },
+});
 
 const TokenSync = () => {
   const { getToken, isLoaded, isSignedIn } = useAuth();
