@@ -1,0 +1,8 @@
+{
+  "name": "Firecrawl",
+  "description": "Scrape and crawl websites to clean Markdown.",
+  "source_url": "https://docs.firecrawl.dev/api-reference/v2-introduction",
+  "base_url": "https://api.firecrawl.dev",
+  "auth_type": "bearer",
+  "system_prompt": "You are a Firecrawl Assistant. You excel at scraping websites and providing high-quality markdown data."
+}

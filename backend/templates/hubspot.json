@@ -1,0 +1,8 @@
+{
+  "name": "HubSpot",
+  "description": "Customer relationship management and marketing automation.",
+  "source_url": "https://developers.hubspot.com/docs/api/crm/contacts",
+  "base_url": "https://api.hubapi.com",
+  "auth_type": "bearer",
+  "system_prompt": "You are a HubSpot CRM Assistant. You help manage contacts, companies, and deals."
+}

@@ -27,6 +27,57 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/agents", tags=["Agents"])
 
 
+# ─── Templates ────────────────────────────────────────────────────────────────
+
+@router.get("/templates")
+def list_templates():
+    """Return the list of available discovery templates from manifest.json."""
+    import os
+    # agents.py is in backend/routes/
+    # Level 1: backend/routes/
+    # Level 2: backend/
+    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    manifest_path = os.path.join(backend_dir, "templates", "manifest.json")
+    
+    if not os.path.exists(manifest_path):
+        print(f"DEBUG: Manifest NOT FOUND at: {manifest_path}")
+        return {"templates": []}
+        
+    try:
+        with open(manifest_path, "r") as f:
+            data = json.load(f)
+            print(f"DEBUG: Successfully loaded {len(data.get('templates', []))} templates")
+            return data
+    except Exception as e:
+        print(f"DEBUG: ERROR loading manifest: {e}")
+        return {"templates": []}
+
+
+@router.get("/templates/{template_id}")
+def get_template(template_id: str):
+    """Return template details from its file, or fallback to manifest metadata."""
+    import os
+    template_path = os.path.join(os.path.dirname(__file__), "..", "templates", f"{template_id}.json")
+    
+    # Try loading from file first (for complex templates with custom logic)
+    if os.path.exists(template_path):
+        with open(template_path, "r") as f:
+            return json.load(f)
+    
+    # Fallback: Look it up in the manifest
+    manifest_path = os.path.join(os.path.dirname(__file__), "..", "templates", "manifest.json")
+    try:
+        with open(manifest_path, "r") as f:
+            manifest = json.load(f)
+            template = next((t for t in manifest.get("templates", []) if t["id"] == template_id), None)
+            if template:
+                return template
+    except Exception:
+        pass
+        
+    raise HTTPException(status_code=404, detail="Template not found")
+
+
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _get_agent_or_404(agent_id: int, user: User, db: Session) -> Agent:

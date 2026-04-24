@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 import uuid
 from typing import Any
@@ -54,6 +55,7 @@ def _build_agent(
     auth_secret: str,
     auth_header: str | None,
     tool_log: list[dict],
+    user_input: str,  # Added to support Ephemeral RAG
     custom_headers: dict[str, str] | None = None,
 ) -> Agent:
     """
@@ -105,18 +107,70 @@ def _build_agent(
             custom_headers=custom_headers,
         )
 
+        # ─── Ephemeral RAG Pipeline ───
+        # If response is massive, we clean, chunk, and pick the best parts.
+        MAX_DIRECT_CHARS = 20000  # Pass directly if small
+        MAX_TOTAL_CHARS = 40000   # Max context to give LLM from this tool
+        
+        processed_data = data
+        note = None
+
+        # 1. CLEAN: Strip HTML junk
+        if isinstance(data, str) and ("<html" in data.lower() or "<body" in data.lower()):
+            try:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(data, "html.parser")
+                for tag in soup(["script", "style", "noscript", "iframe", "header", "footer", "nav"]):
+                    tag.decompose()
+                processed_data = soup.get_text(separator="\n", strip=True)
+            except:
+                pass
+        
+        # 2. CHUNK & RANK: If still too large, perform Ephemeral RAG
+        resp_str = json.dumps(processed_data, default=str) if not isinstance(processed_data, str) else processed_data
+        
+        if len(resp_str) > MAX_DIRECT_CHARS:
+            log.info(f"Massive response detected ({len(resp_str)} chars). Applying Ephemeral RAG...")
+            
+            # Split into chunks of 4k chars with 500 char overlap
+            chunk_size = 4000
+            overlap = 500
+            chunks = [resp_str[i:i + chunk_size] for i in range(0, len(resp_str), chunk_size - overlap)]
+            
+            # Rank chunks based on keyword overlap with user input
+            query_words = set(re.findall(r'\w+', user_input.lower()))
+            ranked_chunks = []
+            for c in chunks:
+                score = sum(1 for word in query_words if word in c.lower())
+                ranked_chunks.append((score, c))
+            
+            # Sort by score and pick top chunks until we hit MAX_TOTAL_CHARS
+            ranked_chunks.sort(key=lambda x: x[0], reverse=True)
+            
+            final_chunks = []
+            current_len = 0
+            for score, content in ranked_chunks:
+                if current_len + len(content) > MAX_TOTAL_CHARS:
+                    break
+                final_chunks.append(content)
+                current_len += len(content)
+            
+            resp_str = "\n\n--- RELEVANT SECTION ---\n\n".join(final_chunks)
+            note = f"The API returned a massive response ({len(data)} chars). I performed RAG and extracted the {len(final_chunks)} most relevant sections matching your query."
+
         tool_log.append({
             "path":        path,
             "method":      method.upper(),
             "status_code": status,
             "latency_ms":  latency,
-            "response":    data,
+            "response":    processed_data if len(str(processed_data)) < 1000 else f"{str(processed_data)[:1000]}...",
         })
 
-        try:
-            return json.dumps({"data": data, "status_code": status}, default=str)
-        except Exception:
-            return json.dumps({"data": str(data), "status_code": status})
+        return json.dumps({
+            "status_code": status,
+            "data": resp_str,
+            "note": note
+        })
 
     # ── Endpoint catalogue for the instruction ───────────────────────
     # We avoid { } because ADK 1.31.0 aggressively tries to resolve them as context variables.
@@ -147,6 +201,10 @@ def _build_agent(
         if system_prompt
         else base_instruction
     )
+
+    # ADK's regex {+[^{}]*}+ resolves ANY braces as context variables.
+    # Doubling braces does NOT help. Convert all {var} → :var instead.
+    instruction = re.sub(r'\{([^{}]*)\}', r':\1', instruction)
 
     safe_name = "".join(
         c if c.isalnum() or c == "_" else "_"
@@ -200,6 +258,7 @@ async def run_agent_stream(
         auth_secret=auth_secret,
         auth_header=auth_header,
         tool_log=tool_log,
+        user_input=user_input, # Pass through here
         custom_headers=custom_headers,
     )
 

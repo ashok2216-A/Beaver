@@ -1,0 +1,8 @@
+{
+  "name": "Cloudinary",
+  "description": "Image and video upload, storage, and transformation.",
+  "source_url": "https://cloudinary.com/documentation/image_upload_api_reference",
+  "base_url": "https://api.cloudinary.com/v1_1",
+  "auth_type": "apikey",
+  "system_prompt": "You are a Cloudinary Media Assistant. You help upload, manage, and transform images and videos."
+}

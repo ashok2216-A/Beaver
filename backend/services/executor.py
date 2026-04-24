@@ -30,7 +30,8 @@ def _substitute_path_params(path: str, params: dict[str, Any]) -> tuple[str, dic
     placeholders = re.findall(r"\{(\w+)\}", path)
     for name in placeholders:
         if name in remaining:
-            path = path.replace(f"{{{name}}}", str(remaining.pop(name)))
+            val = str(remaining.pop(name)).strip()
+            path = path.replace(f"{{{name}}}", val)
     return path, remaining
 
 
@@ -87,7 +88,26 @@ async def call_api(
     log.info(f"EXECUTOR: Calling {method} {path} | AuthType: {auth_type} | Secret: {masked_secret} (len={len(auth_secret)})")
 
     resolved_path, leftover = _substitute_path_params(path, extracted_params)
-    url = base_url.rstrip("/") + resolved_path
+    
+    # Self-Healing: Strip accidental domain names from the start of the path
+    # e.g. /api.firecrawl.dev/v2/scrape -> /v2/scrape
+    if resolved_path.startswith("/") and len(resolved_path.split("/")) > 2:
+        parts = resolved_path.split("/")
+        if "." in parts[1]: # Segment 1 is a domain like 'api.firecrawl.dev'
+            resolved_path = "/" + "/".join(parts[2:])
+
+    # Ensure there is exactly one slash between base_url and resolved_path
+    clean_base = base_url.rstrip("/")
+    clean_path = "/" + resolved_path.lstrip("/")
+    url = clean_base + clean_path
+    
+    # Final safety: Collapse any accidental double slashes (except the protocol)
+    # e.g. https://api.example.com//v2/scrape -> https://api.example.com/v2/scrape
+    protocol = "https://" if url.startswith("https://") else "http://"
+    path_part = url[len(protocol):].replace("//", "/")
+    url = protocol + path_part
+
+    log.info(f"EXECUTOR: Final Constructed URL: {url}")
 
     if not url.startswith(("http://", "https://")):
         return {

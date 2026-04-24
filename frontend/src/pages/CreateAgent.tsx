@@ -1,18 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
-import { UploadCloud, Link2, FileJson, Sparkles, ArrowRight, Check, Loader2, Globe, Search } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { UploadCloud, Link2, FileJson, Sparkles, ArrowRight, Check, Loader2, Globe, Search, User } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const CreateAgent = () => {
-  const [tab, setTab] = useState<"upload" | "url" | "manual">("upload");
+  const [tab, setTab] = useState<"templates" | "url" | "upload" | "manual">("templates");
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState("");
   
-  // New States for Metadata
+  // States for Metadata
   const [agentName, setAgentName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [description, setDescription] = useState("");
@@ -26,25 +26,46 @@ const CreateAgent = () => {
   const [generating, setGenerating] = useState(false);
   const navigate = useNavigate();
 
-  // Effect to handle URL Preview discovery
+  // Fetch templates from manifest
+  const { data: templatesData, isLoading: isLoadingTemplates, isError: isTemplatesError } = useQuery({
+    queryKey: ["templates"],
+    queryFn: () => api.get<any>("/agents/templates"),
+  });
+  const templates = templatesData?.templates || [];
+
+  // Group templates by category
+  const categories = Array.from(new Set(templates.map((t: any) => t.category)));
+
+  const handleTemplateClick = async (t: any) => {
+    try {
+      const detail = await api.get<any>(`/agents/templates/${t.id}`);
+      setTab("url");
+      setUrl(detail.source_url || "");
+      setAgentName(detail.name || "");
+      setBaseUrl(detail.base_url || "");
+      setDescription(detail.description || "");
+      setAuthType(detail.auth_type || "bearer");
+      toast.success(`Selected ${detail.name} template!`);
+    } catch (err) {
+      toast.error("Failed to load template");
+    }
+  };
+
   useEffect(() => {
     const fetchPreview = async () => {
       if (!url || url.length < 10 || !url.startsWith("http")) return;
+      if (!url.match(/\.(json|yaml|yml)(\?|$)/i)) return;
       
       setIsPreviewing(true);
       try {
         const data = await api.post<{name: string, description: string, base_url: string}>("/agents/ingest/preview", { url });
-        setAgentName(data.name);
-        setBaseUrl(data.base_url);
-        setDescription(data.description);
-        toast.info("API details discovered!");
-      } catch (err) {
-        console.error("Preview failed", err);
-      } finally {
+        if (!agentName) setAgentName(data.name);
+        if (!baseUrl) setBaseUrl(data.base_url);
+        if (!description) setDescription(data.description);
+      } catch (err) {} finally {
         setIsPreviewing(false);
       }
     };
-
     const timer = setTimeout(fetchPreview, 1000);
     return () => clearTimeout(timer);
   }, [url]);
@@ -53,26 +74,21 @@ const CreateAgent = () => {
     if (!files || !files[0]) return;
     const f = files[0];
     setFile(f);
-    
-    // Auto-discover metadata from file
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const content = e.target?.result as string;
-        const spec = JSON.parse(content);
+        const spec = JSON.parse(e.target?.result as string);
         if (spec.info) {
           setAgentName(spec.info.title || "");
           setDescription(spec.info.description || "");
           setBaseUrl(spec.servers?.[0]?.url || "");
-          toast.info("API details discovered from file!");
         }
       } catch (err) {
-        // Fallback to filename if JSON parsing fails (e.g. it's YAML)
         setAgentName(f.name.replace(/\.[^/.]+$/, ""));
       }
     };
     reader.readAsText(f);
-    toast.success(`${f.name} ready to generate`);
+    toast.success(`${f.name} ready`);
   };
 
   const { mutate: ingest } = useMutation({
@@ -80,7 +96,6 @@ const CreateAgent = () => {
       if (tab === "upload" && file) {
         const formData = new FormData();
         formData.append("file", file);
-        // Pass metadata as query params for file upload
         const query = new URLSearchParams({
           name: agentName || file.name,
           description,
@@ -93,25 +108,24 @@ const CreateAgent = () => {
       } else if (tab === "url" && url) {
         return api.post<any>("/agents/ingest/smart", { 
           url, 
-          name: agentName || "New Agent from URL",
+          name: agentName,
           description,
           base_url: baseUrl
         });
-      } else if (tab === "manual") {
+      } else {
         return api.post<any>("/agents", { 
-          name: agentName || "Manual Agent",
+          name: agentName,
           description,
-          base_url: baseUrl || "https://api.example.com",
-          auth_type: "bearer",
-          auth_secret: "",
+          base_url: baseUrl,
+          auth_type: authType,
+          auth_secret: authSecret,
           model_id: "gemini-2.0-flash",
           api_spec: ""
         });
       }
-      throw new Error("Missing file or URL");
     },
     onSuccess: (data) => {
-      toast.success("Agent generated successfully!");
+      toast.success("Agent generated!");
       navigate(`/agents/builder?id=${data.id}`);
     },
     onError: (err: any) => {
@@ -121,60 +135,79 @@ const CreateAgent = () => {
   });
 
   const handleGenerate = () => {
-    if (!file && !url) {
-      toast.error("Upload a spec or paste a URL first");
+    if (!file && !url && tab !== "manual") {
+      toast.error("Provide a source first");
       return;
     }
     setGenerating(true);
     setProgress(10);
-    
-    // Fake progress simulation
     const interval = setInterval(() => {
-      setProgress(p => {
-        if (p >= 90) {
-          clearInterval(interval);
-          return 90;
-        }
-        return p + 10;
-      });
+      setProgress(p => (p >= 90 ? (clearInterval(interval), 90) : p + 10));
     }, 400);
-
     ingest();
   };
 
   return (
-    <AppShell title="Create a new agent" subtitle="Upload an OpenAPI spec or paste a URL to get started.">
-      <div className="mx-auto max-w-3xl">
-        {/* Tabs */}
-        <div className="inline-flex rounded-xl border border-border bg-secondary/40 p-1">
-          <button
-            onClick={() => setTab("upload")}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-base ${
-              tab === "upload" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <UploadCloud className="h-4 w-4" /> Upload file
-          </button>
-          <button
-            onClick={() => setTab("url")}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-base ${
-              tab === "url" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Search className="h-4 w-4 text-primary" /> Discover Spec
-          </button>
-          <button
-            onClick={() => setTab("manual")}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-base ${
-              tab === "manual" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Globe className="h-4 w-4 text-success" /> Manual Setup
-          </button>
+    <AppShell title="Create a new agent" subtitle="Choose a template or use your own spec to get started.">
+      <div className="mx-auto max-w-4xl space-y-8 pb-20">
+        
+        {/* Tab Switcher */}
+        <div className="flex flex-col items-center space-y-6">
+          <div className="inline-flex rounded-xl border border-border bg-secondary/40 p-1.5 shadow-inner">
+            <TabButton active={tab === "templates"} onClick={() => setTab("templates")} icon={<Sparkles className="h-4 w-4 text-primary" />} label="Templates" />
+            <TabButton active={tab === "url"} onClick={() => setTab("url")} icon={<Search className="h-4 w-4 text-primary" />} label="Discover Spec" />
+            <TabButton active={tab === "upload"} onClick={() => setTab("upload")} icon={<UploadCloud className="h-4 w-4" />} label="Upload file" />
+            <TabButton active={tab === "manual"} onClick={() => setTab("manual")} icon={<Globe className="h-4 w-4 text-success" />} label="Manual Setup" />
+          </div>
         </div>
 
         <div className="mt-6 rounded-2xl border border-border bg-gradient-card p-8 shadow-soft">
-          {tab === "upload" ? (
+          {tab === "templates" ? (
+            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 max-h-[70vh] overflow-y-auto pr-4 custom-scrollbar">
+              {isLoadingTemplates ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading template marketplace...</p>
+                </div>
+              ) : isTemplatesError || templates.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 border-2 border-dashed border-border rounded-2xl">
+                  <Globe className="h-10 w-10 text-muted-foreground opacity-20" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">No templates found</p>
+                    <p className="text-xs text-muted-foreground">Check your connection or your backend manifest.json</p>
+                  </div>
+                </div>
+              ) : (
+                categories.map((cat: any) => (
+                  <div key={cat} className="space-y-4">
+                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-3">
+                      <span className="h-px flex-1 bg-border/50" />
+                      {cat} ({templates.filter((t: any) => t.category === cat).length})
+                      <span className="h-px flex-1 bg-border/50" />
+                    </h3>
+                    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                      {templates.filter((t: any) => t.category === cat).map((t: any) => (
+                        <button
+                          key={t.id}
+                          onClick={() => handleTemplateClick(t)}
+                          className="group relative flex flex-col items-center gap-2 rounded-xl border border-border bg-background p-3 text-center transition-all hover:border-primary/40 hover:shadow-glow-sm hover:-translate-y-1"
+                        >
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary p-1.5 transition-base group-hover:bg-primary/10 overflow-hidden">
+                            <img 
+                              src={`https://www.google.com/s2/favicons?sz=128&domain=${t.domain}`} 
+                              alt={t.name}
+                              className="h-full w-full object-contain transition-all duration-300 scale-90 group-hover:scale-110"
+                            />
+                          </div>
+                          <p className="text-[11px] font-bold leading-tight truncate w-full max-w-[80px]">{t.name}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : tab === "upload" ? (
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
@@ -335,12 +368,6 @@ const CreateAgent = () => {
             </div>
           )}
 
-          {!agentName && !isPreviewing && !file && (
-            <p className="text-xs text-muted-foreground italic text-center">
-              Choose a file or paste a URL to automatically discover your agent's details.
-            </p>
-          )}
-
           {generating && (
             <div className="mt-8 transition-all animate-in fade-in zoom-in-95">
               <div className="flex items-center justify-between text-sm mb-2">
@@ -364,7 +391,7 @@ const CreateAgent = () => {
 
           <div className="mt-8 flex justify-end gap-3">
             <Button variant="ghost" onClick={() => navigate(-1)} disabled={generating}>Cancel</Button>
-            <Button variant="hero" size="lg" onClick={handleGenerate} disabled={generating || (tab === "url" && !url)}>
+            <Button variant="hero" size="lg" onClick={handleGenerate} disabled={generating || (tab === "url" && !url) || (tab === "upload" && !file) || (tab === "templates")}>
               <Sparkles className="h-4 w-4" />
               {generating ? "Generating…" : "Generate Agent"}
               {!generating && <ArrowRight className="h-4 w-4" />}
@@ -383,6 +410,17 @@ const Step = ({ done, label }: { done: boolean; label: string }) => (
     </span>
     <span className={done ? "text-foreground font-medium" : ""}>{label}</span>
   </li>
+);
+
+const TabButton = ({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) => (
+  <button
+    onClick={onClick}
+    className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-base whitespace-nowrap ${
+      active ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+    }`}
+  >
+    {icon} {label}
+  </button>
 );
 
 export default CreateAgent;

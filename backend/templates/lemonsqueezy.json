@@ -1,0 +1,8 @@
+{
+  "name": "Lemon Squeezy",
+  "description": "Payments, tax, and subscriptions for software companies.",
+  "source_url": "https://docs.lemonsqueezy.com/api/products",
+  "base_url": "https://api.lemonsqueezy.com/v1",
+  "auth_type": "bearer",
+  "system_prompt": "You are a Lemon Squeezy Assistant. You help manage stores, products, and subscriptions."
+}
