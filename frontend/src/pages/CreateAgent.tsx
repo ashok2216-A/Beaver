@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { UploadCloud, Link2, FileJson, Sparkles, ArrowRight, Check, Loader2, Globe } from "lucide-react";
+import { UploadCloud, Link2, FileJson, Sparkles, ArrowRight, Check, Loader2, Globe, Search } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const CreateAgent = () => {
-  const [tab, setTab] = useState<"upload" | "url">("upload");
+  const [tab, setTab] = useState<"upload" | "url" | "manual">("upload");
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState("");
   
@@ -91,14 +91,21 @@ const CreateAgent = () => {
         }).toString();
         return api.post<any>(`/agents/ingest/file?${query}`, formData);
       } else if (tab === "url" && url) {
-        return api.post<any>("/agents/ingest/url", { 
+        return api.post<any>("/agents/ingest/smart", { 
           url, 
           name: agentName || "New Agent from URL",
           description,
-          base_url: baseUrl,
-          auth_type: authType,
-          auth_header: authHeader || null,
-          auth_secret: authSecret
+          base_url: baseUrl
+        });
+      } else if (tab === "manual") {
+        return api.post<any>("/agents", { 
+          name: agentName || "Manual Agent",
+          description,
+          base_url: baseUrl || "https://api.example.com",
+          auth_type: "bearer",
+          auth_secret: "",
+          model_id: "gemini-2.0-flash",
+          api_spec: ""
         });
       }
       throw new Error("Missing file or URL");
@@ -154,7 +161,15 @@ const CreateAgent = () => {
               tab === "url" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Link2 className="h-4 w-4" /> Paste URL
+            <Search className="h-4 w-4 text-primary" /> Discover Spec
+          </button>
+          <button
+            onClick={() => setTab("manual")}
+            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-base ${
+              tab === "manual" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Globe className="h-4 w-4 text-success" /> Manual Setup
           </button>
         </div>
 
@@ -190,14 +205,16 @@ const CreateAgent = () => {
                 </div>
               )}
             </div>
-          ) : (
+          ) : tab === "url" ? (
             <div className="space-y-4">
-              <label className="text-sm font-medium">OpenAPI spec URL</label>
+              <label className="text-sm font-medium flex items-center gap-2">
+                Documentation or Spec URL
+              </label>
               <div className="relative">
                 <input
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://api.example.com/openapi.json"
+                  placeholder="Paste documentation link (e.g. developers.notion.com)"
                   className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary/50 focus:ring-soft transition-base"
                 />
                 {isPreviewing && (
@@ -205,6 +222,41 @@ const CreateAgent = () => {
                     <Loader2 className="h-5 w-5 animate-spin text-primary" />
                   </div>
                 )}
+              </div>
+              <p className="text-xs text-muted-foreground italic">
+                Our system will automatically search the URL for a hidden OpenAPI or Swagger specification file.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Agent Name</label>
+                  <input
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
+                    placeholder="e.g. My Custom API"
+                    className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary/50 focus:ring-soft transition-base"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Base URL</label>
+                  <input
+                    value={baseUrl}
+                    onChange={(e) => setBaseUrl(e.target.value)}
+                    placeholder="https://api.example.com"
+                    className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary/50 focus:ring-soft transition-base"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Description (Optional)</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="What does this agent do?"
+                  className="w-full rounded-xl border border-border bg-background p-4 text-sm outline-none focus:border-primary/50 focus:ring-soft transition-base min-h-[100px]"
+                />
               </div>
             </div>
           )}

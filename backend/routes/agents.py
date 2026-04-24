@@ -20,6 +20,7 @@ from schemas import (
     PaginatedEndpoints,
 )
 from services.parser import parse_openapi
+from services.ai_discovery import smart_ingest_url
 from utils.auth import get_current_user
 
 log = logging.getLogger(__name__)
@@ -116,9 +117,15 @@ def create_agent(
         model_id=data.model_id,
         custom_headers=data.custom_headers or {},
         status=AgentStatus.draft,
-        api_spec="",
+        api_spec=data.api_spec if data.api_spec else "",
     )
-    agent = _ingest_spec(agent, data.api_spec, db)
+    if data.api_spec:
+        agent = _ingest_spec(agent, data.api_spec, db)
+    else:
+        db.add(agent)
+        db.commit()
+        db.refresh(agent)
+        
     return _agent_out(agent)
 
 
@@ -180,6 +187,42 @@ async def ingest_url(
         auth_secret=body.auth_secret or "",
         model_id="mistral/mistral-small-latest",
         custom_headers=body.custom_headers or {},
+        status=AgentStatus.draft,
+        api_spec="",
+    )
+    agent = _ingest_spec(agent, spec, db)
+    return _agent_out(agent)
+
+
+@router.post("/ingest/smart", response_model=AgentOut)
+async def ingest_smart(
+    body: IngestPreviewRequest, 
+    user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """
+    Automated discovery: Hunter + AI Fallback.
+    """
+    try:
+        spec = await smart_ingest_url(body.url)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    # Basic discovery of metadata from generated/found spec
+    name = spec.get("info", {}).get("title", "Discovered Agent")
+    description = spec.get("info", {}).get("description", "")
+    base_url = spec.get("servers", [{}])[0].get("url", "https://api.example.com")
+    
+    agent = Agent(
+        owner_id=user.id,
+        name=name,
+        description=description,
+        base_url=base_url,
+        system_prompt="",
+        auth_type="bearer",
+        auth_secret="",
+        model_id="gemini-2.0-flash",
+        custom_headers={},
         status=AgentStatus.draft,
         api_spec="",
     )
