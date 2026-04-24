@@ -42,7 +42,7 @@ def _get_agent_or_404(agent_id: int, user: User, db: Session) -> Agent:
 def _ingest_spec(agent: Agent, spec: dict | str, db: Session) -> Agent:
     """Parse spec, persist endpoints using bulk insert, attach to agent."""
     if isinstance(spec, dict):
-        raw = json.dumps(spec)
+        raw = json.dumps(spec, default=str)
     else:
         raw = spec
 
@@ -90,6 +90,7 @@ def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
         auth_type=agent.auth_type,
         auth_header=agent.auth_header,
         endpoint_count=ep_count if ep_count is not None else len(agent.endpoints),
+        custom_headers=agent.custom_headers or {},
         created_at=agent.created_at,
         updated_at=agent.updated_at,
     )
@@ -113,11 +114,36 @@ def create_agent(
         auth_secret=data.auth_secret,
         auth_header=data.auth_header,
         model_id=data.model_id,
+        custom_headers=data.custom_headers or {},
         status=AgentStatus.draft,
         api_spec="",
     )
     agent = _ingest_spec(agent, data.api_spec, db)
     return _agent_out(agent)
+
+
+@router.post("/ingest/preview", response_model=IngestPreviewOut)
+async def ingest_preview(body: IngestPreviewRequest):
+    """Fetch a spec URL and return basic metadata for the UI preview."""
+    try:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            r = await client.get(body.url)
+            r.raise_for_status()
+    except Exception as exc:
+        log.error(f"Preview fetch failed: {exc}")
+        raise HTTPException(status_code=422, detail=f"Failed to fetch spec for preview: {exc}")
+
+    try:
+        spec = r.json() if "json" in r.headers.get("Content-Type", "").lower() else yaml.safe_load(r.text)
+    except Exception:
+        raise HTTPException(status_code=422, detail="Could not parse spec format (must be JSON or YAML).")
+
+    info = spec.get("info", {})
+    return IngestPreviewOut(
+        name=info.get("title", "Discovered Agent"),
+        description=info.get("description", ""),
+        base_url=spec.get("servers", [{}])[0].get("url", "")
+    )
 
 
 @router.post("/ingest/url", response_model=AgentOut, status_code=status.HTTP_201_CREATED)
@@ -127,7 +153,8 @@ async def ingest_url(
     db: Session = Depends(get_db)
 ):
     try:
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+        # Increased timeout for large specs (e.g. Stripe, Notion)
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
             r = await client.get(body.url)
         r.raise_for_status()
     except httpx.HTTPError as exc:
@@ -150,8 +177,9 @@ async def ingest_url(
         base_url=base_url,
         system_prompt="",
         auth_type="bearer",
-        auth_secret="",
+        auth_secret=body.auth_secret or "",
         model_id="mistral/mistral-small-latest",
+        custom_headers=body.custom_headers or {},
         status=AgentStatus.draft,
         api_spec="",
     )

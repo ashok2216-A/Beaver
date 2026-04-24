@@ -66,6 +66,7 @@ class AgentCreate(BaseModel):
     auth_header: Optional[str] = None
     auth_secret: str = ""
     model_id: str = "gemini/gemini-2.0-flash-lite"
+    custom_headers: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("name")
     @classmethod
@@ -83,6 +84,7 @@ class AgentUpdate(BaseModel):
     auth_secret: Optional[str] = None
     model_id: Optional[str] = None
     status: Optional[str] = None
+    custom_headers: Optional[dict[str, str]] = None
 
 
 class AgentOut(BaseModel):
@@ -97,6 +99,7 @@ class AgentOut(BaseModel):
     auth_type: str
     auth_header: Optional[str] = None
     endpoint_count: int = 0
+    custom_headers: dict[str, str] = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
 
@@ -118,6 +121,7 @@ class IngestUrlRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     description: str = ""
     base_url: str = ""
+    custom_headers: dict[str, str] = Field(default_factory=dict)
 
 
 class IngestPreviewRequest(BaseModel):

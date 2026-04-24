@@ -22,6 +22,7 @@ async def run_agent(
     agent_name: str = "agent",
     model: str = "gemini-2.0-flash",
     session_id: str | None = None,
+    custom_headers: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """
     Async entry point for the chat route.
@@ -41,6 +42,7 @@ async def run_agent(
         auth_secret=auth_secret,
         user_input=user_input,
         session_id=session_id,
+        custom_headers=custom_headers,
     )
 
 
@@ -55,6 +57,7 @@ async def run_agent_stream(
     agent_name: str = "agent",
     model: str = "gemini-2.0-flash",
     session_id: str | None = None,
+    custom_headers: dict[str, str] | None = None,
 ):
     from services.adk_runner import run_agent_stream as adk_stream
     return adk_stream(
@@ -68,4 +71,5 @@ async def run_agent_stream(
         auth_secret=auth_secret,
         user_input=user_input,
         session_id=session_id,
+        custom_headers=custom_headers,
     )

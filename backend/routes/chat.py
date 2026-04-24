@@ -135,6 +135,7 @@ async def chat(
         "auth_type": agent.auth_type,
         "auth_header": agent.auth_header,
         "auth_secret": agent.auth_secret,
+        "custom_headers": agent.custom_headers,
         "agent_name": agent.name,
         "model": agent.model_id,
         "session_id": session_id,

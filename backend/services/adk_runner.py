@@ -54,6 +54,7 @@ def _build_agent(
     auth_secret: str,
     auth_header: str | None,
     tool_log: list[dict],
+    custom_headers: dict[str, str] | None = None,
 ) -> Agent:
     """
     Construct an ADK Agent with one universal API-call tool.
@@ -101,6 +102,7 @@ def _build_agent(
             auth_type=auth_type,
             auth_secret=auth_secret,
             auth_header=auth_header,
+            custom_headers=custom_headers,
         )
 
         tool_log.append({
@@ -176,6 +178,7 @@ async def run_agent_stream(
     auth_header: str | None,
     user_input: str,
     session_id: str | None = None,
+    custom_headers: dict[str, str] | None = None,
 ):
     """
     Async generator that yields JSON chunks as the agent runs.
@@ -197,6 +200,7 @@ async def run_agent_stream(
         auth_secret=auth_secret,
         auth_header=auth_header,
         tool_log=tool_log,
+        custom_headers=custom_headers,
     )
 
     runner = Runner(
@@ -267,6 +271,7 @@ async def run_agent_async(
     auth_header: str | None,
     user_input: str,
     session_id: str | None = None,
+    custom_headers: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Non-streaming version for backward compatibility."""
     final_text = ""
@@ -284,6 +289,7 @@ async def run_agent_async(
         auth_header=auth_header,
         user_input=user_input,
         session_id=session_id,
+        custom_headers=custom_headers,
     ):
         chunk = json.loads(chunk_str)
         if chunk["type"] == "final":

@@ -51,8 +51,28 @@ const CreateAgent = () => {
 
   const handleFiles = (files: FileList | null) => {
     if (!files || !files[0]) return;
-    setFile(files[0]);
-    toast.success(`${files[0].name} ready to generate`);
+    const f = files[0];
+    setFile(f);
+    
+    // Auto-discover metadata from file
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const spec = JSON.parse(content);
+        if (spec.info) {
+          setAgentName(spec.info.title || "");
+          setDescription(spec.info.description || "");
+          setBaseUrl(spec.servers?.[0]?.url || "");
+          toast.info("API details discovered from file!");
+        }
+      } catch (err) {
+        // Fallback to filename if JSON parsing fails (e.g. it's YAML)
+        setAgentName(f.name.replace(/\.[^/.]+$/, ""));
+      }
+    };
+    reader.readAsText(f);
+    toast.success(`${f.name} ready to generate`);
   };
 
   const { mutate: ingest } = useMutation({
@@ -60,7 +80,16 @@ const CreateAgent = () => {
       if (tab === "upload" && file) {
         const formData = new FormData();
         formData.append("file", file);
-        return api.post<any>(`/agents/ingest/file?name=${encodeURIComponent(file.name)}`, formData);
+        // Pass metadata as query params for file upload
+        const query = new URLSearchParams({
+          name: agentName || file.name,
+          description,
+          base_url: baseUrl,
+          auth_type: authType,
+          auth_header: authHeader,
+          auth_secret: authSecret
+        }).toString();
+        return api.post<any>(`/agents/ingest/file?${query}`, formData);
       } else if (tab === "url" && url) {
         return api.post<any>("/agents/ingest/url", { 
           url, 
@@ -162,102 +191,102 @@ const CreateAgent = () => {
               )}
             </div>
           ) : (
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <label className="text-sm font-medium">OpenAPI spec URL</label>
-                <div className="relative">
+            <div className="space-y-4">
+              <label className="text-sm font-medium">OpenAPI spec URL</label>
+              <div className="relative">
+                <input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://api.example.com/openapi.json"
+                  className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary/50 focus:ring-soft transition-base"
+                />
+                {isPreviewing && (
+                  <div className="absolute right-4 top-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Unified Discovery & Auth Fields */}
+          {(agentName || isPreviewing || file) && (
+            <div className="grid gap-6 animate-in fade-in slide-in-from-top-4 pt-4 border-t border-border/50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Agent Name</label>
                   <input
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    placeholder="https://api.example.com/openapi.json"
-                    className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary/50 focus:ring-soft transition-base"
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
+                    className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50"
                   />
-                  {isPreviewing && (
-                    <div className="absolute right-4 top-3">
-                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    </div>
-                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Base URL</label>
+                  <div className="relative">
+                    <input
+                      value={baseUrl}
+                      onChange={(e) => setBaseUrl(e.target.value)}
+                      className="h-10 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary/50"
+                    />
+                    <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  </div>
                 </div>
               </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Description</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={2}
+                  className="w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus:border-primary/50"
+                />
+              </div>
 
-              {/* Discovery Fields */}
-              {(agentName || isPreviewing) && (
-                <div className="grid gap-6 animate-in fade-in slide-in-from-top-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Agent Name</label>
-                      <input
-                        value={agentName}
-                        onChange={(e) => setAgentName(e.target.value)}
-                        className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Base URL</label>
-                      <div className="relative">
-                        <input
-                          value={baseUrl}
-                          onChange={(e) => setBaseUrl(e.target.value)}
-                          className="h-10 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary/50"
-                        />
-                        <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </div>
+              {/* Auth Configuration */}
+              <div className="pt-4 border-t border-border/50">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">Authentication Settings</p>
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted-foreground">Auth Type</label>
+                    <select 
+                      value={authType}
+                      onChange={(e) => setAuthType(e.target.value)}
+                      className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50"
+                    >
+                      <option value="none">None</option>
+                      <option value="bearer">Bearer Token (Authorization)</option>
+                      <option value="apikey">API Key (Custom Header)</option>
+                    </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Description</label>
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      rows={2}
-                      className="w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus:border-primary/50"
+                    <label className="text-xs font-semibold text-muted-foreground">Custom Header Name</label>
+                    <input 
+                      value={authHeader}
+                      onChange={(e) => setAuthHeader(e.target.value)}
+                      placeholder="x-api-key"
+                      className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50 font-mono"
                     />
                   </div>
-
-                  {/* Auth Configuration */}
-                  <div className="pt-4 border-t border-border/50">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">Authentication Settings</p>
-                    <div className="grid gap-6 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <label className="text-xs font-semibold text-muted-foreground">Auth Type</label>
-                        <select 
-                          value={authType}
-                          onChange={(e) => setAuthType(e.target.value)}
-                          className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50"
-                        >
-                          <option value="none">None</option>
-                          <option value="bearer">Bearer Token (Authorization)</option>
-                          <option value="apikey">API Key (Custom Header)</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-semibold text-muted-foreground">Custom Header Name</label>
-                        <input 
-                          value={authHeader}
-                          onChange={(e) => setAuthHeader(e.target.value)}
-                          placeholder="x-api-key"
-                          className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50 font-mono"
-                        />
-                      </div>
-                      <div className="space-y-2 sm:col-span-2">
-                        <label className="text-xs font-semibold text-muted-foreground">Auth Secret / Token</label>
-                        <input 
-                          type="password"
-                          value={authSecret}
-                          onChange={(e) => setAuthSecret(e.target.value)}
-                          placeholder="paste-your-token-here"
-                          className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50 font-mono"
-                        />
-                      </div>
-                    </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className="text-xs font-semibold text-muted-foreground">Auth Secret / Token</label>
+                    <input 
+                      type="password"
+                      value={authSecret}
+                      onChange={(e) => setAuthSecret(e.target.value)}
+                      placeholder="paste-your-token-here"
+                      className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/50 font-mono"
+                    />
                   </div>
                 </div>
-              )}
-              
-              {!agentName && !isPreviewing && (
-                <p className="text-xs text-muted-foreground italic">We'll fetch and parse the spec details once you paste a valid URL.</p>
-              )}
+              </div>
             </div>
+          )}
+
+          {!agentName && !isPreviewing && !file && (
+            <p className="text-xs text-muted-foreground italic text-center">
+              Choose a file or paste a URL to automatically discover your agent's details.
+            </p>
           )}
 
           {generating && (

@@ -72,6 +72,7 @@ async def call_api(
     auth_type: str = "bearer",       # bearer | apikey | query_key | none
     auth_secret: str = "",
     auth_header: Optional[str] = None, # name of header or query param
+    custom_headers: dict[str, str] | None = None,
 ) -> tuple[Any, int, int]:
     """
     Execute an API call and return (response_data, status_code, latency_ms).
@@ -125,12 +126,9 @@ async def call_api(
         param_name = auth_header or "api_key"
         query_params[param_name] = auth_secret
     
-    # GitHub specific headers
-    if "github.com" in url.lower():
-        headers["X-GitHub-Api-Version"] = "2022-11-28"
-        # Star endpoint specifically often prefers this Accept header
-        if "/starred/" in url.lower():
-            headers["Accept"] = "application/vnd.github+json"
+    # Inject dynamic custom headers
+    if custom_headers:
+        headers.update(custom_headers)
 
     # Debug: Log final headers (masked)
     safe_headers = {k: (v if k.lower() != "authorization" else f"{v[:12]}...") for k, v in headers.items()}

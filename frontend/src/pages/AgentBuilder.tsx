@@ -60,7 +60,14 @@ const AgentBuilder = () => {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [customHeaders, setCustomHeaders] = useState<Record<string, string>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (agent?.custom_headers) {
+      setCustomHeaders(agent.custom_headers);
+    }
+  }, [agent]);
 
   useEffect(() => {
     if (agent && messages.length === 0) {
@@ -262,7 +269,7 @@ const AgentBuilder = () => {
             {/* Context-aware Bulk Actions */}
             <div className="mt-3 flex items-center justify-between border-t border-dashed pt-3">
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Bulk {selectedMethod === "ALL" ? "All" : selectedMethod}
+                Lock / Unlock {selectedMethod === "ALL" ? "All" : selectedMethod} Methods
               </span>
               <div className="flex gap-1">
                 <Button 
@@ -433,7 +440,8 @@ const AgentBuilder = () => {
             <form id="settings-form" onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
-              updateSettings(Object.fromEntries(formData));
+              const updates = Object.fromEntries(formData);
+              updateSettings({ ...updates, custom_headers: customHeaders });
             }}>
               <Field label="Name">
                 <input name="name" defaultValue={agent.name} className="settings-input" />
@@ -465,6 +473,60 @@ const AgentBuilder = () => {
                 <Field label="Auth Secret" hint="Token or secret key for this API.">
                   <input type="password" name="auth_secret" defaultValue={agent.auth_secret} className="settings-input font-mono text-xs" />
                 </Field>
+                
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
+                    Global Custom Headers
+                    <button 
+                      type="button"
+                      onClick={() => setCustomHeaders({ ...customHeaders, "": "" })}
+                      className="text-primary hover:underline text-xs"
+                    >
+                      + Add Pair
+                    </button>
+                  </label>
+                  <div className="space-y-2">
+                    {Object.entries(customHeaders).map(([key, value], idx) => (
+                      <div key={idx} className="flex items-center gap-2 group">
+                        <input 
+                          placeholder="Header Name" 
+                          value={key}
+                          onChange={(e) => {
+                            const newHeaders = { ...customHeaders };
+                            delete newHeaders[key];
+                            newHeaders[e.target.value] = value;
+                            setCustomHeaders(newHeaders);
+                          }}
+                          className="settings-input text-[10px] h-7 px-2 font-mono" 
+                        />
+                        <input 
+                          placeholder="Value" 
+                          value={value}
+                          onChange={(e) => {
+                            const newHeaders = { ...customHeaders };
+                            newHeaders[key] = e.target.value;
+                            setCustomHeaders(newHeaders);
+                          }}
+                          className="settings-input text-[10px] h-7 px-2 font-mono" 
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            const newHeaders = { ...customHeaders };
+                            delete newHeaders[key];
+                            setCustomHeaders(newHeaders);
+                          }}
+                          className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    {Object.keys(customHeaders).length === 0 && (
+                      <p className="text-[10px] text-muted-foreground italic">No custom headers defined.</p>
+                    )}
+                  </div>
+                </div>
               </div>
               <div className="space-y-4 pt-2">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Engine</p>
