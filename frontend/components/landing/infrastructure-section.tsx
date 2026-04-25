@@ -1,147 +1,105 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { FileJson, Wrench, Shield } from "lucide-react";
+import { FileJson, Wrench, Shield, Settings, Layers, Timer, Database, ShieldCheck, Zap } from "lucide-react";
 
-// ─── Canvas Globe ─────────────────────────────────────────────────────────────
+// ─── Architecture Diagram Visual ───────────────────────────────────────
 
-// ─── Neural Engine Canvas ──────────────────────────────────────────────
-
-function NeuralEngineCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const frameRef = useRef(0);
-  const timeRef = useRef(0);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-    const resize = () => {
-      canvas.width = canvas.offsetWidth * dpr;
-      canvas.height = canvas.offsetHeight * dpr;
-      ctx.scale(dpr, dpr);
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    // Generate hundreds of particles for the core sphere
-    const coreParticles = Array.from({ length: 300 }, () => {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(Math.random() * 2 - 1);
-      const r = Math.random() * 30 + 20; // radius between 20 and 50
-      return { theta, phi, r, speed: Math.random() * 0.03 + 0.01 };
-    });
-
-    // Orbital rings of data
-    const rings = [
-      { radius: 100, tiltX: Math.PI / 3, tiltY: 0, speed: 0.005, color: "#67e8f9", dots: 40 },
-      { radius: 140, tiltX: -Math.PI / 4, tiltY: Math.PI / 6, speed: -0.003, color: "#eca8d6", dots: 60 },
-      { radius: 180, tiltX: Math.PI / 6, tiltY: -Math.PI / 4, speed: 0.002, color: "#a78bfa", dots: 80 }
-    ];
-
-    const render = () => {
-      const W = canvas.offsetWidth;
-      const H = canvas.offsetHeight;
-      ctx.clearRect(0, 0, W, H);
-      const t = timeRef.current;
-      const cx = W / 2;
-      const cy = H / 2;
-
-      // Ambient background glow
-      const bgGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 250);
-      bgGrad.addColorStop(0, "rgba(167, 139, 250, 0.08)");
-      bgGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, W, H);
-
-      // Draw Rings and Accretion Disk
-      rings.forEach((ring, i) => {
-         ctx.save();
-         ctx.translate(cx, cy);
-         // Simulate 3D rotation of the entire ring system
-         ctx.rotate(t * 0.02 * (i % 2 === 0 ? 1 : -1));
-         ctx.scale(1, Math.cos(ring.tiltX)); // Flatten Y to create 3D tilt
-         
-         ctx.beginPath();
-         ctx.arc(0, 0, ring.radius, 0, Math.PI * 2);
-         ctx.strokeStyle = `rgba(${ring.color === "#67e8f9" ? "103,232,249" : ring.color === "#eca8d6" ? "236,168,214" : "167,139,250"}, 0.1)`;
-         ctx.lineWidth = 1;
-         ctx.stroke();
-
-         // Ring data packets
-         for(let j=0; j<ring.dots; j++) {
-            const angle = (Math.PI * 2 / ring.dots) * j + t * ring.speed * 20;
-            const px = Math.cos(angle) * ring.radius;
-            const py = Math.sin(angle) * ring.radius;
+function ArchitectureDiagramVisual() {
+  return (
+    <div className="w-full h-full min-h-[400px] flex items-center justify-center p-4 font-mono text-[10px]">
+      <div className="w-full max-w-[900px] flex flex-col md:flex-row gap-12 items-stretch relative">
+        
+        {/* Left Side: Your Environment */}
+        <div className="relative flex-1 rounded-xl border border-dashed border-[#10b981]/50 p-6 flex flex-col gap-4">
+          <span className="absolute -top-3 left-6 bg-background px-2 text-[#10b981] font-bold tracking-widest">YOUR ENVIRONMENT</span>
+          
+          {/* YOUR PLATFORM */}
+          <div className="flex-1 rounded-lg border border-[#10b981]/80 bg-[#10b981]/5 p-5 flex flex-col relative">
+            <span className="text-[#10b981] font-bold tracking-widest text-center mb-6">YOUR PLATFORM</span>
             
-            // Fade out dots that are "behind" the core based on Y (simulated Z depth)
-            const z = Math.sin(angle) * Math.sin(ring.tiltX);
-            const alpha = Math.max(0.1, 0.5 + z * 0.5);
+            <div className="flex gap-4 h-full">
+              {/* Workflow Box */}
+              <div className="flex-[1.5] rounded border border-[#10b981]/40 bg-[#10b981]/10 p-4 flex flex-col">
+                 <div className="text-center text-[#10b981]/80 mb-4">OpenAPI Schema</div>
+                 <div className="space-y-3 flex-1 flex flex-col justify-center">
+                   <div className="w-full py-2 border border-yellow-500/40 bg-yellow-500/10 rounded flex items-center justify-center text-yellow-500/90 whitespace-nowrap">REST API</div>
+                   <div className="w-full py-2 border border-yellow-500/40 bg-yellow-500/10 rounded flex items-center justify-center text-yellow-500/90 whitespace-nowrap">GraphQL API</div>
+                 </div>
+              </div>
+
+              {/* Workers Box */}
+              <div className="flex-1 flex flex-col justify-center gap-8 relative">
+                <div className="flex flex-col items-center">
+                  <Settings className="w-5 h-5 text-[#10b981] mb-1" />
+                  <span className="text-muted-foreground whitespace-nowrap">Custom Agent</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <Settings className="w-5 h-5 text-[#10b981] mb-1" />
+                  <span className="text-muted-foreground whitespace-nowrap">Chat Widget</span>
+                </div>
+
+                {/* Bracket connecting the two workers */}
+                <div className="hidden md:block absolute -right-[44px] top-[25%] bottom-[25%] w-[44px] border-r border-t border-b border-foreground/30 rounded-r-sm" />
+                
+                {/* Line crossing the gap between left main box and right main box */}
+                <div className="hidden md:block absolute -right-[92px] top-1/2 w-[48px] h-px bg-foreground/30" />
+                
+                {/* Dot at the end of the line */}
+                <div className="hidden md:block absolute -right-[92px] top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-2 rounded-full bg-[#a78bfa] shadow-[0_0_8px_#a78bfa]" />
+              </div>
+            </div>
+          </div>
+
+          {/* SDK Box (Outside Platform, Inside Environment) */}
+          <div className="w-full py-3 bg-[#a78bfa]/10 border border-[#a78bfa]/40 rounded text-center text-[#a78bfa]">
+            Beaver Edge Proxy
+          </div>
+        </div>
+
+        {/* Right Side: API2Bot Cloud */}
+        <div className="flex-[1.2] flex flex-col gap-4">
+          {/* Top Tools */}
+          <div className="flex gap-4">
+            <div className="flex-1 rounded border border-[#a78bfa]/30 bg-[#a78bfa]/5 p-3 flex items-center justify-center text-center text-[#a78bfa]">
+              Agentic Studio
+            </div>
+            <div className="flex-1 rounded border border-[#a78bfa]/30 bg-[#a78bfa]/5 p-3 flex items-center justify-center text-center text-[#a78bfa] relative">
+              Discovery Engine
+              {/* Arrow down to Service */}
+              <div className="hidden md:block absolute -bottom-4 left-1/2 w-px h-4 bg-foreground/30" />
+              <div className="hidden md:block absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rotate-45 border-b border-r border-foreground/30" />
+            </div>
+          </div>
+
+          {/* Core Service */}
+          <div className="relative flex-1 rounded-xl border border-[#67e8f9]/50 bg-[#67e8f9]/5 p-6 flex flex-col justify-center">
+            <span className="absolute -top-3 left-6 bg-background px-2 text-[#67e8f9] font-bold tracking-widest">ADK RUNTIME</span>
             
-            ctx.beginPath();
-            ctx.arc(px, py, 2, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(${ring.color === "#67e8f9" ? "103,232,249" : ring.color === "#eca8d6" ? "236,168,214" : "167,139,250"}, ${alpha})`;
-            ctx.fill();
-         }
-         ctx.restore();
-      });
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded border border-[#a78bfa]/30 bg-[#a78bfa]/10 py-5 px-1 flex flex-col items-center justify-center gap-3">
+                <Zap className="w-6 h-6 text-[#a78bfa]" />
+                <span className="text-[#a78bfa] text-center leading-tight">LLM<br/>Engine</span>
+              </div>
+              <div className="rounded border border-[#67e8f9]/30 bg-[#67e8f9]/10 py-5 px-1 flex flex-col items-center justify-center gap-3">
+                <Timer className="w-6 h-6 text-[#67e8f9]" />
+                <span className="text-[#67e8f9] text-center leading-tight">Tool<br/>Executor</span>
+              </div>
+              <div className="rounded border border-[#eca8d6]/30 bg-[#eca8d6]/10 py-5 px-1 flex flex-col items-center justify-center gap-3">
+                <Database className="w-6 h-6 text-[#eca8d6]" />
+                <span className="text-[#eca8d6] text-center leading-tight">Agent<br/>DB</span>
+              </div>
+              <div className="rounded border border-yellow-500/30 bg-yellow-500/10 py-5 px-1 flex flex-col items-center justify-center gap-3">
+                <FileJson className="w-6 h-6 text-yellow-500" />
+                <span className="text-yellow-500 text-center leading-tight">Spec<br/>Parser</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      // Draw Neural Core (Breathing sphere of particles)
-      const pulse = Math.sin(t * 0.03) * 6;
-      
-      coreParticles.forEach(p => {
-         // Rotate sphere slowly on Y axis
-         p.theta += p.speed * 0.2;
-         
-         // Spherical to Cartesian projection
-         const r = p.r + pulse;
-         const x = r * Math.sin(p.phi) * Math.cos(p.theta);
-         const z = r * Math.sin(p.phi) * Math.sin(p.theta);
-         const y = r * Math.cos(p.phi);
-
-         // Simple perspective projection
-         const scale = 300 / (300 + z);
-         const px = cx + x * scale;
-         const py = cy + y * scale;
-
-         if (scale > 0) {
-             ctx.beginPath();
-             ctx.arc(px, py, 1.2 * scale, 0, Math.PI * 2);
-             
-             // Dynamic depth shading
-             const alpha = Math.max(0, Math.min(1, scale - 0.5));
-             // Gradient mix from pink to cyan based on vertical position
-             const isPink = y < 0;
-             ctx.fillStyle = isPink ? `rgba(236,168,214,${alpha})` : `rgba(103,232,249,${alpha})`;
-             ctx.fill();
-         }
-      });
-
-      // Central Intense Core Flare
-      const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 35 + pulse);
-      coreGrad.addColorStop(0, "rgba(255,255,255,0.9)");
-      coreGrad.addColorStop(0.3, "rgba(167,139,250,0.4)");
-      coreGrad.addColorStop(1, "rgba(167,139,250,0)");
-      ctx.fillStyle = coreGrad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, 35 + pulse, 0, Math.PI * 2);
-      ctx.fill();
-
-      timeRef.current += 1;
-      frameRef.current = requestAnimationFrame(render);
-    };
-
-    render();
-    return () => {
-      window.removeEventListener("resize", resize);
-      cancelAnimationFrame(frameRef.current);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="w-full h-full" />;
+      </div>
+    </div>
+  );
 }
 
 
@@ -224,7 +182,7 @@ export function InfrastructureSection() {
             <div className={`relative h-[320px] lg:h-[400px] transition-all duration-1000 delay-200 ${
               isVisible ? "opacity-100" : "opacity-0"
             }`}>
-              <NeuralEngineCanvas />
+              <ArchitectureDiagramVisual />
             </div>
           </div>
         </div>

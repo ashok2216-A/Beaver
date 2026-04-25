@@ -261,97 +261,64 @@ export function HeroSection() {
         <div
           className={`mb-8 transition-all duration-700 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
-        >
-          <span className="inline-flex items-center gap-3 text-sm font-mono text-white/60 px-4 py-2 border border-white/20 rounded-full backdrop-blur-sm">
-            <span className="w-2 h-2 rounded-full bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9] animate-pulse" />
-            Public Launch: The Future of API Tooling
-          </span>
-        </div>
+              }`}
+            >
+              <span className="inline-flex items-center gap-3 text-sm font-mono text-white/60 px-4 py-2 border border-white/20 rounded-full backdrop-blur-sm">
+                <span className="w-2 h-2 rounded-full bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9] animate-pulse" />
+                The Future of API Tooling
+              </span>
+            </div>
 
-        {/* Main headline */}
-        <div className="mb-8">
-          <h1
-            className={`text-center text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-display leading-[0.95] tracking-tight text-white transition-all duration-1000 ${
-              isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-            }`}
-          >
-            Ship any API as a
-            <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]">
-              Super-Agent
-            </span>
-          </h1>
-        </div>
+            {/* Main headline */}
+            <div className="mb-8">
+              <h1
+                className={`text-center text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-display leading-[0.95] tracking-tight text-white transition-all duration-1000 ${
+                  isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+                }`}
+              >
+                Ship any API as a
+                <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]">
+                  Super-Agent
+                </span>
+              </h1>
+            </div>
 
-        {/* Subtitle */}
-        <p
-          className={`text-xl md:text-2xl text-white/70 max-w-2xl mx-auto mb-12 leading-relaxed transition-all duration-1000 delay-100 ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
-        >
-          Beaver is the ultimate playground for turning OpenAPI documentation into reliable, tool-calling agents for any LLM.
-        </p>
+            {/* Subtitle */}
+            <p
+              className={`text-xl md:text-2xl text-white/70 max-w-2xl mx-auto mb-12 leading-relaxed transition-all duration-1000 delay-100 ${
+                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
+            >
+              Beaver is the ultimate platform for turning OpenAPI documentation into reliable, tool-calling agents for any LLM in seconds.
+            </p>
 
-        {/* CTAs */}
-        <div
-          className={`flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 transition-all duration-1000 delay-200 ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
-        >
-          <Button
-            size="lg"
-            className="bg-white hover:bg-white/90 text-black px-8 h-14 text-base rounded-full group"
-            asChild
-          >
-            <Link href="/sign-up">
-              Start Building Free
-              <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
-            </Link>
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            className="h-14 px-8 text-base rounded-full border-white/30 text-white hover:bg-white/10 hover:border-white/50 backdrop-blur-sm"
-          >
-            <Play className="w-4 h-4 mr-2" />
-            View 60s Demo
-          </Button>
-        </div>
+            {/* CTAs */}
+            <div
+              className={`flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 transition-all duration-1000 delay-200 ${
+                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
+            >
+              <Button
+                size="lg"
+                className="bg-white hover:bg-white/90 text-black px-8 h-14 text-base rounded-full group"
+                asChild
+              >
+                <Link href="/sign-up">
+                  Start Building Free
+                  <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-14 px-8 text-base rounded-full border-white/30 text-white hover:bg-white/10 hover:border-white/50 backdrop-blur-sm"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                View 60s Demo
+              </Button>
+            </div>
 
-        {/* Trust banner */}
-        <p
-          className={`text-sm text-white/40 font-mono transition-all duration-1000 delay-300 ${
-            isVisible ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          Trusted by world-class engineering teams
-        </p>
-      </div>
-
-      {/* Chat Preview Card */}
-      <div
-        className={`absolute bottom-12 right-12 hidden lg:block w-[380px] transition-all duration-1000 delay-500 ${
-          isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-        }`}
-      >
-        <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-sm font-medium text-white">Stripe API Agent Preview</span>
-            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Live</span>
-          </div>
-          <div className="bg-white/5 rounded-lg p-4 mb-4">
-            <p className="text-white/80 text-sm">Show me my last 3 customers from Stripe</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Ask your agent anything..."
-              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-white/30"
-              readOnly
-            />
-          </div>
-        </div>
       </div>
     </section>
   );
