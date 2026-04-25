@@ -18,6 +18,7 @@ import {
 import Link from "next/link"
 import { useAuth } from "@clerk/nextjs"
 import { cn } from "@/lib/utils"
+import { AgentAvatar } from "@/components/dashboard/agent-avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -104,11 +105,11 @@ export default function AgentsPage() {
       ) : filteredAgents.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredAgents.map((agent) => (
-            <Card key={agent.id} className="rounded-3xl bg-card shadow-sm hover:shadow-glow-sm transition-all duration-300 overflow-hidden group">
-              <CardContent className="p-6">
+            <Card key={agent.id} className="rounded-3xl bg-card shadow-sm hover:shadow-glow-sm transition-all duration-300 overflow-hidden group p-0">
+              <CardContent className="pt-4 px-6 pb-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-300">
-                    <Bot className="w-6 h-6" />
+                  <div className="group-hover:scale-110 transition-transform duration-300">
+                    <AgentAvatar id={agent.id} size="lg" />
                   </div>
                   
                   <DropdownMenu>
@@ -154,14 +155,17 @@ export default function AgentsPage() {
                 </p>
 
                 <div className="flex items-center justify-between mt-auto">
-                  <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border",
+                    agent.status === 'live' 
+                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
+                      : "bg-muted/50 text-muted-foreground border-transparent"
+                  )}>
                     <div className={cn(
-                      "w-2 h-2 rounded-full",
-                      agent.status === 'live' ? "bg-green-500 animate-pulse" : "bg-muted-foreground/40"
+                      "w-1.5 h-1.5 rounded-full",
+                      agent.status === 'live' ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"
                     )} />
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60">
-                      {agent.status}
-                    </span>
+                    {agent.status.toUpperCase()}
                   </div>
                   <Button variant="secondary" size="sm" className="rounded-lg font-bold bg-primary/5 text-primary hover:bg-primary/10" asChild>
                     <Link href={`/dashboard/agents/${agent.id}`}>

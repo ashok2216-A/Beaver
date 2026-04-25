@@ -7,6 +7,7 @@ import { Plus, Bot, Zap, Clock, ArrowUpRight, Search, MessageSquare } from "luci
 import Link from "next/link"
 import { useAuth } from "@clerk/nextjs"
 import { cn } from "@/lib/utils"
+import { AgentAvatar } from "@/components/dashboard/agent-avatar"
 
 interface DashboardStats {
   agent_count: number
@@ -180,11 +181,11 @@ export default function DashboardPage() {
         ) : agents.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {agents.slice(0, 3).map((agent) => (
-              <Card key={agent.id} className="rounded-3xl bg-card shadow-sm hover:shadow-md transition-all group overflow-hidden flex flex-col">
-                <CardContent className="p-6 flex-1">
+              <Card key={agent.id} className="rounded-3xl bg-card shadow-sm hover:shadow-md transition-all group overflow-hidden flex flex-col p-0">
+                <CardContent className="pt-4 px-6 pb-6 flex-1">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center border border-primary/10">
-                      <Bot className="h-5 w-5 text-primary" />
+                    <div className="group-hover:scale-110 transition-transform duration-300">
+                      <AgentAvatar id={agent.id} size="lg" />
                     </div>
                     <button className="text-muted-foreground hover:text-foreground">
                       <Plus className="h-5 w-5 rotate-45" />
@@ -197,11 +198,19 @@ export default function DashboardPage() {
                   </p>
                   
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted/50 text-[10px] font-bold text-muted-foreground">
-                      <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
+                    <div className={cn(
+                      "flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border",
+                      agent.status === 'live' 
+                        ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
+                        : "bg-muted/50 text-muted-foreground border-transparent"
+                    )}>
+                      <div className={cn(
+                        "w-1.5 h-1.5 rounded-full",
+                        agent.status === 'live' ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"
+                      )} />
                       {agent.status.toUpperCase()}
                     </div>
-                    <span className="text-[10px] font-bold text-muted-foreground/60 uppercase">
+                    <span className="text-xs font-bold text-muted-foreground/60 uppercase">
                       {new Date(agent.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                   </div>

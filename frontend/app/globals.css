@@ -225,4 +225,12 @@
     50%  { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
   }
+
+  .shadow-glow {
+    box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.3);
+  }
+  
+  .shadow-glow-lg {
+    box-shadow: 0 0 40px -10px hsl(var(--primary) / 0.4);
+  }
 }

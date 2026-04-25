@@ -19,6 +19,7 @@ import {
   MessageSquare
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { AgentAvatar } from "@/components/dashboard/agent-avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -343,8 +344,8 @@ export default function AgentDetailPage() {
                       m.role === 'user' ? "justify-end" : "justify-start"
                     )}>
                       {m.role === 'assistant' && (
-                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                          <Bot className="h-4 w-4 text-primary" />
+                        <div className="shrink-0 pt-0.5">
+                          <AgentAvatar id={Number(id)} size="sm" />
                         </div>
                       )}
                       <div className={cn(
