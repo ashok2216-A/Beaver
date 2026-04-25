@@ -6,6 +6,9 @@ from database import Base, get_db
 from main import app
 import json
 
+from utils.auth import get_current_user
+from models import User
+
 # Use in-memory SQLite for tests
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 
@@ -21,11 +24,22 @@ def override_get_db():
     finally:
         db.close()
 
+# Mock Authentication Dependency
+def override_get_current_user():
+    return User(id="user_test_123", email="test@example.com")
+
 app.dependency_overrides[get_db] = override_get_db
+app.dependency_overrides[get_current_user] = override_get_current_user
 
 @pytest.fixture(autouse=True)
 def setup_db():
     Base.metadata.create_all(bind=engine)
+    # Provision the mock user
+    db = TestingSessionLocal()
+    if not db.query(User).filter(User.id == "user_test_123").first():
+        db.add(User(id="user_test_123", email="test@example.com"))
+        db.commit()
+    db.close()
     yield
     Base.metadata.drop_all(bind=engine)
 

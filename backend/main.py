@@ -148,17 +148,44 @@ app.include_router(
 )
 
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
 # ─── Health check ─────────────────────────────────────────────────────────────
-
-@app.get("/", tags=["Health"])
-def root():
-    return {
-        "service": "api2bot-studio",
-        "version": "1.0.0",
-        "status":  "running",
-    }
-
 
 @app.get("/health", tags=["Health"])
 def health():
     return {"status": "ok"}
+
+# ─── Static Files & SPA Catch-all ─────────────────────────────────────────────
+# This must be at the VERY END after all API routes
+
+# Determine the path to the frontend build directory
+# Level 1: backend/
+# Level 2: api2bot-studio/
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+frontend_dist = os.path.join(base_dir, "frontend", "dist")
+
+if os.path.exists(frontend_dist):
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def catch_all(full_path: str):
+        # If the path looks like a file (has an extension), don't serve index.html
+        if "." in full_path.split("/")[-1]:
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+            
+        index_path = os.path.join(frontend_dist, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        return JSONResponse(status_code=404, content={"detail": "Frontend not built"})
+else:
+    @app.get("/")
+    def root():
+        return {
+            "service": "api2bot-studio",
+            "version": "1.0.0",
+            "status":  "running",
+            "message": "Frontend dist not found. Serve API only."
+        }
