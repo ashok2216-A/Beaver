@@ -41,7 +41,14 @@ const CreateAgent = () => {
       const detail = await api.get<any>(`/agents/templates/${t.id}`);
       setTab("url");
       setUrl(detail.source_url || "");
-      setAgentName(detail.name || "");
+      
+      // Smart Name: "Zendesk" -> "Zendesk Agent"
+      let name = detail.name || "";
+      if (name && !name.toLowerCase().endsWith("agent")) {
+        name = `${name} Agent`;
+      }
+      setAgentName(name);
+      
       setBaseUrl(detail.base_url || "");
       setDescription(detail.description || "");
       setAuthType(detail.auth_type || "bearer");

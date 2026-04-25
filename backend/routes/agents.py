@@ -272,7 +272,7 @@ async def ingest_smart(
         system_prompt="",
         auth_type="bearer",
         auth_secret="",
-        model_id="gemini-2.0-flash",
+        model_id="mistral/mistral-small-latest",
         custom_headers={},
         status=AgentStatus.draft,
         api_spec="",

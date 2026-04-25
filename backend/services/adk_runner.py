@@ -211,7 +211,7 @@ def _build_agent(
         for c in agent_name.lower().replace(" ", "_")
     )[:50] or "api_agent"
 
-    model_name = model or "gemini/gemini-2.0-flash-lite"
+    model_name = model or "mistral/mistral-small-latest"
     adk_model = LiteLlm(model=model_name, num_retries=3)
 
     return Agent(
@@ -302,8 +302,22 @@ async def run_agent_stream(
 
     except Exception as exc:
         log.exception("Stream error")
-        error_msg = str(exc)
-        yield json.dumps({"type": "error", "text": error_msg}) + "\n"
+        raw_error = str(exc).lower()
+        
+        # Short, direct warnings (OpenAI/Claude style)
+        if "credentials" in raw_error or "auth" in raw_error or "api key" in raw_error:
+            friendly_error = "⚠️ **Model Authentication Failed**. Please check your API key settings."
+        elif "quota" in raw_error or "rate limit" in raw_error:
+            friendly_error = "⚠️ **Rate Limit Exceeded**. Please try again in a moment."
+        elif "timeout" in raw_error:
+            friendly_error = "⏳ **Service Timeout**. The request took too long to complete."
+        elif "not found" in raw_error:
+            friendly_error = "🔍 **Resource Not Found**. Check your agent configuration."
+        else:
+            friendly_error = "❌ **Service Error**. Please try again."
+
+        yield json.dumps({"type": "token", "text": friendly_error}) + "\n"
+        yield json.dumps({"type": "error", "text": friendly_error}) + "\n"
 
     last_call = tool_log[-1] if tool_log else {}
     yield json.dumps({

@@ -493,16 +493,47 @@ def _slug_to_path(slug: str) -> str | None:
     return f"/v1/{resource}{sub_path}"
 
 
+def _extract_brand_name(host: str) -> str:
+    """Extract a clean brand name from a host string using manifest.json as a lookup."""
+    brand_lower = host.lower()
+    
+    # Try to find a match in the manifest.json
+    try:
+        manifest_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "templates", "manifest.json")
+        if os.path.exists(manifest_path):
+            with open(manifest_path, "r") as f:
+                manifest = json.load(f)
+                for t in manifest.get("templates", []):
+                    domain = t.get("domain", "").lower()
+                    if domain and (domain in brand_lower or brand_lower in domain):
+                        return f"{t['name']} Agent"
+    except Exception as e:
+        log.warning(f"Manifest lookup failed for branding: {e}")
+
+    # Fallback: Manual extraction
+    brand = brand_lower
+    for prefix in ["docs.", "api.", "developers.", "developer.", "www."]:
+        if brand.startswith(prefix):
+            brand = brand[len(prefix):]
+    
+    brand = brand.split(".")[0]
+    return f"{brand.capitalize()} Agent"
+
+
 def _build_openapi_spec(source_url: str, endpoints: dict) -> dict:
     """Build a valid OpenAPI 3.0.0 spec from extracted endpoints."""
     parsed = urlparse(source_url)
     
     # Smart Host Translation: docs.example.com -> api.example.com
     host = parsed.netloc
+    brand_name = _extract_brand_name(host)
+
     if host.startswith("docs."):
         host = host.replace("docs.", "api.", 1)
     elif host.startswith("developers."):
         host = host.replace("developers.", "api.", 1)
+    elif host.startswith("developer."):
+        host = host.replace("developer.", "api.", 1)
     
     # Fallback/Specific overrides
     if "firecrawl.dev" in host and not host.startswith("api."):
@@ -553,7 +584,7 @@ def _build_openapi_spec(source_url: str, endpoints: dict) -> dict:
     return {
         "openapi": "3.0.0",
         "info": {
-            "title": f"API from {host}",
+            "title": brand_name,
             "version": "1.0.0",
             "description": f"Auto-discovered from {source_url}",
         },
