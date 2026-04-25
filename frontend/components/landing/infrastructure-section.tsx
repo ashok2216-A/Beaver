@@ -3,6 +3,149 @@
 import { useEffect, useState, useRef } from "react";
 import { FileJson, Wrench, Shield } from "lucide-react";
 
+// ─── Canvas Globe ─────────────────────────────────────────────────────────────
+
+// ─── Neural Engine Canvas ──────────────────────────────────────────────
+
+function NeuralEngineCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const frameRef = useRef(0);
+  const timeRef = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    const resize = () => {
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+      ctx.scale(dpr, dpr);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    // Generate hundreds of particles for the core sphere
+    const coreParticles = Array.from({ length: 300 }, () => {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(Math.random() * 2 - 1);
+      const r = Math.random() * 30 + 20; // radius between 20 and 50
+      return { theta, phi, r, speed: Math.random() * 0.03 + 0.01 };
+    });
+
+    // Orbital rings of data
+    const rings = [
+      { radius: 100, tiltX: Math.PI / 3, tiltY: 0, speed: 0.005, color: "#67e8f9", dots: 40 },
+      { radius: 140, tiltX: -Math.PI / 4, tiltY: Math.PI / 6, speed: -0.003, color: "#eca8d6", dots: 60 },
+      { radius: 180, tiltX: Math.PI / 6, tiltY: -Math.PI / 4, speed: 0.002, color: "#a78bfa", dots: 80 }
+    ];
+
+    const render = () => {
+      const W = canvas.offsetWidth;
+      const H = canvas.offsetHeight;
+      ctx.clearRect(0, 0, W, H);
+      const t = timeRef.current;
+      const cx = W / 2;
+      const cy = H / 2;
+
+      // Ambient background glow
+      const bgGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 250);
+      bgGrad.addColorStop(0, "rgba(167, 139, 250, 0.08)");
+      bgGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Draw Rings and Accretion Disk
+      rings.forEach((ring, i) => {
+         ctx.save();
+         ctx.translate(cx, cy);
+         // Simulate 3D rotation of the entire ring system
+         ctx.rotate(t * 0.02 * (i % 2 === 0 ? 1 : -1));
+         ctx.scale(1, Math.cos(ring.tiltX)); // Flatten Y to create 3D tilt
+         
+         ctx.beginPath();
+         ctx.arc(0, 0, ring.radius, 0, Math.PI * 2);
+         ctx.strokeStyle = `rgba(${ring.color === "#67e8f9" ? "103,232,249" : ring.color === "#eca8d6" ? "236,168,214" : "167,139,250"}, 0.1)`;
+         ctx.lineWidth = 1;
+         ctx.stroke();
+
+         // Ring data packets
+         for(let j=0; j<ring.dots; j++) {
+            const angle = (Math.PI * 2 / ring.dots) * j + t * ring.speed * 20;
+            const px = Math.cos(angle) * ring.radius;
+            const py = Math.sin(angle) * ring.radius;
+            
+            // Fade out dots that are "behind" the core based on Y (simulated Z depth)
+            const z = Math.sin(angle) * Math.sin(ring.tiltX);
+            const alpha = Math.max(0.1, 0.5 + z * 0.5);
+            
+            ctx.beginPath();
+            ctx.arc(px, py, 2, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${ring.color === "#67e8f9" ? "103,232,249" : ring.color === "#eca8d6" ? "236,168,214" : "167,139,250"}, ${alpha})`;
+            ctx.fill();
+         }
+         ctx.restore();
+      });
+
+      // Draw Neural Core (Breathing sphere of particles)
+      const pulse = Math.sin(t * 0.03) * 6;
+      
+      coreParticles.forEach(p => {
+         // Rotate sphere slowly on Y axis
+         p.theta += p.speed * 0.2;
+         
+         // Spherical to Cartesian projection
+         const r = p.r + pulse;
+         const x = r * Math.sin(p.phi) * Math.cos(p.theta);
+         const z = r * Math.sin(p.phi) * Math.sin(p.theta);
+         const y = r * Math.cos(p.phi);
+
+         // Simple perspective projection
+         const scale = 300 / (300 + z);
+         const px = cx + x * scale;
+         const py = cy + y * scale;
+
+         if (scale > 0) {
+             ctx.beginPath();
+             ctx.arc(px, py, 1.2 * scale, 0, Math.PI * 2);
+             
+             // Dynamic depth shading
+             const alpha = Math.max(0, Math.min(1, scale - 0.5));
+             // Gradient mix from pink to cyan based on vertical position
+             const isPink = y < 0;
+             ctx.fillStyle = isPink ? `rgba(236,168,214,${alpha})` : `rgba(103,232,249,${alpha})`;
+             ctx.fill();
+         }
+      });
+
+      // Central Intense Core Flare
+      const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 35 + pulse);
+      coreGrad.addColorStop(0, "rgba(255,255,255,0.9)");
+      coreGrad.addColorStop(0.3, "rgba(167,139,250,0.4)");
+      coreGrad.addColorStop(1, "rgba(167,139,250,0)");
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 35 + pulse, 0, Math.PI * 2);
+      ctx.fill();
+
+      timeRef.current += 1;
+      frameRef.current = requestAnimationFrame(render);
+    };
+
+    render();
+    return () => {
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(frameRef.current);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="w-full h-full" />;
+}
+
+
+
 const steps = [
   {
     number: "01",
@@ -81,11 +224,7 @@ export function InfrastructureSection() {
             <div className={`relative h-[320px] lg:h-[400px] transition-all duration-1000 delay-200 ${
               isVisible ? "opacity-100" : "opacity-0"
             }`}>
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/world-3i68QNWJwmO7W19ztZWbevAwJQHzYL.png"
-                alt="Global network"
-                className="w-full h-full object-contain object-center"
-              />
+              <NeuralEngineCanvas />
             </div>
           </div>
         </div>

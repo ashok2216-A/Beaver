@@ -1,6 +1,78 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+// ─── Animated Oscilloscope Canvas ───────────────────────────────────────────
+
+function OscilloscopeCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const frameRef = useRef(0);
+  const timeRef = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    const resize = () => {
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+      ctx.scale(dpr, dpr);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const render = () => {
+      const W = canvas.offsetWidth;
+      const H = canvas.offsetHeight;
+      ctx.clearRect(0, 0, W, H);
+      const t = timeRef.current;
+
+      const drawWave = (offset: number, color: string, amp: number, freq: number, phase: number) => {
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = color;
+        for (let x = 0; x <= W; x += 4) {
+          // Complex waveform
+          const y = H / 2 + offset + 
+                    Math.sin(x * freq + t * 2 + phase) * amp + 
+                    Math.sin(x * freq * 3 + t * 3) * (amp * 0.3);
+          
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      };
+
+      // Draw grid
+      ctx.strokeStyle = "rgba(255,255,255,0.05)";
+      ctx.lineWidth = 1;
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      for (let x = 0; x < W; x += 40) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+      for (let y = 0; y < H; y += 40) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+      ctx.stroke();
+
+      drawWave(-20, "#eca8d6", 40, 0.005, 0);
+      drawWave(0, "#a78bfa", 60, 0.003, Math.PI / 3);
+      drawWave(20, "#67e8f9", 30, 0.007, Math.PI / 1.5);
+
+      timeRef.current += 0.016;
+      frameRef.current = requestAnimationFrame(render);
+    };
+
+    render();
+    return () => {
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(frameRef.current);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="w-full h-full min-h-[300px] border border-white/10 rounded-xl bg-black/40" />;
+}
 
 const metrics = [
   { 
@@ -266,16 +338,11 @@ export function MetricsSection() {
           </div>
         </div>
 
-        {/* Organic graph image */}
-        <div className={`w-full mb-0 transition-all duration-1000 delay-200 ${
+        {/* Organic graph canvas */}
+        <div className={`w-full mb-8 transition-all duration-1000 delay-200 ${
           isVisible ? "opacity-100" : "opacity-0"
         }`}>
-          <img
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/real-time-graph-INFmn3u0MlUwvNPynoIhwxtPaPjxM5.png"
-            alt=""
-            aria-hidden="true"
-            className="w-full h-auto object-cover"
-          />
+          <OscilloscopeCanvas />
         </div>
 
         {/* Metrics grid */}

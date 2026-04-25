@@ -3,6 +3,69 @@
 import { useEffect, useRef, useState } from "react";
 import { Brain, Zap, Bug, Rocket } from "lucide-react";
 
+// ─── Terminal Code Stream Canvas ──────────────────────────────────────────────
+
+const CODE_LINES = [
+  '> beaver ingest ./openapi.yaml',
+  '✓ Parsed 47 endpoints',
+  '✓ Generated tool schemas',
+  '→ POST /v1/agents  { model: "gemini-2.0" }',
+  '← 201 Created  { id: "agt_k9xmf2" }',
+  '> agent.run("List top customers")',
+  '→ GET /v1/customers?limit=5',
+  '← 200 OK  [ { id: "cus_..." }, ... ]',
+  '✓ Response formatted and returned',
+  '> agent.run("Create invoice for cus_abc")',
+  '→ POST /v1/invoices  { customer: "cus_abc" }',
+  '← 200 OK  { id: "inv_xyz", amount: 4900 }',
+];
+
+function TerminalCanvas() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [lines, setLines] = useState<{ text: string; color: string; opacity: number }[]>([]);
+  const indexRef = useRef(0);
+
+  const getColor = (line: string) => {
+    if (line.startsWith('>')) return '#67e8f9';
+    if (line.startsWith('✓')) return '#a78bfa';
+    if (line.startsWith('→')) return '#eca8d6';
+    if (line.startsWith('←')) return '#86efac';
+    return 'rgba(255,255,255,0.5)';
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const text = CODE_LINES[indexRef.current % CODE_LINES.length];
+      indexRef.current++;
+      setLines(prev => [
+        ...prev.slice(-14),
+        { text, color: getColor(text), opacity: 1 },
+      ]);
+    }, 600);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="w-full h-full bg-black/60 rounded-lg overflow-hidden p-5 font-mono text-xs flex flex-col justify-end gap-1">
+      <div className="text-white/20 mb-2 text-[10px] tracking-widest uppercase">beaver · agent runtime</div>
+      {lines.map((line, i) => (
+        <div
+          key={i}
+          className="transition-opacity duration-500"
+          style={{ color: line.color, opacity: Math.min(1, (i + 1) / lines.length + 0.3) }}
+        >
+          {line.text}
+        </div>
+      ))}
+      <div className="flex items-center gap-1 mt-1">
+        <span className="text-[#67e8f9]">▸</span>
+        <span className="w-2 h-3.5 bg-[#67e8f9]/70 animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
+
 const features = [
   {
     number: "01",
@@ -137,15 +200,8 @@ export function FeaturesSection() {
               </div>
             </div>
             
-            {/* Visual */}
-            <div className="relative h-[300px] lg:h-[400px] overflow-hidden rounded-lg bg-foreground/5">
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Upscaled%20Image%20%2812%29-ng3RrNnsPMJ5CrtOjcPTmhHg01W11q.png"
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 w-full h-full object-cover object-center"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-black via-transparent to-transparent" />
+            <div className="relative h-[300px] lg:h-[400px] overflow-hidden rounded-lg bg-black/60 border border-white/5">
+              <TerminalCanvas />
             </div>
           </div>
         </div>

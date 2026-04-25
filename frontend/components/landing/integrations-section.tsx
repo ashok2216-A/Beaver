@@ -15,6 +15,85 @@ const integrations = [
   { name: "Linear", description: "Streamline issue tracking and team updates through natural language." },
 ];
 
+function SignalWaveCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const frameRef = useRef(0);
+  const timeRef = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    const resize = () => {
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+      ctx.scale(dpr, dpr);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const COLORS = ["#eca8d6", "#a78bfa", "#67e8f9"];
+
+    const render = () => {
+      const W = canvas.offsetWidth;
+      const H = canvas.offsetHeight;
+      ctx.clearRect(0, 0, W, H);
+      const t = timeRef.current;
+
+      // Draw multiple overlapping signal waves
+      COLORS.forEach((color, ci) => {
+        const phase = (ci / COLORS.length) * Math.PI * 2;
+        const freq = 0.012 + ci * 0.003;
+        const amp = H * (0.12 + ci * 0.04);
+        const speed = 0.8 + ci * 0.3;
+        const yBase = H * 0.5 + (ci - 1) * H * 0.08;
+        const alpha = 0.4 - ci * 0.08;
+
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5 - ci * 0.3;
+        ctx.globalAlpha = alpha;
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = color;
+
+        for (let x = 0; x <= W; x += 2) {
+          const y = yBase + Math.sin(x * freq + t * speed + phase) * amp
+                         + Math.sin(x * freq * 2.3 + t * (speed * 0.7) + phase) * amp * 0.3;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Traveling dot on each wave
+        const dotX = ((t * speed * 80) % (W + 100)) - 50;
+        const dotY = yBase + Math.sin(dotX * freq + t * speed + phase) * amp
+                           + Math.sin(dotX * freq * 2.3 + t * (speed * 0.7) + phase) * amp * 0.3;
+        ctx.globalAlpha = 0.9;
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+      });
+
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+      timeRef.current += 0.016;
+      frameRef.current = requestAnimationFrame(render);
+    };
+    render();
+    return () => {
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(frameRef.current);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="w-full h-full" />;
+}
+
 export function IntegrationsSection() {
   const [isVisible, setIsVisible] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -59,16 +138,13 @@ export function IntegrationsSection() {
         </p>
       </div>
 
-      {/* Full-width image */}
-      <div className={`relative left-1/2 -translate-x-1/2 w-screen -mt-8 transition-all duration-1000 delay-200 ${
+      {/* Canvas signal wave */}
+      <div className={`relative left-1/2 -translate-x-1/2 w-screen h-[220px] -mt-8 transition-all duration-1000 delay-200 ${
         isVisible ? "opacity-100" : "opacity-0"
       }`}>
-        <img
-          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/connection-KeJwWPQvn6l0a7C48tCARYtNEdC92H.png"
-          alt=""
-          aria-hidden="true"
-          className="w-full h-auto object-cover"
-        />
+        <SignalWaveCanvas />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-transparent to-background/40 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-background pointer-events-none" />
       </div>
 
       {/* Integration grid */}

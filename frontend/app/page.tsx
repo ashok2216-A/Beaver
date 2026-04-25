@@ -7,6 +7,7 @@ import { IntegrationsSection } from "@/components/landing/integrations-section";
 import { DevelopersSection } from "@/components/landing/developers-section";
 import { TestimonialsSection } from "@/components/landing/testimonials-section";
 import { PricingSection } from "@/components/landing/pricing-section";
+import { SecurityLockerSection } from "@/components/landing/security-locker-section";
 import { SecuritySection } from "@/components/landing/security-section";
 import { CtaSection } from "@/components/landing/cta-section";
 import { FooterSection } from "@/components/landing/footer-section";
@@ -23,6 +24,7 @@ export default function Home() {
       <DevelopersSection />
       <TestimonialsSection />
       <PricingSection />
+      <SecurityLockerSection />
       <SecuritySection />
       <CtaSection />
       <FooterSection />
