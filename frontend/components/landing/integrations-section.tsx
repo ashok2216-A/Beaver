@@ -161,7 +161,7 @@ export function IntegrationsSection() {
               key={integration.name}
               className={`group relative overflow-hidden p-6 border transition-all duration-500 cursor-default ${
                 hoveredIndex === index
-                  ? "border-foreground bg-foreground/[0.04] scale-[1.02]"
+                  ? "border-foreground bg-white/[0.03] scale-[1.02]"
                   : "border-foreground/10 hover:border-foreground/30"
               } ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
               style={{ transitionDelay: `${index * 30 + 300}ms` }}
@@ -236,7 +236,7 @@ export function IntegrationsSection() {
           <div className="flex-1 relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-[#67e8f9]/30 to-[#a78bfa]/30 rounded-2xl blur opacity-0 group-hover:opacity-20 transition duration-500" />
             
-            <div className="relative h-full p-6 border border-dashed border-foreground/20 bg-foreground/[0.01] hover:bg-foreground/[0.03] transition-all duration-500 rounded-2xl text-center flex flex-col items-center justify-center">
+            <div className="relative h-full p-6 border border-dashed border-foreground/20 bg-black hover:bg-white/[0.02] transition-all duration-500 rounded-2xl text-center flex flex-col items-center justify-center">
               <div className="w-10 h-10 mb-4 rounded-full bg-gradient-to-br from-[#eca8d6]/20 via-[#a78bfa]/20 to-[#67e8f9]/20 flex items-center justify-center text-base font-bold">
                 +
               </div>

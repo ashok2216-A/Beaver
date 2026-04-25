@@ -3,6 +3,12 @@
 import { useEffect, useRef } from "react";
 import { ArrowUpRight } from "lucide-react";
 
+interface FooterLink {
+  name: string;
+  href: string;
+  badge?: string;
+}
+
 
 
 const footerLinks = {
@@ -12,21 +18,17 @@ const footerLinks = {
     { name: "Pricing", href: "#pricing" },
     { name: "Integrations", href: "#integrations" },
   ],
-  Developers: [
-    { name: "Documentation", href: "#" },
-    { name: "API Reference", href: "#" },
-    { name: "Status", href: "#" },
+  Resources: [
+    { name: "Documentation", href: "/docs" },
+    { name: "API Reference", href: "/api-reference" },
+    { name: "Security", href: "/security" },
+    { name: "Blog", href: "/blog" },
   ],
   Company: [
-    { name: "About", href: "#" },
-    { name: "Blog", href: "#" },
-    { name: "Careers", href: "#", badge: "Hiring" },
-    { name: "Contact", href: "#" },
-  ],
-  Legal: [
-    { name: "Privacy", href: "#" },
-    { name: "Terms", href: "#" },
-    { name: "Security", href: "#" },
+    { name: "About", href: "/about" },
+    { name: "Contact", href: "/contact" },
+    { name: "Privacy", href: "/privacy" },
+    { name: "Terms", href: "/terms" },
   ],
 };
 
@@ -76,14 +78,14 @@ export function FooterSection() {
               <div key={title}>
                 <h3 className="text-sm font-medium text-white mb-6">{title}</h3>
                 <ul className="space-y-4">
-                  {links.map((link) => (
+                  {(links as FooterLink[]).map((link) => (
                     <li key={link.name}>
                       <a
                         href={link.href}
                         className="text-sm text-white/40 hover:text-white transition-colors inline-flex items-center gap-2"
                       >
                         {link.name}
-                        {"badge" in link && link.badge && (
+                        {link.badge && (
                           <span className="text-xs px-2 py-0.5 bg-white text-black rounded-full">
                             {link.badge}
                           </span>

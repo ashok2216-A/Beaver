@@ -7,26 +7,29 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { ModeToggle } from "@/components/mode-toggle"
 import { 
-  LayoutDashboard, 
-  Bot, 
+  LayoutGrid, 
+  Cpu, 
   Settings, 
-  FileCode, 
-  MessageSquare,
-  BarChart3,
-  Key,
-  HelpCircle
+  Terminal, 
+  Sparkles,
+  Activity,
+  Fingerprint,
+  LifeBuoy,
+  Search
 } from "lucide-react"
+import { Input } from "@/components/ui/input"
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Agents", href: "/dashboard/agents", icon: Bot },
-  { name: "Playground", href: "/dashboard/playground", icon: MessageSquare },
-  { name: "API Keys", href: "/dashboard/api-keys", icon: Key },
-  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
-  { name: "Logs", href: "/dashboard/logs", icon: FileCode },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+  { name: "Agents", href: "/dashboard/agents", icon: Cpu },
+  { name: "Playground", href: "/dashboard/playground", icon: Sparkles },
+  { name: "API Keys", href: "/dashboard/api-keys", icon: Fingerprint },
+  { name: "Analytics", href: "/dashboard/analytics", icon: Activity },
+  { name: "Logs", href: "/dashboard/logs", icon: Terminal },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
-  { name: "Help", href: "/dashboard/help", icon: HelpCircle },
+  { name: "Help", href: "/dashboard/help", icon: LifeBuoy },
 ]
 
 export function DashboardHeader() {
@@ -47,8 +50,8 @@ export function DashboardHeader() {
             {/* Logo */}
             <div className="flex h-16 shrink-0 items-center px-6 border-b border-border">
               <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-lg">B</span>
+                <div className="w-8 h-8 bg-primary dark:bg-gradient-to-br dark:from-[#eca8d6] dark:via-[#a78bfa] dark:to-[#67e8f9] rounded-lg flex items-center justify-center">
+                  <span className="text-primary-foreground dark:text-white font-bold text-lg">B</span>
                 </div>
                 <span className="text-xl font-bold text-foreground">Beaver</span>
               </Link>
@@ -91,21 +94,34 @@ export function DashboardHeader() {
       {/* Separator */}
       <div className="h-6 w-px bg-border lg:hidden" />
 
+      {/* Search */}
+      <div className="flex-1 hidden md:block">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search agents, logs..." 
+            className="pl-10 bg-muted/40 border-none rounded-xl h-10"
+          />
+        </div>
+      </div>
+
       {/* Right side */}
-      <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6 justify-end">
+      <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6 justify-end items-center">
         <div className="flex items-center gap-x-4 lg:gap-x-6">
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
+          <Button variant="ghost" size="icon" className="relative rounded-xl">
             <Bell className="h-5 w-5 text-muted-foreground" />
             <span className="sr-only">View notifications</span>
           </Button>
+
+          {/* Theme Toggle */}
+          <ModeToggle />
 
           {/* Separator */}
           <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-border" />
 
           {/* User menu */}
           <UserButton 
-            afterSignOutUrl="/"
             appearance={{
               elements: {
                 avatarBox: "w-8 h-8"

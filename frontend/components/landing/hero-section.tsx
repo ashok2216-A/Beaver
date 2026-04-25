@@ -80,9 +80,9 @@ function NeuralBackground() {
 
       // Dark deep-space background gradient
       const bg = ctx.createLinearGradient(0, 0, W, H);
-      bg.addColorStop(0, "rgb(3, 3, 12)");
-      bg.addColorStop(0.5, "rgb(6, 4, 18)");
-      bg.addColorStop(1, "rgb(2, 6, 14)");
+      bg.addColorStop(0, "#000000");
+      bg.addColorStop(0.5, "#000000");
+      bg.addColorStop(1, "#000000");
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
 
@@ -231,7 +231,7 @@ export function HeroSection() {
   }, []);
 
   return (
-    <section className="relative min-h-screen flex flex-col justify-center items-center overflow-hidden bg-[rgb(3,3,12)]">
+    <section className="relative min-h-screen flex flex-col justify-center items-center overflow-hidden bg-black">
       {/* Neural Network Canvas */}
       <NeuralBackground />
 

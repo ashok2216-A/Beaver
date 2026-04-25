@@ -211,7 +211,7 @@ export function FeaturesSection() {
           {features.slice(1).map((feature, index) => (
             <div
               key={feature.number}
-              className={`p-8 border border-foreground/10 bg-foreground/[0.02] transition-all duration-700 hover:border-foreground/30 ${
+              className={`p-8 border border-foreground/10 bg-black transition-all duration-700 hover:border-foreground/30 ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
               }`}
               style={{ transitionDelay: `${(index + 1) * 100}ms` }}

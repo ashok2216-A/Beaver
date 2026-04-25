@@ -89,7 +89,7 @@ export function DemoChatAnimation() {
       <div className="relative group">
         <div className="absolute -inset-1 bg-gradient-to-r from-[#eca8d6]/10 via-[#a78bfa]/10 to-[#67e8f9]/10 rounded-[20px] blur-xl opacity-50" />
         
-        <div className="relative bg-[#050505] border border-white/10 rounded-[16px] overflow-hidden shadow-2xl flex flex-col h-[480px]">
+        <div className="relative bg-black border border-white/10 rounded-[16px] overflow-hidden shadow-2xl flex flex-col h-[480px]">
           
           {/* Header */}
           <div className="px-5 py-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
@@ -182,7 +182,7 @@ export function DemoChatAnimation() {
               <input 
                 type="text" 
                 placeholder="Ask your agent anything..."
-                className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-11 py-3.5 text-sm text-white/40 focus:outline-none focus:border-white/20 transition-all"
+                className="w-full bg-black border border-white/10 rounded-xl px-11 py-3.5 text-sm text-white/40 focus:outline-none focus:border-white/20 transition-all"
                 readOnly
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20">

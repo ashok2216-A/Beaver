@@ -196,7 +196,7 @@ export function InfrastructureSection() {
               onClick={() => setActiveStep(index)}
               className={`relative text-left p-8 lg:p-10 border transition-all duration-500 ${
                 activeStep === index 
-                  ? "border-foreground/30 bg-foreground/[0.04]" 
+                  ? "border-foreground/30 bg-black" 
                   : "border-foreground/10 hover:border-foreground/20"
               } ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
               style={{ transitionDelay: `${index * 100}ms` }}

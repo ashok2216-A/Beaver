@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 
 const navLinks = [
-  { name: "Features", href: "#features" },
-  { name: "Playground", href: "#playground" },
-  { name: "Architecture", href: "#architecture" },
-  { name: "Integrations", href: "#integrations" },
-  { name: "Solutions", href: "#solutions" },
-  { name: "Pricing", href: "#pricing" },
+  { name: "Features", href: "/#features" },
+  { name: "Docs", href: "/docs" },
+  { name: "Architecture", href: "/#architecture" },
+  { name: "Integrations", href: "/#integrations" },
+  { name: "Solutions", href: "/#solutions" },
+  { name: "Pricing", href: "/#pricing" },
 ];
 
 export function Navigation() {
@@ -47,9 +47,9 @@ export function Navigation() {
           }`}
         >
           {/* Logo */}
-          <a href="#" className="flex items-center gap-2 group">
+          <Link href="/" className="flex items-center gap-2 group">
             <span className={`font-display tracking-tight transition-all duration-500 ${isScrolled ? "text-xl text-foreground" : "text-2xl text-white"}`}>Beaver</span>
-          </a>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-12">

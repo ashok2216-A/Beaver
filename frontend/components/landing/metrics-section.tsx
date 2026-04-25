@@ -348,7 +348,7 @@ export function MetricsSection() {
         {/* Metrics grid */}
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Large metric */}
-          <div className={`lg:col-span-1 bg-foreground/[0.02] border border-foreground/10 p-10 lg:p-14 transition-all duration-700 ${
+          <div className={`p-8 border border-foreground/10 bg-black transition-all duration-700 hover:border-foreground/30 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
           }`}>
             <div className="text-4xl md:text-5xl lg:text-6xl font-display tracking-tight mb-4 whitespace-nowrap overflow-hidden">
@@ -365,7 +365,7 @@ export function MetricsSection() {
           {metrics.slice(1).map((metric, index) => (
             <div
               key={metric.label}
-              className={`bg-foreground/[0.02] border border-foreground/10 p-8 flex flex-col items-start justify-between gap-6 transition-all duration-700 ${
+              className={`bg-black border border-foreground/10 p-8 flex flex-col items-start justify-between gap-6 transition-all duration-700 ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
               }`}
               style={{ transitionDelay: `${(index + 1) * 100}ms` }}

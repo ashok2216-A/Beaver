@@ -241,7 +241,7 @@ export function DevelopersSection() {
               onClick={() => setActiveIndex(index)}
               className={`relative text-left p-8 border transition-all duration-500 ${
                 activeIndex === index 
-                  ? "border-foreground/30 bg-foreground/[0.04]" 
+                  ? "border-foreground/30 bg-white/[0.03]" 
                   : "border-foreground/10 hover:border-foreground/20"
               } ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
               style={{ transitionDelay: `${index * 100 + 200}ms` }}

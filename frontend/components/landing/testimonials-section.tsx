@@ -61,9 +61,9 @@ export function TestimonialsSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative py-32 lg:py-40 bg-foreground text-background overflow-hidden">
+    <section ref={sectionRef} className="relative py-32 lg:py-40 bg-black text-white overflow-hidden">
       {/* Background pattern */}
-      <div className="absolute inset-0 font-mono text-[10px] text-background/[0.02] leading-tight overflow-hidden whitespace-pre select-none">
+      <div className="absolute inset-0 font-mono text-[10px] text-white/[0.02] leading-tight overflow-hidden whitespace-pre select-none">
         {hasMounted && Array.from({ length: 60 }, (_, i) => 
           Array.from({ length: 100 }, () => 
             Math.random() > 0.7 ? '"' : ' '
@@ -75,15 +75,15 @@ export function TestimonialsSection() {
         {/* Header */}
         <div className="flex items-center justify-between mb-20">
           <div>
-            <span className="inline-flex items-center gap-3 text-sm font-mono text-background/40 mb-4">
-              <span className="w-12 h-px bg-background/20" />
+            <span className="inline-flex items-center gap-3 text-sm font-mono text-white/40 mb-4">
+              <span className="w-12 h-px bg-white/20" />
               Loved by developers
             </span>
             <h2 className={`text-4xl lg:text-5xl font-display transition-all duration-1000 ${
               isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             }`}>
               What developers
-              <span className="text-background/40"> are saying.</span>
+              <span className="text-white/40"> are saying.</span>
             </h2>
           </div>
           
@@ -91,13 +91,13 @@ export function TestimonialsSection() {
           <div className="hidden lg:flex items-center gap-2">
             <button
               onClick={goPrev}
-              className="p-4 border border-background/20 hover:bg-background/10 transition-colors"
+              className="p-4 border border-white/20 hover:bg-white/10 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <button
               onClick={goNext}
-              className="p-4 border border-background/20 hover:bg-background/10 transition-colors"
+              className="p-4 border border-white/20 hover:bg-white/10 transition-colors"
             >
               <ArrowRight className="w-5 h-5" />
             </button>
@@ -109,7 +109,7 @@ export function TestimonialsSection() {
           {/* Quote side */}
           <div className="lg:col-span-8 relative">
             {/* Large quote mark */}
-            <span className="absolute -left-4 -top-8 text-[200px] font-display text-background/5 leading-none select-none">
+            <span className="absolute -left-4 -top-8 text-[200px] font-display text-white/5 leading-none select-none">
               &ldquo;
             </span>
             
@@ -123,14 +123,14 @@ export function TestimonialsSection() {
 
               {/* Author */}
               <div className="mt-12 flex items-center gap-6">
-                <div className="w-14 h-14 rounded-full bg-background/10 flex items-center justify-center">
+                <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center border border-white/5">
                   <span className="font-display text-xl">
                     {activeTestimonial.author.charAt(0)}
                   </span>
                 </div>
                 <div>
                   <p className="text-lg font-medium">{activeTestimonial.author}</p>
-                  <p className="text-background/60">
+                  <p className="text-white/60">
                     {activeTestimonial.role}
                   </p>
                 </div>
@@ -145,10 +145,10 @@ export function TestimonialsSection() {
                 <button
                   key={idx}
                   onClick={() => setActiveIndex(idx)}
-                  className="flex-1 h-1 bg-background/20 overflow-hidden"
+                  className="flex-1 h-1 bg-white/20 overflow-hidden"
                 >
                   <div 
-                    className={`h-full bg-background transition-all duration-300 ${
+                    className={`h-full bg-white transition-all duration-300 ${
                       idx === activeIndex ? "w-full" : idx < activeIndex ? "w-full opacity-50" : "w-0"
                     }`}
                     style={idx === activeIndex ? { animation: "progress 8s linear forwards" } : {}}
@@ -165,8 +165,8 @@ export function TestimonialsSection() {
                   onClick={() => setActiveIndex(idx)}
                   className={`px-4 py-2 text-sm border transition-all ${
                     idx === activeIndex 
-                      ? "border-background/40 text-background" 
-                      : "border-background/10 text-background/40 hover:border-background/30"
+                      ? "border-white/40 text-white" 
+                      : "border-white/10 text-white/40 hover:border-white/30"
                   }`}
                 >
                   {t.author}
