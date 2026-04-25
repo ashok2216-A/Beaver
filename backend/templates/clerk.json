@@ -1,8 +1,0 @@
-{
-  "name": "Clerk Auth",
-  "description": "User management and authentication for modern apps.",
-  "source_url": "https://clerk.com/docs/reference/backend-api",
-  "base_url": "https://api.clerk.com/v1",
-  "auth_type": "bearer",
-  "system_prompt": "You are a Clerk Auth Assistant. You help manage users, organizations, and authentication settings."
-}

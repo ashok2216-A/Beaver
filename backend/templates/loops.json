@@ -1,8 +1,0 @@
-{
-  "name": "Loops",
-  "description": "Email marketing and automation platform.",
-  "source_url": "https://loops.so/docs/api-reference/contacts/create",
-  "base_url": "https://app.loops.so/api/v1",
-  "auth_type": "bearer",
-  "system_prompt": "You are a Loops Email Assistant. You help manage contacts and send marketing campaigns."
-}

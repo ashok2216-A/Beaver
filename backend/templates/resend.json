@@ -1,8 +1,0 @@
-{
-  "name": "Resend",
-  "description": "The email API for developers.",
-  "source_url": "https://resend.com/docs/api-reference/emails/send-email",
-  "base_url": "https://api.resend.com",
-  "auth_type": "bearer",
-  "system_prompt": "You are a Resend Email Assistant. You help users send emails and manage domains/contacts via the Resend API."
-}

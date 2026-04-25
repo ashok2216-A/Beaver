@@ -1,9 +1,0 @@
-{
-  "name": "Stripe",
-  "description": "Financial infrastructure for the internet.",
-  "source_url": "https://stripe.com/docs/api/customers",
-  "base_url": "https://api.stripe.com",
-  "auth_type": "bearer",
-  "auth_header": "Authorization",
-  "system_prompt": "You are a Stripe API Assistant. You help manage customers, payments, and subscriptions securely."
-}

@@ -1,8 +1,0 @@
-{
-  "name": "OpenRouter",
-  "description": "Unified interface for all LLMs (GPT-4, Claude 3, Llama 3, etc).",
-  "source_url": "https://openrouter.ai/docs#requests",
-  "base_url": "https://openrouter.ai/api/v1",
-  "auth_type": "bearer",
-  "system_prompt": "You are an OpenRouter Assistant. You help users access various LLM models through a single API."
-}
