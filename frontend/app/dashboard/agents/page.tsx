@@ -98,13 +98,13 @@ export default function AgentsPage() {
       {loading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map(i => (
-            <Card key={i} className="rounded-3xl border-none bg-card animate-pulse h-[240px]" />
+            <Card key={i} className="rounded-3xl bg-card animate-pulse h-[240px]" />
           ))}
         </div>
       ) : filteredAgents.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredAgents.map((agent) => (
-            <Card key={agent.id} className="rounded-3xl border-none bg-card shadow-sm hover:shadow-glow-sm transition-all duration-300 overflow-hidden group">
+            <Card key={agent.id} className="rounded-3xl bg-card shadow-sm hover:shadow-glow-sm transition-all duration-300 overflow-hidden group">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-300">
@@ -174,7 +174,7 @@ export default function AgentsPage() {
           ))}
         </div>
       ) : (
-        <Card className="rounded-3xl border-none bg-card shadow-sm overflow-hidden">
+        <Card className="rounded-3xl bg-card shadow-sm overflow-hidden">
           <div className="p-12 flex flex-col items-center justify-center text-center min-h-[400px]">
             <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-6">
               <Bot className="w-10 h-10 text-muted-foreground" />

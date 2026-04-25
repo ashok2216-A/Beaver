@@ -134,7 +134,7 @@ export default function DashboardPage() {
       {/* Stats Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card, i) => (
-          <Card key={i} className="rounded-3xl border-none bg-card shadow-sm hover:shadow-md transition-shadow group">
+          <Card key={i} className="rounded-3xl bg-card shadow-sm hover:shadow-md transition-shadow group">
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-8">
                 <div className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110", card.bg)}>
@@ -180,7 +180,7 @@ export default function DashboardPage() {
         ) : agents.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {agents.slice(0, 3).map((agent) => (
-              <Card key={agent.id} className="rounded-3xl border-none bg-card shadow-sm hover:shadow-md transition-all group overflow-hidden flex flex-col">
+              <Card key={agent.id} className="rounded-3xl bg-card shadow-sm hover:shadow-md transition-all group overflow-hidden flex flex-col">
                 <CardContent className="p-6 flex-1">
                   <div className="flex items-start justify-between mb-4">
                     <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center border border-primary/10">
@@ -218,7 +218,7 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : (
-          <Card className="rounded-3xl border-none bg-card shadow-sm overflow-hidden">
+          <Card className="rounded-3xl bg-card shadow-sm overflow-hidden">
             <div className="p-8 flex flex-col items-center justify-center text-center min-h-[300px] border-2 border-dashed border-muted rounded-3xl m-4">
               <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
                 <Bot className="w-8 h-8 text-muted-foreground" />

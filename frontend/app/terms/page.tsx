@@ -151,7 +151,7 @@ export default function TermsOfServicePage() {
       <Navigation />
       
       <main className="pt-32 pb-24">
-        <div className="container max-w-4xl">
+        <div className="container mx-auto max-w-4xl">
           {/* Header */}
           <div className="mb-16">
             <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mb-4">Legal Agreement</p>

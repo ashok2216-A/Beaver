@@ -42,7 +42,7 @@ export default function AboutPage() {
       <Navigation />
       
       <main className="pt-32 pb-24">
-        <div className="container max-w-5xl">
+        <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-16 space-y-6">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider">
               Our Mission
@@ -59,7 +59,7 @@ export default function AboutPage() {
           <div className="relative rounded-[3rem] overflow-hidden mb-24 aspect-[21/9] border border-white/5 shadow-2xl">
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10" />
             <img 
-              src="https://images.unsplash.com/photo-1522071820081-00fd8e0c9048?auto=format&fit=crop&q=80&w=1200" 
+              src="/images/team-collab.png" 
               alt="Team collaboration" 
               className="w-full h-full object-cover"
             />

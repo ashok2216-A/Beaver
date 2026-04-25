@@ -254,7 +254,7 @@ export default function DocsPage() {
     <div className="min-h-screen bg-background pitch-dark">
       <Navigation />
       
-      <div className="pt-32 pb-32 container max-w-[1400px]">
+      <div className="pt-32 pb-32 container mx-auto max-w-[1400px]">
         <div className="grid lg:grid-cols-[300px_1fr] gap-16">
           {/* Sidebar */}
           <aside className="hidden lg:block sticky top-32 h-fit">

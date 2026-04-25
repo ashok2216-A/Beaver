@@ -11,7 +11,7 @@ export default function SecurityPage() {
       <Navigation />
       
       <main className="pt-32 pb-32">
-        <div className="container max-w-5xl">
+        <div className="container mx-auto max-w-5xl">
           <div className="mb-20 text-center space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest">
               Trust & Safety

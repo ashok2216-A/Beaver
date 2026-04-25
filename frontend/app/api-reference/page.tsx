@@ -166,7 +166,7 @@ export default function ApiReferencePage() {
     <div className="min-h-screen bg-background pitch-dark">
       <Navigation />
       
-      <main className="pt-32 pb-32 container max-w-[1400px]">
+      <main className="pt-32 pb-32 container mx-auto max-w-[1400px]">
         {/* Header */}
         <div className="mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest mb-6">

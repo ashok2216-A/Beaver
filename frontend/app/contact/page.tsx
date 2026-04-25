@@ -12,7 +12,7 @@ export default function ContactPage() {
       <Navigation />
       
       <main className="pt-32 pb-32">
-        <div className="container max-w-6xl">
+        <div className="container mx-auto max-w-6xl">
           <div className="grid lg:grid-cols-2 gap-16">
             {/* Left Side: Contact Info */}
             <div className="space-y-12">
