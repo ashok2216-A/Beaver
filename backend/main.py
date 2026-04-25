@@ -149,7 +149,7 @@ app.include_router(
 
 
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 import os
 
 # ─── Health check ─────────────────────────────────────────────────────────────
@@ -159,33 +159,51 @@ def health():
     return {"status": "ok"}
 
 # ─── Static Files & SPA Catch-all ─────────────────────────────────────────────
-# This must be at the VERY END after all API routes
 
-# Determine the path to the frontend build directory
-# Level 1: backend/
-# Level 2: api2bot-studio/
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-frontend_dist = os.path.join(base_dir, "frontend", "dist")
+# Attempt to find the frontend dist folder in multiple locations
+possible_dist_paths = [
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist"),
+    os.path.join(os.getcwd(), "frontend", "dist"),
+    os.path.join(os.getcwd(), "dist"),
+]
 
-if os.path.exists(frontend_dist):
-    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+frontend_dist = None
+for path in possible_dist_paths:
+    if os.path.exists(path) and os.path.exists(os.path.join(path, "index.html")):
+        frontend_dist = path
+        log.info(f"✅ Found frontend at: {path}")
+        break
+
+if frontend_dist:
+    # Mount assets folder if it exists
+    assets_path = os.path.join(frontend_dist, "assets")
+    if os.path.exists(assets_path):
+        app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
 
     @app.get("/{full_path:path}")
-    async def catch_all(full_path: str):
-        # If the path looks like a file (has an extension), don't serve index.html
-        if "." in full_path.split("/")[-1]:
-            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    async def catch_all(request: Request, full_path: str):
+        # 1. Skip API routes (though they are matched first, this is a safety net)
+        if full_path.startswith("api/"):
+            return JSONResponse(status_code=404, content={"detail": "API route not found"})
             
+        # 2. Check if it's a static file request (has an extension)
+        if "." in full_path.split("/")[-1]:
+            # Try to serve the file directly if it exists in dist
+            file_path = os.path.join(frontend_dist, full_path)
+            if os.path.exists(file_path):
+                return FileResponse(file_path)
+            return JSONResponse(status_code=404, content={"detail": f"File {full_path} not found"})
+            
+        # 3. Serve index.html for all other routes (SPA routing)
         index_path = os.path.join(frontend_dist, "index.html")
-        if os.path.exists(index_path):
-            return FileResponse(index_path)
-        return JSONResponse(status_code=404, content={"detail": "Frontend not built"})
+        return FileResponse(index_path)
 else:
+    log.warning("⚠️ Frontend dist not found. Operating in API-only mode.")
     @app.get("/")
     def root():
         return {
             "service": "api2bot-studio",
             "version": "1.0.0",
             "status":  "running",
-            "message": "Frontend dist not found. Serve API only."
+            "message": "Frontend not found. Please build frontend first."
         }
