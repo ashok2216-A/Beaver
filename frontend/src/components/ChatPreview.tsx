@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Sparkles, User } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { Sparkles, User, Send } from "lucide-react";
 
 interface ScriptMessage {
   role: "user" | "assistant";
@@ -9,53 +8,55 @@ interface ScriptMessage {
 }
 
 const SEQUENCE: ScriptMessage[] = [
-  { 
-    role: "user", 
-    text: "Show me my last 3 customers from Stripe" 
+  {
+    role: "user",
+    text: "Show me my last 3 customers from Stripe",
   },
-  { 
-    role: "assistant", 
+  {
+    role: "assistant",
     text: "Here are your 3 most recent customers:",
     extra: (
-      <div className="mt-3 space-y-2 rounded-lg border border-border bg-background p-3 text-[10px] sm:text-xs font-mono shadow-sm">
-        <div className="flex justify-between border-b border-border/50 pb-1 flex-wrap gap-1">
-          <span className="text-muted-foreground mr-4">cus_NffrFeUfNV2Hib</span>
-          <span className="font-medium">acme@inc.com</span>
-        </div>
-        <div className="flex justify-between border-b border-border/50 pb-1 flex-wrap gap-1">
-          <span className="text-muted-foreground mr-4">cus_NffrAR2Hib2NV</span>
-          <span className="font-medium">jane@stark.io</span>
-        </div>
-        <div className="flex justify-between flex-wrap gap-1">
-          <span className="text-muted-foreground mr-4">cus_NffrZ8Hi2NbAR</span>
-          <span className="font-medium">tom@nova.app</span>
-        </div>
+      <div className="mt-4 rounded-lg border border-border/50 bg-background/50 overflow-hidden">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border/50 bg-muted/30">
+              <th className="px-3 py-2 text-left font-medium text-muted-foreground">ID</th>
+              <th className="px-3 py-2 text-left font-medium text-muted-foreground">Email</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/30">
+            <tr>
+              <td className="px-3 py-2 font-mono text-muted-foreground">cus_NffrFeUfNV2Hib</td>
+              <td className="px-3 py-2">acme@inc.com</td>
+            </tr>
+            <tr>
+              <td className="px-3 py-2 font-mono text-muted-foreground">cus_NffrAR2Hib2NV</td>
+              <td className="px-3 py-2">jane@stark.io</td>
+            </tr>
+            <tr>
+              <td className="px-3 py-2 font-mono text-muted-foreground">cus_NffrZ8Hi2NbAR</td>
+              <td className="px-3 py-2">tom@nova.app</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    )
-  },
-  { 
-    role: "user", 
-    text: "Refund the last charge for the first one" 
-  },
-  { 
-    role: "assistant", 
-    text: "Refunded $128.00 to acme@inc.com via POST /v1/refunds. Receipt sent ✅" 
+    ),
   },
   {
     role: "user",
-    text: "Can you summarize our recent Stripe activity?"
+    text: "Refund the last charge for the first one",
   },
   {
     role: "assistant",
-    text: "Over the last 24h: 12 new customers, 3 refunds processed, and $4.2k net revenue. 📈"
+    text: "Done! Refunded $128.00 to acme@inc.com via POST /v1/refunds. Receipt sent.",
   },
   {
     role: "user",
-    text: "Awesome. Lockdown all endpoints for now."
+    text: "Can you summarize our recent Stripe activity?",
   },
   {
     role: "assistant",
-    text: "Sure, I've locked down all endpoints. You can unlock them anytime by clicking the lock icon in the top right corner."
+    text: "Last 24h: 12 new customers, 3 refunds processed, $4.2k net revenue.",
   },
 ];
 
@@ -66,129 +67,112 @@ export const ChatPreview = () => {
   const [isTyping, setIsTyping] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // EFFECT 1: Handle individual character typing
+  // Typing animation
   useEffect(() => {
     if (!isTyping) return;
 
     const currentMessage = SEQUENCE[activeIndex];
-    
-    // Typing animation only for user messages
+
     if (currentMessage.role === "assistant") {
       setTypedText(currentMessage.text);
       return;
     }
 
     if (typedText.length < currentMessage.text.length) {
-      const lastChar = typedText.slice(-1);
-      let baseDelay = 30;
-      if (lastChar === "," || lastChar === ":") baseDelay = 250;
-      if (lastChar === ".") baseDelay = 400;
-      
       const timeout = setTimeout(() => {
         setTypedText(currentMessage.text.slice(0, typedText.length + 1));
-      }, baseDelay + Math.random() * 30);
-      
+      }, 30 + Math.random() * 30);
+
       return () => clearTimeout(timeout);
     }
   }, [typedText, isTyping, activeIndex]);
 
-  // EFFECT 2: Handle transitions between messages
+  // Message transitions
   useEffect(() => {
     const currentMessage = SEQUENCE[activeIndex];
-    
-    // Check if current message actually finished typing
+
     if (isTyping && typedText === currentMessage.text) {
       const nextIndex = activeIndex + 1;
       const isLast = nextIndex >= SEQUENCE.length;
-      
-      // Delay before switching to next step
-      const advanceDelay = activeIndex % 2 === 0 ? 800 : 2500;
-      const endDelay = 5000;
+      const delay = activeIndex % 2 === 0 ? 800 : 2000;
 
       const timeout = setTimeout(() => {
-        setIsTyping(false); 
-        setHistory(prev => [...prev, currentMessage]);
+        setIsTyping(false);
+        setHistory((prev) => [...prev, currentMessage]);
         setTypedText("");
 
-        // Schedule start of next message
         setTimeout(() => {
           if (!isLast) {
             setActiveIndex(nextIndex);
             setIsTyping(true);
           } else {
-            // Restart loop
             setHistory([]);
             setActiveIndex(0);
             setIsTyping(true);
           }
-        }, 500); // Brief moment of silence between bubbles
-      }, isLast ? endDelay : advanceDelay);
+        }, 400);
+      }, isLast ? 4000 : delay);
 
       return () => clearTimeout(timeout);
     }
   }, [typedText, activeIndex, isTyping]);
 
-  // EFFECT 3: Smoothly slide down when new messages are added or being typed
+  // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({
         top: scrollRef.current.scrollHeight,
-        behavior: "smooth"
+        behavior: "smooth",
       });
     }
-  }, [history, typedText, isTyping]);
+  }, [history, typedText]);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-elevated transition-colors hover:shadow-glow/20">
-      {/* Window chrome */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-secondary/40 backdrop-blur-sm">
+    <div className="rounded-xl border border-border/50 bg-card overflow-hidden shadow-xl">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border/50 px-4 py-3 bg-muted/30">
         <div className="flex items-center gap-2">
-          <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[hsl(0_72%_65%)] shadow-sm" />
-          <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[hsl(38_92%_60%)] shadow-sm" />
-          <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[hsl(152_69%_50%)] shadow-sm" />
+          <span className="h-3 w-3 rounded-full bg-red-500/80" />
+          <span className="h-3 w-3 rounded-full bg-yellow-500/80" />
+          <span className="h-3 w-3 rounded-full bg-green-500/80" />
         </div>
-        <div className="text-xs font-semibold text-muted-foreground tracking-wide">Stripe API Agent Preview</div>
-        <div className="flex items-center gap-1.5 text-xs text-success font-bold">
-          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-success animate-pulse-soft" />
+        <span className="text-xs font-medium text-muted-foreground">Stripe API Agent</span>
+        <div className="flex items-center gap-1.5 text-xs font-medium text-green-500">
+          <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
           Live
         </div>
       </div>
 
       {/* Messages */}
-      <div 
+      <div
         ref={scrollRef}
-        className="h-[430px] overflow-y-auto space-y-5 bg-gradient-card p-6 flex flex-col pt-10 modern-scrollbar"
+        className="h-[380px] overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-card to-background"
       >
-        <div className="flex flex-col gap-5">
-          {history.map((msg, i) => (
-            <Message key={`hist-${i}`} role={msg.role} text={msg.text} extra={msg.extra} />
-          ))}
-          {isTyping && (
-             <Message 
-              key={`active-${activeIndex}`}
-              role={SEQUENCE[activeIndex].role} 
-              text={typedText} 
-              isTyping={SEQUENCE[activeIndex].role === "user"} 
-              extra={SEQUENCE[activeIndex].extra}
-             />
-          )}
-        </div>
+        {history.map((msg, i) => (
+          <Message key={`hist-${i}`} role={msg.role} text={msg.text} extra={msg.extra} />
+        ))}
+        {isTyping && (
+          <Message
+            key={`active-${activeIndex}`}
+            role={SEQUENCE[activeIndex].role}
+            text={typedText}
+            isTyping={SEQUENCE[activeIndex].role === "user"}
+            extra={typedText === SEQUENCE[activeIndex].text ? SEQUENCE[activeIndex].extra : undefined}
+          />
+        )}
       </div>
 
       {/* Input */}
-      <div className="border-t border-border p-3 bg-background/50 backdrop-blur-sm">
-        <div className="flex items-center gap-2 rounded-xl border border-border bg-secondary/40 px-3 py-2.5 shadow-inner">
-          <div className="flex-1 text-sm text-muted-foreground/60 italic min-h-[1.25rem]">
-            {activeIndex % 2 === 0 && isTyping && typedText === "" ? (
-               <span className="flex items-center gap-1">
-                 Generating response<span className="flex gap-0.5"><span className="animate-bounce">.</span><span className="animate-bounce [animation-delay:0.2s]">.</span><span className="animate-bounce [animation-delay:0.4s]">.</span></span>
-               </span>
-            ) : "Ask your agent anything..."}
-          </div>
-          <button 
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary text-primary-foreground shadow-glow"
-          >
-            <Sparkles className="h-4 w-4" />
+      <div className="border-t border-border/50 p-4 bg-background/50">
+        <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/30 px-4 py-3">
+          <input
+            type="text"
+            placeholder="Ask your agent anything..."
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+            readOnly
+          />
+          <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90">
+            <Send className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -196,45 +180,42 @@ export const ChatPreview = () => {
   );
 };
 
-const Message = ({ 
-  role, 
-  text, 
-  extra, 
-  isTyping 
-}: { 
-  role: "user" | "assistant"; 
-  text: string; 
+const Message = ({
+  role,
+  text,
+  extra,
+  isTyping,
+}: {
+  role: "user" | "assistant";
+  text: string;
   extra?: React.ReactNode;
   isTyping?: boolean;
 }) => {
   const isUser = role === "user";
-  
+
   return (
-    <div className={`flex gap-3 ${isUser ? "flex-row-reverse text-right" : ""}`}>
+    <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
       <div
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-md ${
-          isUser ? "bg-secondary text-foreground" : "bg-gradient-primary text-primary-foreground"
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+          isUser
+            ? "bg-muted text-muted-foreground"
+            : "bg-primary text-primary-foreground"
         }`}
       >
-        {isUser ? <User className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+        {isUser ? <User className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
       </div>
       <div
-        className={`max-w-[85%] rounded-2xl px-5 py-3 text-sm leading-relaxed relative ${
+        className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
           isUser
-            ? "bg-primary text-primary-foreground rounded-tr-none shadow-soft"
-            : "bg-background border border-border rounded-tl-none shadow-sm"
+            ? "bg-primary text-primary-foreground rounded-tr-md"
+            : "bg-muted/50 border border-border/50 rounded-tl-md"
         }`}
       >
-        <span className="block">{text}</span>
+        <span>{text}</span>
         {isTyping && (
-          <span className="absolute bottom-4 right-2 inline-block w-1.5 h-4 bg-primary/40 animate-pulse align-middle" />
+          <span className="ml-0.5 inline-block w-0.5 h-4 bg-current animate-pulse" />
         )}
-        
-        {extra && (
-          <div className="overflow-hidden">
-            {extra}
-          </div>
-        )}
+        {extra}
       </div>
     </div>
   );
