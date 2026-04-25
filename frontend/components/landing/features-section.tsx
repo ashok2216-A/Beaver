@@ -99,8 +99,8 @@ export function FeaturesSection() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 bg-[#eca8d6]/10 flex items-center justify-center rounded-lg">
-                  <Brain className="w-6 h-6 text-[#eca8d6]" />
+                <div className="w-12 h-12 bg-gradient-to-br from-[#eca8d6]/10 via-[#a78bfa]/10 to-[#67e8f9]/10 flex items-center justify-center rounded-lg border border-[#a78bfa]/20">
+                  <Brain className="w-6 h-6 text-[#a78bfa]" />
                 </div>
                 <span className="font-mono text-sm text-muted-foreground">{features[0].number}</span>
               </div>
@@ -116,11 +116,11 @@ export function FeaturesSection() {
                 {features[0].steps?.map((step, index) => (
                   <div key={step} className="flex items-center gap-4">
                     <div className={`flex items-center gap-2 transition-all duration-300 ${
-                      activeStep === index ? "text-[#eca8d6]" : "text-muted-foreground"
+                      activeStep === index ? "text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]" : "text-muted-foreground"
                     }`}>
                       <span className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm font-mono transition-all duration-300 ${
                         activeStep === index 
-                          ? "border-[#eca8d6] bg-[#eca8d6]/10" 
+                          ? "border-[#a78bfa]/30 bg-gradient-to-br from-[#eca8d6]/10 via-[#a78bfa]/10 to-[#67e8f9]/10 text-white" 
                           : "border-foreground/20"
                       }`}>
                         {String(index + 1).padStart(2, "0")}
@@ -129,7 +129,7 @@ export function FeaturesSection() {
                     </div>
                     {index < 3 && (
                       <div className={`w-8 h-px transition-colors duration-300 ${
-                        activeStep > index ? "bg-[#eca8d6]" : "bg-foreground/20"
+                        activeStep > index ? "bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]" : "bg-foreground/20"
                       }`} />
                     )}
                   </div>

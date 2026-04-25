@@ -195,7 +195,7 @@ function DotGraph({
         ctx.beginPath();
         ctx.arc(x, dotY, r, 0, Math.PI * 2);
         ctx.fillStyle = color === "green"
-          ? `rgba(236, 168, 214, ${alpha})`
+          ? `rgba(167, 139, 250, ${alpha})`
           : `rgba(255, 255, 255, ${alpha})`;
         ctx.fill();
       }
@@ -247,8 +247,8 @@ export function MetricsSection() {
         <div className="grid lg:grid-cols-12 gap-8 mb-20 lg:mb-32">
           <div className="lg:col-span-8 lg:col-start-1">
             <div className="flex items-center gap-4 mb-6">
-              <span className="flex items-center gap-2 px-3 py-1 bg-[#eca8d6]/10 text-[#eca8d6] text-xs font-mono">
-                <span className="w-2 h-2 rounded-full bg-[#eca8d6] animate-pulse" />
+              <span className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-[#eca8d6]/10 via-[#a78bfa]/10 to-[#67e8f9]/10 text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9] text-xs font-mono border border-[#a78bfa]/20">
+                <span className="w-2 h-2 rounded-full bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9] animate-pulse" />
                 LIVE
               </span>
               <span className="text-sm font-mono text-muted-foreground">

@@ -108,17 +108,17 @@ export function DevelopersSection() {
             >
               <div className={`w-12 h-12 mb-6 flex items-center justify-center border rounded-lg transition-all duration-300 ${
                 activeIndex === index 
-                  ? "border-[#eca8d6] bg-[#eca8d6]/10 text-[#eca8d6]" 
+                  ? "border-[#a78bfa]/30 bg-gradient-to-br from-[#eca8d6]/10 via-[#a78bfa]/10 to-[#67e8f9]/10" 
                   : "border-foreground/10 text-muted-foreground"
               }`}>
-                <solution.icon className="w-6 h-6" />
+                <solution.icon className={`w-6 h-6 ${activeIndex === index ? "text-[#a78bfa]" : ""}`} />
               </div>
               
               <h3 className="font-medium mb-3 leading-tight">{solution.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">{solution.description}</p>
 
               {/* Active indicator */}
-              <div className={`absolute bottom-0 left-0 right-0 h-1 bg-[#eca8d6] transition-transform duration-500 origin-left ${
+              <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9] transition-transform duration-500 origin-left ${
                 activeIndex === index ? "scale-x-100" : "scale-x-0"
               }`} />
             </button>

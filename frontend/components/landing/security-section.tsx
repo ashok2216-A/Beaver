@@ -70,7 +70,7 @@ export function SecuritySection() {
         {/* FAQ Accordion */}
         <div className="max-w-3xl mx-auto">
           <div className="mb-8">
-            <span className="text-sm font-mono text-[#eca8d6]">FAQ</span>
+            <span className="text-sm font-mono text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]">FAQ</span>
           </div>
           
           {faqs.map((faq, index) => (
@@ -86,7 +86,7 @@ export function SecuritySection() {
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
                 className="w-full py-6 flex items-center justify-between text-left group"
               >
-                <span className="text-lg font-medium group-hover:text-[#eca8d6] transition-colors">
+                <span className="text-lg font-medium group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-[#eca8d6] group-hover:via-[#a78bfa] group-hover:to-[#67e8f9] transition-all">
                   {faq.question}
                 </span>
                 <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform duration-300 ${

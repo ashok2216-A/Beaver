@@ -64,7 +64,7 @@ export function HeroSection() {
           }`}
         >
           <span className="inline-flex items-center gap-3 text-sm font-mono text-white/60 px-4 py-2 border border-white/20 rounded-full">
-            <span className="w-2 h-2 rounded-full bg-[#eca8d6] animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9] animate-pulse" />
             Public Launch: The Future of API Tooling
           </span>
         </div>

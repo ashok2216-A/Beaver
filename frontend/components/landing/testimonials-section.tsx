@@ -53,13 +53,18 @@ export function TestimonialsSection() {
     setActiveIndex((prev) => (prev + 1) % testimonials.length);
   };
 
+  const [hasMounted, setHasMounted] = useState(false);
   const activeTestimonial = testimonials[activeIndex];
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   return (
     <section ref={sectionRef} className="relative py-32 lg:py-40 bg-foreground text-background overflow-hidden">
       {/* Background pattern */}
       <div className="absolute inset-0 font-mono text-[10px] text-background/[0.02] leading-tight overflow-hidden whitespace-pre select-none">
-        {Array.from({ length: 60 }, (_, i) => 
+        {hasMounted && Array.from({ length: 60 }, (_, i) => 
           Array.from({ length: 100 }, () => 
             Math.random() > 0.7 ? '"' : ' '
           ).join("")

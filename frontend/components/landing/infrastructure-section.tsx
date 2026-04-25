@@ -106,17 +106,17 @@ export function InfrastructureSection() {
             >
               {/* Step number and icon */}
               <div className="flex items-center justify-between mb-6">
-                <span className={`text-4xl font-display transition-colors duration-300 ${
-                  activeStep === index ? "text-[#eca8d6]" : "text-foreground/20"
+                <span className={`text-4xl font-display transition-all duration-300 ${
+                  activeStep === index ? "text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]" : "text-foreground/20"
                 }`}>
                   {step.number}
                 </span>
                 <div className={`w-12 h-12 flex items-center justify-center border rounded-lg transition-all duration-300 ${
                   activeStep === index 
-                    ? "border-[#eca8d6] bg-[#eca8d6]/10 text-[#eca8d6]" 
+                    ? "border-[#a78bfa]/30 bg-gradient-to-br from-[#eca8d6]/10 via-[#a78bfa]/10 to-[#67e8f9]/10" 
                     : "border-foreground/10 text-muted-foreground"
                 }`}>
-                  <step.icon className="w-6 h-6" />
+                  <step.icon className={`w-6 h-6 ${activeStep === index ? "text-[#a78bfa]" : ""}`} />
                 </div>
               </div>
 
@@ -133,7 +133,7 @@ export function InfrastructureSection() {
               </p>
 
               {/* Active indicator */}
-              <div className={`absolute bottom-0 left-0 right-0 h-1 bg-[#eca8d6] transition-transform duration-500 origin-left ${
+              <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9] transition-transform duration-500 origin-left ${
                 activeStep === index ? "scale-x-100" : "scale-x-0"
               }`} />
             </button>

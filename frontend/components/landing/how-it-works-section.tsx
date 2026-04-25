@@ -71,9 +71,7 @@ export function HowItWorksSection() {
                   className="flex items-start gap-4"
                   style={{ transitionDelay: `${index * 100 + 300}ms` }}
                 >
-                  <div className="w-6 h-6 rounded-full bg-[#eca8d6]/20 flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-4 h-4 text-[#eca8d6]" />
-                  </div>
+                  <Check className="w-5 h-5 text-[#eca8d6] shrink-0 mt-0.5" />
                   <span className="text-lg text-white/80">{feature}</span>
                 </li>
               ))}
@@ -101,10 +99,10 @@ export function HowItWorksSection() {
                 </div>
 
                 {/* Agent Response Placeholder */}
-                <div className="bg-[#eca8d6]/5 border border-[#eca8d6]/20 rounded-lg p-4">
+                <div className="bg-gradient-to-br from-[#eca8d6]/5 via-[#a78bfa]/5 to-[#67e8f9]/5 border border-[#a78bfa]/20 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2 h-2 rounded-full bg-[#eca8d6] animate-pulse" />
-                    <span className="text-xs font-mono text-[#eca8d6]">Agent processing...</span>
+                    <div className="w-2 h-2 rounded-full bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9] animate-pulse" />
+                    <span className="text-xs font-mono text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]">Agent processing...</span>
                   </div>
                   <div className="space-y-2">
                     <div className="h-3 bg-white/10 rounded w-3/4 animate-pulse" />

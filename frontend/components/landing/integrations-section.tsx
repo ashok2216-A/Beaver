@@ -95,7 +95,7 @@ export function IntegrationsSection() {
 
               {/* Animated underline */}
               <div className="absolute bottom-0 left-0 right-0 h-px bg-foreground/20 overflow-hidden">
-                <div className={`h-full bg-[#eca8d6] transition-all duration-500 ${
+                <div className={`h-full bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9] transition-all duration-500 ${
                   hoveredIndex === index ? "w-full" : "w-0"
                 }`} />
               </div>
@@ -107,8 +107,8 @@ export function IntegrationsSection() {
         <div className={`p-8 lg:p-12 border border-foreground/10 bg-foreground/[0.02] text-center mb-16 transition-all duration-1000 delay-500 ${
           isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
         }`}>
-          <div className="w-16 h-16 mx-auto mb-6 bg-[#eca8d6]/10 rounded-full flex items-center justify-center">
-            <span className="text-2xl font-display text-[#eca8d6]">+</span>
+          <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-[#eca8d6]/10 via-[#a78bfa]/10 to-[#67e8f9]/10 rounded-full flex items-center justify-center">
+            <span className="text-2xl font-display text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]">+</span>
           </div>
           <h3 className="text-xl font-display mb-2">Custom Integration</h3>
           <p className="text-muted-foreground text-sm">Bring any OpenAPI spec and we&apos;ll handle the rest</p>
