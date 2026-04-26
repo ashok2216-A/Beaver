@@ -67,12 +67,31 @@ export default function DeployPage() {
   -H "Content-Type: application/json" \\
   -d '{"message": "Hello Agent!"}'`
 
-  const handleRedeploy = () => {
+  const handleRedeploy = async () => {
     setIsRedeploying(true)
-    setTimeout(() => {
+    try {
+      const token = await getToken()
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: "live" })
+      })
+
+      if (res.ok) {
+        const updated = await res.json()
+        setAgent(updated)
+        toast.success("Agent synchronized and deployed to production.")
+      } else {
+        throw new Error("Deployment failed")
+      }
+    } catch (err) {
+      toast.error("Failed to deploy agent")
+    } finally {
       setIsRedeploying(false)
-      toast.success("Agent synchronized and redeployed to edge.")
-    }, 2000)
+    }
   }
 
   const copyToClipboard = (text: string) => {
@@ -93,27 +112,57 @@ export default function DeployPage() {
       </div>
 
       {/* Status Banner */}
-      <Card className="rounded-[2.5rem] border-none bg-primary/5 p-6 shadow-sm overflow-hidden relative group">
+      <Card className={cn(
+        "rounded-[2.5rem] border-none p-6 shadow-sm overflow-hidden relative group transition-all duration-500",
+        agent.status === 'live' ? "bg-emerald-500/5" : "bg-primary/5"
+      )}>
         <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
-          <Rocket className="w-24 h-24 text-primary" />
+          <Rocket className={cn("w-24 h-24", agent.status === 'live' ? "text-emerald-500" : "text-primary")} />
         </div>
         <div className="flex flex-col md:flex-row items-center gap-6 relative z-10">
-          <div className="h-16 w-16 rounded-3xl bg-primary flex items-center justify-center text-primary-foreground shadow-glow">
-            {isRedeploying ? <Loader2 className="h-8 w-8 animate-spin" /> : <Check className="h-8 w-8" />}
+          <div className={cn(
+            "h-16 w-16 rounded-3xl flex items-center justify-center text-white shadow-glow transition-all duration-500",
+            agent.status === 'live' ? "bg-emerald-500 shadow-emerald-500/20" : "bg-primary shadow-primary/20"
+          )}>
+            {isRedeploying ? (
+              <Loader2 className="h-8 w-8 animate-spin" />
+            ) : agent.status === 'live' ? (
+              <ShieldCheck className="h-8 w-8" />
+            ) : (
+              <Rocket className="h-8 w-8" />
+            )}
           </div>
           <div className="flex-1 text-center md:text-left">
-            <h2 className="text-2xl font-bold">Agent is Production Ready</h2>
-            <p className="text-muted-foreground">
-              Last synchronized {new Date().toLocaleDateString()} · Status: <span className="text-primary font-bold uppercase">{agent.status}</span>
+            <h2 className="text-2xl font-bold">
+              {agent.status === 'live' ? "Agent is Production Live" : "Agent is Ready for Launch"}
+            </h2>
+            <p className="text-muted-foreground flex items-center gap-2">
+              Status: 
+              <span className={cn(
+                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border",
+                agent.status === 'live' 
+                  ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
+                  : "bg-primary/10 text-primary border-primary/20"
+              )}>
+                {agent.status}
+              </span>
+              · Last synced {new Date().toLocaleDateString()}
             </p>
           </div>
           <Button 
-            className="rounded-xl h-12 px-8 font-bold shadow-glow text-lg" 
+            className={cn(
+              "rounded-xl h-12 px-8 font-bold shadow-glow text-lg min-w-[180px]",
+              agent.status === 'live' ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20" : ""
+            )}
             disabled={isRedeploying}
             onClick={handleRedeploy}
           >
-            <Rocket className="mr-2 h-5 w-5" />
-            {isRedeploying ? "Redeploying..." : "Redeploy Now"}
+            {isRedeploying ? (
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
+              <Zap className="mr-2 h-5 w-5" />
+            )}
+            {isRedeploying ? "Processing..." : agent.status === 'live' ? "Sync & Redeploy" : "Go Live Now"}
           </Button>
         </div>
       </Card>

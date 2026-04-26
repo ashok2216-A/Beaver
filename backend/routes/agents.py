@@ -7,7 +7,7 @@ import logging
 
 import httpx
 import yaml
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Query
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Form, status, Query
 from sqlalchemy.orm import Session, defer
 from sqlalchemy import func, case, distinct, or_
 
@@ -22,9 +22,14 @@ from schemas import (
 from services.parser import parse_openapi
 from services.ai_discovery import smart_ingest_url
 from utils.auth import get_current_user
+from utils.security import validate_url_safe
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from fastapi import Request
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/agents", tags=["Agents"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 # ─── Templates ────────────────────────────────────────────────────────────────
@@ -151,7 +156,9 @@ def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
 @router.post("", response_model=AgentOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 def create_agent(
+    request: Request,
     data: AgentCreate, 
     user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
@@ -181,8 +188,10 @@ def create_agent(
 
 
 @router.post("/ingest/preview", response_model=IngestPreviewOut)
-async def ingest_preview(body: IngestPreviewRequest):
+@limiter.limit("10/minute")
+async def ingest_preview(request: Request, body: IngestPreviewRequest):
     """Fetch a spec URL and return basic metadata for the UI preview."""
+    validate_url_safe(body.url)
     try:
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             r = await client.get(body.url)
@@ -205,11 +214,17 @@ async def ingest_preview(body: IngestPreviewRequest):
 
 
 @router.post("/ingest/url", response_model=AgentOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def ingest_url(
+    request: Request,
     body: IngestUrlRequest, 
     user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
+    validate_url_safe(body.url)
+    if body.base_url:
+        validate_url_safe(body.base_url)
+        
     try:
         # Increased timeout for large specs (e.g. Stripe, Notion)
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
@@ -245,8 +260,55 @@ async def ingest_url(
     return _agent_out(agent)
 
 
+@router.post("/ingest/file", response_model=AgentOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
+async def ingest_file(
+    request: Request,
+    file: UploadFile = File(...),
+    name: str = Form(...),
+    description: str = Form(""),
+    base_url: str = Form(""),
+    auth_type: str = Form("bearer"),
+    auth_header: str = Form(""),
+    auth_secret: str = Form(""),
+    user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """Parse an uploaded spec file and create an agent."""
+    content = await file.read()
+    try:
+        spec = yaml.safe_load(content)
+    except Exception:
+        try:
+            spec = json.loads(content)
+        except Exception:
+            raise HTTPException(status_code=422, detail="Could not parse uploaded file (must be JSON or YAML).")
+
+    final_base_url = base_url or spec.get("servers", [{}])[0].get("url", "")
+    if final_base_url:
+        validate_url_safe(final_base_url)
+        
+    agent = Agent(
+        owner_id=user.id,
+        name=name,
+        description=description,
+        base_url=final_base_url,
+        system_prompt="",
+        auth_type=auth_type,
+        auth_header=auth_header,
+        auth_secret=auth_secret,
+        model_id="mistral/mistral-small-latest",
+        status=AgentStatus.draft,
+        api_spec="",
+    )
+    agent = _ingest_spec(agent, spec, db)
+    return _agent_out(agent)
+
+
 @router.post("/ingest/smart", response_model=AgentOut)
+@limiter.limit("5/minute")
 async def ingest_smart(
+    request: Request,
     body: IngestPreviewRequest, 
     user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
@@ -254,6 +316,7 @@ async def ingest_smart(
     """
     Automated discovery: Hunter + AI Fallback.
     """
+    validate_url_safe(body.url)
     try:
         spec = await smart_ingest_url(body.url)
     except Exception as e:

@@ -23,7 +23,7 @@ _connect_args = (
 engine = create_engine(
     db_url,
     connect_args=_connect_args,
-    echo=not settings.is_production,   # SQL debug only in dev
+    echo=False,  # Raw SQL logging is too noisy; using step-based logs in main.py instead
     pool_pre_ping=True,
 )
 
@@ -35,6 +35,10 @@ if settings.database_url.startswith("sqlite"):
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
+
+# Silence SQLAlchemy's noisy engine logging
+import logging
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 

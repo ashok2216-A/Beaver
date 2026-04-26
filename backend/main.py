@@ -47,8 +47,14 @@ limiter = Limiter(key_func=get_remote_address)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     log.info("🚀 api2bot-studio backend starting up…")
+    
+    log.info("⚙️ Step 1/3: Loading configuration and settings…")
+    _ = get_settings()
+    
+    log.info("🗄️ Step 2/3: Initializing database engine and tables…")
     Base.metadata.create_all(bind=engine)
-    log.info("✅ Database tables ready.")
+    
+    log.info("✅ Step 3/3: Database ready. API is now active.")
     yield
     log.info("👋 Shutting down.")
 

@@ -19,6 +19,7 @@ import Link from "next/link"
 import { useAuth } from "@clerk/nextjs"
 import { cn } from "@/lib/utils"
 import { AgentAvatar } from "@/components/dashboard/agent-avatar"
+import { toast } from "sonner"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,6 +64,27 @@ export default function AgentsPage() {
     }
     fetchAgents()
   }, [getToken])
+  
+  const handleDeleteAgent = async (agentId: number) => {
+    if (!confirm("Are you sure you want to delete this agent? This action cannot be undone.")) return
+    
+    try {
+      const token = await getToken()
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (response.ok) {
+        setAgents(prev => prev.filter(a => a.id !== agentId))
+        toast.success("Agent deleted successfully")
+      } else {
+        toast.error("Failed to delete agent")
+      }
+    } catch (error) {
+      toast.error("Error deleting agent")
+    }
+  }
 
   const filteredAgents = agents.filter(a => 
     a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -142,7 +164,10 @@ export default function AgentsPage() {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer">
+                      <DropdownMenuItem 
+                        className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                        onClick={() => handleDeleteAgent(agent.id)}
+                      >
                         <Trash2 className="mr-2 h-4 w-4" /> Delete Agent
                       </DropdownMenuItem>
                     </DropdownMenuContent>

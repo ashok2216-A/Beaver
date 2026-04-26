@@ -233,4 +233,19 @@
   .shadow-glow-lg {
     box-shadow: 0 0 40px -10px hsl(var(--primary) / 0.4);
   }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    border-radius: 10px;
+  }
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  }
 }

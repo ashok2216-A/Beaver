@@ -50,7 +50,10 @@ export function FooterSection() {
           <div className="grid grid-cols-2 md:grid-cols-6 gap-12 lg:gap-8">
             {/* Brand Column */}
             <div className="col-span-2">
-              <a href="#" className="inline-flex items-center gap-2 mb-6">
+              <a href="#" className="inline-flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 shrink-0">
+                  <img src="/logo.svg" alt="Beaver Logo" className="w-full h-full object-contain invert" />
+                </div>
                 <span className="text-2xl font-display text-white">Beaver</span>
               </a>
 

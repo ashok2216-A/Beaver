@@ -50,8 +50,8 @@ export function DashboardHeader() {
             {/* Logo */}
             <div className="flex h-16 shrink-0 items-center px-6 border-b border-border">
               <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary dark:bg-gradient-to-br dark:from-[#eca8d6] dark:via-[#a78bfa] dark:to-[#67e8f9] rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground dark:text-white font-bold text-lg">B</span>
+                <div className="w-8 h-8 shrink-0">
+                  <img src="/logo.svg" alt="Beaver Logo" className="w-full h-full object-contain dark:invert" />
                 </div>
                 <span className="text-xl font-bold text-foreground">Beaver</span>
               </Link>

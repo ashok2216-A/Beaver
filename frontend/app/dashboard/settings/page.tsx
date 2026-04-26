@@ -31,14 +31,18 @@ export default function SettingsPage() {
             <Label>Email</Label>
             <Input 
               value={user?.primaryEmailAddress?.emailAddress || ''} 
+              readOnly
               disabled 
+              className="bg-muted/50"
             />
           </div>
           <div className="space-y-2">
             <Label>Name</Label>
             <Input 
               value={user?.fullName || ''} 
+              readOnly
               placeholder="Your name"
+              className="bg-muted/50"
             />
           </div>
         </CardContent>

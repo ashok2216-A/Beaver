@@ -26,6 +26,10 @@ export const metadata: Metadata = {
   title: 'Beaver — Turn any API into an AI assistant',
   description: 'Beaver is the ultimate playground for turning OpenAPI documentation into reliable, tool-calling agents for any LLM.',
   generator: 'v0.app',
+  icons: {
+    icon: '/logo.svg',
+    apple: '/apple-icon.png',
+  }
 }
 
 export default function RootLayout({

@@ -8,6 +8,7 @@ import Link from "next/link"
 import { useAuth } from "@clerk/nextjs"
 import { cn } from "@/lib/utils"
 import { AgentAvatar } from "@/components/dashboard/agent-avatar"
+import { toast } from "sonner"
 
 interface DashboardStats {
   agent_count: number
@@ -74,6 +75,27 @@ export default function DashboardPage() {
     }
     fetchData()
   }, [getToken])
+  
+  const handleDeleteAgent = async (agentId: number) => {
+    if (!confirm("Are you sure you want to delete this agent? This action cannot be undone.")) return
+    
+    try {
+      const token = await getToken()
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (response.ok) {
+        setAgents(prev => prev.filter(a => a.id !== agentId))
+        toast.success("Agent deleted successfully")
+      } else {
+        toast.error("Failed to delete agent")
+      }
+    } catch (error) {
+      toast.error("Error deleting agent")
+    }
+  }
 
   const statCards = [
     {
@@ -135,20 +157,20 @@ export default function DashboardPage() {
       {/* Stats Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card, i) => (
-          <Card key={i} className="rounded-3xl bg-card shadow-sm hover:shadow-md transition-shadow group">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-8">
-                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110", card.bg)}>
-                  <card.icon className={cn("h-5 w-5", card.color)} />
+          <Card key={i} className="rounded-2xl bg-card shadow-sm hover:shadow-md transition-shadow group">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-4">
+                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center transition-transform group-hover:scale-110", card.bg)}>
+                  <card.icon className={cn("h-4 w-4", card.color)} />
                 </div>
-                <div className="px-2 py-1 rounded-full bg-green-500/10 text-green-500 text-[10px] font-bold tracking-tight">
+                <div className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 text-[9px] font-bold tracking-tight">
                   {card.trend.toUpperCase()}
                 </div>
               </div>
               <div>
-                <div className="text-4xl font-bold tracking-tight mb-1">
+                <div className="text-2xl font-bold tracking-tight mb-0.5">
                   {loading ? (
-                    <div className="h-9 w-16 bg-muted animate-pulse rounded-lg" />
+                    <div className="h-7 w-12 bg-muted animate-pulse rounded-lg" />
                   ) : (
                     card.value
                   )}
@@ -187,7 +209,10 @@ export default function DashboardPage() {
                     <div className="group-hover:scale-110 transition-transform duration-300">
                       <AgentAvatar id={agent.id} size="lg" />
                     </div>
-                    <button className="text-muted-foreground hover:text-foreground">
+                    <button 
+                      className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                      onClick={() => handleDeleteAgent(agent.id)}
+                    >
                       <Plus className="h-5 w-5 rotate-45" />
                     </button>
                   </div>

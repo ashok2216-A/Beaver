@@ -8,6 +8,7 @@ interface AgentAvatarProps {
   name?: string;
   className?: string;
   size?: "sm" | "md" | "lg" | "xl";
+  minimal?: boolean;
 }
 
 // Deterministic hash for pseudo-random values based on seed
@@ -18,7 +19,7 @@ const hash = (seed: number) => {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
 
-export const AgentAvatar = ({ id, name, className = "", size = "md" }: AgentAvatarProps) => {
+export const AgentAvatar = ({ id, name, className = "", size = "md", minimal = false }: AgentAvatarProps) => {
   const avatarData = useMemo(() => {
     // 1. Generate unique color (256x256x256 variations)
     const r = Math.floor(hash(id * 10) * 256);
@@ -64,21 +65,23 @@ export const AgentAvatar = ({ id, name, className = "", size = "md" }: AgentAvat
   return (
     <div 
       className={cn(
-        "relative inline-flex items-center justify-center shrink-0 overflow-hidden bg-slate-100 border border-white/60",
+        "relative inline-flex items-center justify-center shrink-0 overflow-hidden transition-all duration-300",
+        minimal 
+          ? "bg-transparent border-none shadow-none" 
+          : "bg-slate-50 dark:bg-muted/30 border border-slate-200 dark:border-border/50 backdrop-blur-sm shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06),inset_0_1px_0_var(--avatar-top-shine),inset_0_-1px_0_rgba(0,0,0,0.05)]",
+        "[--avatar-top-shine:rgba(255,255,255,0.8)] dark:[--avatar-top-shine:rgba(255,255,255,0.02)]",
         sizeClasses[size],
         className
       )}
-      style={{
-        boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.7)"
-      }}
     >
-      {/* Subtle radial inner glow (darker for light-ish background) */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.02),transparent_70%)]" />
+      {/* Subtle radial inner glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.4),transparent_70%)] dark:bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.02),transparent_70%)]" />
       
       {/* Pattern Layer: Dynamic Dot Matrix */}
       <div 
         className={cn(
-          "grid gap-1 w-full h-full p-2",
+          "grid gap-1 w-full h-full",
+          minimal ? "p-0" : "p-2",
           gridCols[avatarData.gridSize as keyof typeof gridCols] || "grid-cols-4"
         )}
         style={{ gridTemplateRows: `repeat(${avatarData.gridSize}, minmax(0, 1fr))` }}
@@ -88,23 +91,30 @@ export const AgentAvatar = ({ id, name, className = "", size = "md" }: AgentAvat
             key={i}
             className={cn("relative w-full h-full transition-all duration-700", dot.rounded)}
             style={{ 
-              backgroundColor: dot.filled ? avatarData.accentColor : "rgba(0,0,0,0.05)",
-              boxShadow: dot.filled ? `0 1px 4px ${avatarData.glowColor}` : "none",
-              opacity: dot.filled ? 1 : 0.08,
+              backgroundColor: dot.filled ? avatarData.accentColor : "rgba(0,0,0,0.03)",
+              boxShadow: dot.filled ? `0 1px 6px ${avatarData.glowColor}` : "none",
+              opacity: dot.filled ? 1 : 0.05,
               transform: dot.filled ? `scale(${dot.scale})` : "scale(0.4)",
             }}
           >
             {/* White core for extra brightness */}
             {dot.filled && (
-              <div className="absolute inset-[30%] bg-white rounded-full opacity-40 blur-[0.5px]" />
+              <div className="absolute inset-[30%] bg-white rounded-full opacity-60 blur-[0.5px]" />
             )}
           </div>
         ))}
       </div>
 
-      {/* Surface shine */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-transparent pointer-events-none" />
-      <div className="absolute inset-0 border border-white/10 rounded-[inherit] pointer-events-none" />
+      {/* Surface shine & 3D effects */}
+      {!minimal && (
+        <>
+          <div className="absolute inset-0 bg-gradient-to-tr from-white/20 via-transparent to-transparent pointer-events-none dark:opacity-0" />
+          <div className="absolute inset-0 border border-white/20 dark:border-white/5 rounded-[inherit] pointer-events-none" />
+          {/* Bevel effect - Light mode only */}
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-white/60 dark:hidden" />
+          <div className="absolute bottom-0 left-0 w-full h-[1px] bg-black/5 dark:hidden" />
+        </>
+      )}
     </div>
   );
 };

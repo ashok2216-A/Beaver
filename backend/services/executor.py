@@ -15,6 +15,7 @@ import time
 from typing import Any, Optional
 
 import httpx
+from utils.security import validate_url_safe
 
 log = logging.getLogger(__name__)
 
@@ -108,6 +109,15 @@ async def call_api(
     url = protocol + path_part
 
     log.info(f"EXECUTOR: Final Constructed URL: {url}")
+    
+    # SEC-13: Block SSRF and Insecure Credential transmission
+    validate_url_safe(url)
+    
+    if url.startswith("http://") and auth_secret:
+        return {
+            "error": "insecure_transport",
+            "detail": "For security reasons, authentication secrets can only be sent over HTTPS. Please update the Agent's base_url to use https://."
+        }, 403, 0
 
     if not url.startswith(("http://", "https://")):
         return {

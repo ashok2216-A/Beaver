@@ -71,13 +71,16 @@ export function DashboardSidebar({
             "flex h-16 shrink-0 items-center transition-all duration-300",
             isCollapsed ? "justify-center" : "px-2"
           )}>
-            <Link href="/" className="flex items-center gap-2 group/logo">
-              <div className="w-8 h-8 bg-primary dark:bg-gradient-to-br dark:from-[#eca8d6] dark:via-[#a78bfa] dark:to-[#67e8f9] rounded-lg flex items-center justify-center shadow-lg shadow-primary/20 group-hover/logo:scale-105 transition-transform shrink-0">
-                <span className="text-white font-bold text-lg">B</span>
+            <Link href="/" className="flex items-center gap-1 group/logo">
+              <div className="w-10 h-10 shrink-0 group-hover/logo:scale-105 transition-transform">
+                <img src="/logo.svg" alt="Beaver Logo" className="w-full h-full object-contain dark:invert" />
               </div>
-              {!isCollapsed && (
-                <span className="text-xl font-bold tracking-tight text-foreground transition-opacity duration-300">Beaver</span>
-              )}
+              <span className={cn(
+                "text-xl font-bold tracking-tight text-foreground transition-all duration-300 origin-left",
+                isCollapsed ? "opacity-0 w-0 scale-0 overflow-hidden" : "opacity-100 w-auto scale-100 ml-1"
+              )}>
+                Beaver
+              </span>
             </Link>
           </div>
 
@@ -107,7 +110,12 @@ export function DashboardSidebar({
                               isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                             )}
                           />
-                          {!isCollapsed && <span>{item.name}</span>}
+                          <span className={cn(
+                            "transition-all duration-300 origin-left truncate",
+                            isCollapsed ? "opacity-0 w-0 scale-0 invisible" : "opacity-100 w-auto scale-100 visible ml-3"
+                          )}>
+                            {item.name}
+                          </span>
                         </Link>
                       </li>
                     )
@@ -137,7 +145,12 @@ export function DashboardSidebar({
                               isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                             )}
                           />
-                          {!isCollapsed && <span>{item.name}</span>}
+                          <span className={cn(
+                            "transition-all duration-300 origin-left truncate",
+                            isCollapsed ? "opacity-0 w-0 scale-0 invisible" : "opacity-100 w-auto scale-100 visible ml-3"
+                          )}>
+                            {item.name}
+                          </span>
                         </Link>
                       </li>
                     )

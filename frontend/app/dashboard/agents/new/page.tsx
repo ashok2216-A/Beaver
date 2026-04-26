@@ -1,159 +1,544 @@
 'use client'
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Upload, FileCode, ArrowLeft, Loader2 } from "lucide-react"
-import Link from "next/link"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { 
+  UploadCloud, 
+  FileJson, 
+  Sparkles, 
+  ArrowRight, 
+  Check, 
+  Loader2, 
+  Globe, 
+  Search, 
+  ArrowLeft,
+  X
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { useAuth } from "@clerk/nextjs";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+
+interface Template {
+  id: string;
+  name: string;
+  category: string;
+  domain: string;
+  source_url?: string;
+  base_url?: string;
+  description?: string;
+  auth_type?: string;
+}
 
 export default function NewAgentPage() {
-  const [isUploading, setIsUploading] = useState(false)
-  const [specContent, setSpecContent] = useState("")
+  const router = useRouter();
+  const { getToken } = useAuth();
+  
+  const [tab, setTab] = useState<"templates" | "url" | "upload" | "manual">("templates");
+  const [file, setFile] = useState<File | null>(null);
+  const [url, setUrl] = useState("");
+  
+  // States for Metadata
+  const [agentName, setAgentName] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
+  const [description, setDescription] = useState("");
+  const [authType, setAuthType] = useState("bearer");
+  const [authHeader, setAuthHeader] = useState("");
+  const [authSecret, setAuthSecret] = useState("");
+  
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [generating, setGenerating] = useState(false);
+  
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setIsUploading(true)
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setSpecContent(event.target?.result as string)
-        setIsUploading(false)
+  // Fetch templates
+  useEffect(() => {
+    async function loadTemplates() {
+      try {
+        const token = await getToken();
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/templates`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setTemplates(data.templates || []);
+        }
+      } catch (err) {
+        console.error("Failed to load templates", err);
+      } finally {
+        setIsLoadingTemplates(false);
       }
-      reader.readAsText(file)
     }
-  }
+    loadTemplates();
+  }, [getToken]);
+
+  const categories = Array.from(new Set(templates.map((t) => t.category)));
+
+  const handleTemplateClick = async (t: Template) => {
+    try {
+      const token = await getToken();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/templates/${t.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error("Failed to load template");
+      
+      const detail = await res.json();
+      setTab("url");
+      setUrl(detail.source_url || "");
+      
+      let name = detail.name || "";
+      if (name && !name.toLowerCase().endsWith("agent")) {
+        name = `${name} Agent`;
+      }
+      setAgentName(name);
+      setBaseUrl(detail.base_url || "");
+      setDescription(detail.description || "");
+      setAuthType(detail.auth_type || "bearer");
+      toast.success(`Selected ${detail.name} template!`);
+    } catch (err) {
+      toast.error("Failed to load template");
+    }
+  };
+
+  // URL Preview Effect
+  useEffect(() => {
+    const fetchPreview = async () => {
+      if (!url || url.length < 10 || !url.startsWith("http")) return;
+      
+      setIsPreviewing(true);
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/ingest/preview`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (!agentName) setAgentName(data.name);
+          if (!baseUrl) setBaseUrl(data.base_url);
+          if (!description) setDescription(data.description);
+        }
+      } catch (err) {} finally {
+        setIsPreviewing(false);
+      }
+    };
+    const timer = setTimeout(fetchPreview, 1000);
+    return () => clearTimeout(timer);
+  }, [url]);
+
+  const handleFiles = (files: FileList | null) => {
+    if (!files || !files[0]) return;
+    const f = files[0];
+    setFile(f);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const spec = JSON.parse(e.target?.result as string);
+        if (spec.info) {
+          setAgentName(spec.info.title || "");
+          setDescription(spec.info.description || "");
+          setBaseUrl(spec.servers?.[0]?.url || "");
+        }
+      } catch (err) {
+        setAgentName(f.name.replace(/\.[^/.]+$/, ""));
+      }
+    };
+    reader.readAsText(f);
+    toast.success(`${f.name} ready`);
+  };
+
+  const handleGenerate = async () => {
+    if (!file && !url && tab !== "manual") {
+      toast.error("Provide a source first");
+      return;
+    }
+    
+    setGenerating(true);
+    setProgress(10);
+    const interval = setInterval(() => {
+      setProgress(p => (p >= 90 ? (clearInterval(interval), 90) : p + 10));
+    }, 400);
+
+    try {
+      const token = await getToken();
+      let res;
+      
+      if (tab === "upload" && file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("name", agentName || file.name);
+        formData.append("description", description);
+        formData.append("base_url", baseUrl);
+        formData.append("auth_type", authType);
+        formData.append("auth_header", authHeader);
+        formData.append("auth_secret", authSecret);
+
+        res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/ingest/file`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+      } else if (tab === "url" && url) {
+        res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/ingest/smart`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}` 
+          },
+          body: JSON.stringify({ 
+            url, 
+            name: agentName,
+            description,
+            base_url: baseUrl
+          })
+        });
+      } else {
+        res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}` 
+          },
+          body: JSON.stringify({ 
+            name: agentName,
+            description,
+            base_url: baseUrl,
+            auth_type: authType,
+            auth_header: authHeader,
+            auth_secret: authSecret,
+            model_id: "gemini-2.0-flash",
+            api_spec: ""
+          })
+        });
+      }
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Failed to generate agent");
+      }
+
+      const data = await res.json();
+      setProgress(100);
+      toast.success("Agent generated!");
+      setTimeout(() => {
+        router.push(`/dashboard/agents/${data.id}`);
+      }, 500);
+
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate agent");
+      setGenerating(false);
+      clearInterval(interval);
+    }
+  };
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/dashboard/agents">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Create New Agent</h1>
-          <p className="text-muted-foreground">
-            Upload an OpenAPI specification to create an AI agent
-          </p>
+    <div className="space-y-8 pb-20">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Create a new agent</h1>
+        <p className="text-muted-foreground">
+          Choose a template or use your own spec to get started.
+        </p>
+      </div>
+
+      {/* Tab Switcher */}
+      <div className="flex flex-col items-center">
+        <div className="inline-flex rounded-2xl border border-border bg-card p-1.5 shadow-sm">
+          <TabButton active={tab === "templates"} onClick={() => setTab("templates")} icon={<Sparkles className="h-4 w-4 text-primary" />} label="Templates" />
+          <TabButton active={tab === "url"} onClick={() => setTab("url")} icon={<Search className="h-4 w-4 text-primary" />} label="Discover Spec" />
+          <TabButton active={tab === "upload"} onClick={() => setTab("upload")} icon={<UploadCloud className="h-4 w-4 text-primary" />} label="Upload file" />
+          <TabButton active={tab === "manual"} onClick={() => setTab("manual")} icon={<Globe className="h-4 w-4 text-emerald-500" />} label="Manual Setup" />
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Agent Details</CardTitle>
-          <CardDescription>
-            Give your agent a name and description
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Agent Name</Label>
-            <Input id="name" placeholder="e.g., Stripe Assistant" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea 
-              id="description" 
-              placeholder="Describe what this agent does..."
-              rows={3}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>OpenAPI Specification</CardTitle>
-          <CardDescription>
-            Upload your API specification in JSON or YAML format
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
-            <input
-              type="file"
-              accept=".json,.yaml,.yml"
-              onChange={handleFileUpload}
-              className="hidden"
-              id="spec-upload"
-            />
-            <label htmlFor="spec-upload" className="cursor-pointer">
-              <div className="flex flex-col items-center gap-2">
-                {isUploading ? (
-                  <Loader2 className="h-10 w-10 text-muted-foreground animate-spin" />
-                ) : (
-                  <Upload className="h-10 w-10 text-muted-foreground" />
-                )}
-                <div>
-                  <p className="font-medium">
-                    {specContent ? "File uploaded" : "Click to upload"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    or drag and drop your OpenAPI spec
-                  </p>
+      <div className="rounded-3xl border border-border bg-card shadow-xl overflow-hidden">
+        <div className="p-8">
+          {tab === "templates" ? (
+            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 max-h-[60vh] overflow-y-auto pr-4 custom-scrollbar">
+              {isLoadingTemplates ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading template marketplace...</p>
+                </div>
+              ) : templates.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 border-2 border-dashed border-border rounded-3xl">
+                  <Globe className="h-10 w-10 text-muted-foreground opacity-20" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">No templates found</p>
+                    <p className="text-xs text-muted-foreground">Check your connection or manifest.json</p>
+                  </div>
+                </div>
+              ) : (
+                categories.map((cat) => (
+                  <div key={cat} className="space-y-4">
+                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60 flex items-center gap-3">
+                      <span className="h-px flex-1 bg-border/50" />
+                      {cat} ({templates.filter((t) => t.category === cat).length})
+                      <span className="h-px flex-1 bg-border/50" />
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {templates.filter((t) => t.category === cat).map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => handleTemplateClick(t)}
+                          className="group relative flex flex-col items-center gap-3 rounded-2xl border border-border bg-background p-4 text-center transition-all hover:border-primary/40 hover:shadow-glow-sm hover:-translate-y-1"
+                        >
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/50 p-2 transition-colors group-hover:bg-primary/10 overflow-hidden">
+                            <img 
+                              src={`https://www.google.com/s2/favicons?sz=128&domain=${t.domain}`} 
+                              alt={t.name}
+                              className="h-full w-full object-contain transition-all duration-300 scale-90 group-hover:scale-110"
+                            />
+                          </div>
+                          <p className="text-xs font-bold leading-tight truncate w-full">{t.name}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : tab === "upload" ? (
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
+              className={cn(
+                "relative rounded-3xl border-2 border-dashed p-12 text-center transition-all",
+                dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-primary/5"
+              )}
+            >
+              <div className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-glow">
+                <UploadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="mt-5 text-xl font-bold">Drop your OpenAPI spec here</h3>
+              <p className="mt-1 text-sm text-muted-foreground">JSON or YAML, up to 10 MB</p>
+              <label className="mt-6 inline-block">
+                <input type="file" accept=".json,.yaml,.yml" className="sr-only" onChange={(e) => handleFiles(e.target.files)} />
+                <span className="inline-flex h-11 cursor-pointer items-center rounded-xl border border-border bg-background px-6 text-sm font-bold hover:bg-muted transition-all">
+                  Choose file
+                </span>
+              </label>
+              {file && (
+                <div className="mt-8 flex items-center gap-4 rounded-2xl border border-border bg-background p-4 text-left max-w-sm mx-auto">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <FileJson className="h-6 w-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold truncate">{file.name}</p>
+                    <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB · Ready</p>
+                  </div>
+                  <Check className="h-5 w-5 text-emerald-500" />
+                </div>
+              )}
+            </div>
+          ) : tab === "url" ? (
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-sm font-bold flex items-center gap-2">
+                  Documentation or Spec URL
+                </label>
+                <div className="relative">
+                  <input
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="Paste documentation link (e.g. developers.notion.com)"
+                    className="h-14 w-full rounded-2xl border border-border bg-background px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all"
+                  />
+                  {isPreviewing && (
+                    <div className="absolute right-4 top-4">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground italic pl-1">
+                  Our system will automatically search the URL for a hidden OpenAPI or Swagger specification file.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              <div className="grid gap-8 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold">Agent Name</label>
+                  <input
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
+                    placeholder="e.g. My Custom API"
+                    className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary/50 transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold">Base URL</label>
+                  <input
+                    value={baseUrl}
+                    onChange={(e) => setBaseUrl(e.target.value)}
+                    placeholder="https://api.example.com"
+                    className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary/50 transition-all"
+                  />
                 </div>
               </div>
-            </label>
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
+              <div className="space-y-2">
+                <label className="text-sm font-bold">Description (Optional)</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="What does this agent do?"
+                  className="w-full rounded-xl border border-border bg-background p-4 text-sm outline-none focus:border-primary/50 transition-all min-h-[120px]"
+                />
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or paste directly</span>
+          )}
+
+          {/* Configuration & Auth Fields (Visible when name/file/preview exists) */}
+          {(agentName || isPreviewing || file) && (
+            <div className="mt-10 grid gap-8 animate-in fade-in slide-in-from-top-4 pt-10 border-t border-border/50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Final Agent Name</label>
+                  <input
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
+                    className="h-11 w-full rounded-xl border border-border bg-muted/30 px-4 text-sm outline-none focus:border-primary/50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">API Base Endpoint</label>
+                  <div className="relative">
+                    <input
+                      value={baseUrl}
+                      onChange={(e) => setBaseUrl(e.target.value)}
+                      className="h-11 w-full rounded-xl border border-border bg-muted/30 pl-10 pr-4 text-sm outline-none focus:border-primary/50"
+                    />
+                    <Globe className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Auth Configuration */}
+              <div className="pt-6 border-t border-border/50">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-6">Security Configuration</h4>
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-foreground/70">Auth Type</label>
+                    <select 
+                      value={authType}
+                      onChange={(e) => setAuthType(e.target.value)}
+                      className="h-11 w-full rounded-xl border border-border bg-muted/30 px-4 text-sm outline-none focus:border-primary/50 appearance-none"
+                    >
+                      <option value="none">No Auth</option>
+                      <option value="bearer">Bearer Token</option>
+                      <option value="apikey">Custom Header (API Key)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-foreground/70">Auth Header Name</label>
+                    <input 
+                      value={authHeader}
+                      onChange={(e) => setAuthHeader(e.target.value)}
+                      placeholder="Authorization"
+                      className="h-11 w-full rounded-xl border border-border bg-muted/30 px-4 text-sm outline-none focus:border-primary/50 font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className="text-xs font-bold text-foreground/70">API Secret / Access Token</label>
+                    <input 
+                      type="password"
+                      value={authSecret}
+                      onChange={(e) => setAuthSecret(e.target.value)}
+                      placeholder="sk-••••••••••••••••••••••••••••"
+                      className="h-11 w-full rounded-xl border border-border bg-muted/30 px-4 text-sm outline-none focus:border-primary/50 font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="space-y-2">
-            <Label htmlFor="spec">OpenAPI Specification</Label>
-            <Textarea 
-              id="spec" 
-              placeholder='{"openapi": "3.0.0", ...}'
-              rows={10}
-              value={specContent}
-              onChange={(e) => setSpecContent(e.target.value)}
-              className="font-mono text-sm"
-            />
-          </div>
-        </CardContent>
-      </Card>
+          {generating && (
+            <div className="mt-10 transition-all animate-in fade-in zoom-in-95 bg-primary/5 rounded-3xl p-8 border border-primary/10">
+              <div className="flex items-center justify-between text-sm mb-4">
+                <span className="font-bold flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  Generating your agent engine…
+                </span>
+                <span className="font-mono text-primary font-bold">{progress}%</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-primary/10 overflow-hidden mb-6">
+                <div className="h-full bg-primary transition-all duration-300 shadow-[0_0_10px_rgba(var(--primary),0.5)]" style={{ width: `${progress}%` }} />
+              </div>
+              <ul className="grid grid-cols-2 gap-4">
+                <Step done={progress > 20} label="Parsing schema" />
+                <Step done={progress > 50} label="Mapping tools" />
+                <Step done={progress > 80} label="System prompt" />
+                <Step done={progress >= 100} label="Finalizing" />
+              </ul>
+            </div>
+          )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Authentication</CardTitle>
-          <CardDescription>
-            Configure how your agent authenticates with the API
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="api-key">API Key (optional)</Label>
-            <Input 
-              id="api-key" 
-              type="password"
-              placeholder="sk-..." 
-            />
-            <p className="text-xs text-muted-foreground">
-              This will be used to authenticate API calls made by your agent
-            </p>
+          <div className="mt-10 flex justify-end items-center gap-4">
+            <Button variant="ghost" onClick={() => router.back()} disabled={generating} className="rounded-xl px-6">
+              Cancel
+            </Button>
+            <Button 
+              variant="hero" 
+              size="lg" 
+              onClick={handleGenerate} 
+              disabled={generating || (tab === "url" && !url) || (tab === "upload" && !file) || (tab === "templates" && !agentName)}
+              className="rounded-xl h-12 px-8 min-w-[180px] shadow-glow"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Working...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Generate Agent
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end gap-4">
-        <Button variant="outline" asChild>
-          <Link href="/dashboard/agents">Cancel</Link>
-        </Button>
-        <Button disabled={!specContent}>
-          <FileCode className="mr-2 h-4 w-4" />
-          Create Agent
-        </Button>
+        </div>
       </div>
     </div>
-  )
+  );
 }
+
+const Step = ({ done, label }: { done: boolean; label: string }) => (
+  <li className="flex items-center gap-3">
+    <div className={cn(
+      "flex h-5 w-5 items-center justify-center rounded-full transition-all duration-500",
+      done ? "bg-emerald-500 text-white rotate-0" : "bg-muted text-muted-foreground/30 -rotate-90"
+    )}>
+      {done ? <Check className="h-3 w-3 stroke-[3px]" /> : <div className="h-1 w-1 rounded-full bg-current" />}
+    </div>
+    <span className={cn(
+      "text-sm font-medium transition-colors duration-300",
+      done ? "text-foreground" : "text-muted-foreground/40"
+    )}>
+      {label}
+    </span>
+  </li>
+);
+
+const TabButton = ({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) => (
+  <button
+    onClick={onClick}
+    className={cn(
+      "inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-all whitespace-nowrap",
+      active 
+        ? "bg-background shadow-md text-foreground scale-105" 
+        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+    )}
+  >
+    {icon} {label}
+  </button>
+);
