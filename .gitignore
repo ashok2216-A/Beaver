@@ -175,3 +175,4 @@ backend/agents.db
 backend/agents.db-journal
 backend/logs/
 *.log
+backend/agents.db*
