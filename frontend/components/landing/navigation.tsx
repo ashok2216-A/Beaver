@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 
@@ -48,8 +49,14 @@ export function Navigation() {
         >
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className={`shrink-0 transition-all duration-500 ${isScrolled ? "w-8 h-8" : "w-10 h-10"}`}>
-              <img src="/logo.svg" alt="Beaver Logo" className="w-full h-full object-contain invert" />
+            <div className={`relative shrink-0 transition-all duration-500 ${isScrolled ? "w-8 h-8" : "w-10 h-10"}`}>
+              <Image 
+                src="/logo.svg" 
+                alt="Beaver Logo" 
+                fill
+                className="object-contain invert"
+                priority
+              />
             </div>
             <span className={`font-display tracking-tight transition-all duration-500 ${isScrolled ? "text-xl text-foreground" : "text-2xl text-white"}`}>Beaver</span>
           </Link>

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { 
@@ -74,8 +75,14 @@ export function DashboardSidebar({
             isCollapsed ? "justify-center" : "px-2"
           )}>
             <Link href="/" className="flex items-center gap-1 group/logo">
-              <div className="w-10 h-10 shrink-0 group-hover/logo:scale-105 transition-transform">
-                <img src="/logo.svg" alt="Beaver Logo" className="w-full h-full object-contain dark:invert" />
+              <div className="relative w-10 h-10 shrink-0 group-hover/logo:scale-105 transition-transform">
+                <Image 
+                  src="/logo.svg" 
+                  alt="Beaver Logo" 
+                  fill
+                  className="object-contain dark:invert"
+                  priority
+                />
               </div>
               <span className={cn(
                 "text-xl font-bold tracking-tight text-foreground transition-all duration-300 origin-left",
