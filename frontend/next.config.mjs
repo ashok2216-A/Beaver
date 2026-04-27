@@ -7,10 +7,11 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8000'
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:8000/api/:path*',
+        destination: `${apiUrl}/api/:path*`,
       },
     ]
   },
