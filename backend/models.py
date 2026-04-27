@@ -34,6 +34,13 @@ class User(Base):
 
     id         = Column(String(255), primary_key=True)  # Clerk ID
     email      = Column(String(255), nullable=True)
+    
+    # Monetization fields
+    stripe_customer_id  = Column(String(255), nullable=True, index=True)
+    subscription_id     = Column(String(255), nullable=True, index=True)
+    plan_type           = Column(String(32), default="free", nullable=False) # free | pro
+    subscription_status = Column(String(32), default="incomplete", nullable=False) # active | past_due | etc
+    
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     agents   = relationship("Agent", back_populates="owner", cascade="all, delete-orphan")

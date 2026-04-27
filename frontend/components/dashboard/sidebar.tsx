@@ -15,7 +15,8 @@ import {
   BookOpen,
   Code2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  CreditCard
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -29,6 +30,7 @@ const navigation = [
 ]
 
 const secondaryNavigation = [
+  { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
   { name: "Documentation", href: "/docs", icon: BookOpen },
   { name: "API Reference", href: "/docs#api-integration", icon: Code2 },

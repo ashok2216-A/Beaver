@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     secret_key: str = "change_me_in_production"
     access_token_expire_minutes: int = 60
 
+    # ── Stripe ────────────────────────────────────────────────────
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_pro_plan_id: str = ""
+    frontend_url: str = "http://localhost:3000"
+
     # ── CORS ──────────────────────────────────────────────────────
     allowed_origins: str = "http://localhost:5173,http://localhost:3000"
 

@@ -171,6 +171,15 @@ def create_agent(
     user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
+    # SEC-MON: Enforce plan limits
+    if user.plan_type == "free":
+        count = db.query(Agent).filter(Agent.owner_id == user.id).count()
+        if count >= 1:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="Free plan limit reached (1 agent). Please upgrade to Pro for unlimited agents."
+            )
+
     agent = Agent(
         owner_id=user.id,
         name=data.name,
@@ -229,6 +238,15 @@ async def ingest_url(
     user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
+    # SEC-MON: Enforce plan limits
+    if user.plan_type == "free":
+        count = db.query(Agent).filter(Agent.owner_id == user.id).count()
+        if count >= 1:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="Free plan limit reached (1 agent). Please upgrade to Pro for unlimited agents."
+            )
+
     validate_url_safe(body.url)
     if body.base_url:
         validate_url_safe(body.base_url)
@@ -282,6 +300,15 @@ async def ingest_file(
     user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
+    # SEC-MON: Enforce plan limits
+    if user.plan_type == "free":
+        count = db.query(Agent).filter(Agent.owner_id == user.id).count()
+        if count >= 1:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="Free plan limit reached (1 agent). Please upgrade to Pro for unlimited agents."
+            )
+
     """Parse an uploaded spec file and create an agent."""
     content = await file.read()
     try:
@@ -321,6 +348,15 @@ async def ingest_smart(
     user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
+    # SEC-MON: Enforce plan limits
+    if user.plan_type == "free":
+        count = db.query(Agent).filter(Agent.owner_id == user.id).count()
+        if count >= 1:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="Free plan limit reached (1 agent). Please upgrade to Pro for unlimited agents."
+            )
+
     """
     Automated discovery: Hunter + AI Fallback.
     """

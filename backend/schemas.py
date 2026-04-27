@@ -35,6 +35,8 @@ class PaginatedEndpoints(BaseModel):
 class UserOut(BaseModel):
     id: str
     email: Optional[str] = None
+    plan_type: str = "free"
+    subscription_status: str = "incomplete"
     created_at: datetime
 
     model_config = {"from_attributes": True}

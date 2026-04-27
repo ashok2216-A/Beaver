@@ -24,7 +24,8 @@ from slowapi.errors import RateLimitExceeded
 
 from config import get_settings
 from database import Base, engine
-from routes import agents, chat, auth
+import models
+from routes import agents, chat, auth, billing
 from utils.auth import get_current_user
 
 # ─── Logging setup ────────────────────────────────────────────────────────────
@@ -151,6 +152,11 @@ app.include_router(
     chat.router,   
     prefix="/api/v1",
     dependencies=[Depends(get_current_user)]
+)
+
+app.include_router(
+    billing.router,
+    prefix="/api/v1",
 )
 
 

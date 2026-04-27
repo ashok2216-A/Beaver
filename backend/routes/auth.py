@@ -3,10 +3,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User, ApiKey
-from schemas import ApiKeyCreate, ApiKeyOut, MessageOut
+from schemas import ApiKeyCreate, ApiKeyOut, MessageOut, UserOut
 from utils.auth import get_current_user, hash_key
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+@router.get("/me", response_model=UserOut)
+def get_me(user: User = Depends(get_current_user)):
+    """Return the currently authenticated user's profile."""
+    return user
 
 @router.post("/keys", response_model=ApiKeyOut)
 def create_api_key(data: ApiKeyCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
