@@ -30,10 +30,20 @@ class Settings(BaseSettings):
     secret_key: str = "change_me_in_production"
     access_token_expire_minutes: int = 60
 
-    # ── Stripe ────────────────────────────────────────────────────
+    # ── Billing ───────────────────────────────────────────────────
+    payment_provider: str = "both" # razorpay | stripe | both
+    
+    # Stripe
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_pro_plan_id: str = ""
+    
+    # Razorpay
+    razorpay_key_id: str = ""
+    razorpay_key_secret: str = ""
+    razorpay_webhook_secret: str = ""
+    razorpay_plan_id: str = ""
+
     frontend_url: str = "http://localhost:3000"
 
     # ── CORS ──────────────────────────────────────────────────────

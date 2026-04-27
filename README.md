@@ -7,10 +7,10 @@ Turn any OpenAPI spec into a production-ready AI agent in seconds. `api2bot-stud
 ## ✨ Features
 
 - **Instant Agent Generation**: Upload a JSON/YAML OpenAPI spec or paste a URL to automatically configure an agent.
-- **Google ADK Powered**: Uses the latest Google Agent Development Kit (ADK) for robust tool-calling and multi-turn conversation management.
+- **Enterprise-Grade Billing**: Support for both **Stripe** (International) and **Razorpay** (Domestic) with environment-driven provider switching.
+- **Security Hardened**: Built-in rate limiting (slowapi), IDOR protection, and a comprehensive security audit suite.
+- **Production-Ready Infra**: Database versioning via **Alembic**, structured JSON logging, and fail-fast environment validation.
 - **Live Testing Ground**: A 3-panel IDE-like interface to test your agent, view available endpoints, and tweak system prompts.
-- **Dynamic API Execution**: Automatically handles path parameter substitution, query parameters, and authentication (Bearer/API Key).
-- **Full Transparency**: Every conversation and tool call is logged with latency, status codes, and raw API responses.
 - **Modern UI**: A premium, responsive design built with React, Tailwind CSS, and Framer Motion.
 
 ---
@@ -20,24 +20,23 @@ Turn any OpenAPI spec into a production-ready AI agent in seconds. `api2bot-stud
 ### Backend
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/)
 - **Agent Orchestration**: [Google ADK](https://github.com/google/agent-development-kit)
-- **Database**: SQLAlchemy (SQLite for dev, PostgreSQL ready)
-- **LLM**: Google Gemini (via ADK)
-- **Validation**: Pydantic v2
+- **Database**: SQLAlchemy + Alembic (PostgreSQL/Neon)
+- **Monetization**: Stripe & Razorpay SDKs
+- **Security**: slowapi, bandit, ruff
 
 ### Frontend
 - **Library**: React 18
 - **Build Tool**: Vite
 - **Styling**: Tailwind CSS + shadcn/ui
-- **Icons**: Lucide React
-- **Data Fetching**: React Query
+- **State Management**: React Query
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Python 3.10+
-- Node.js 18+
+- Python 3.11+
+- Node.js 20+
 - Google Gemini API Key
 
 ### Backend Setup
@@ -45,20 +44,19 @@ Turn any OpenAPI spec into a production-ready AI agent in seconds. `api2bot-stud
    ```bash
    cd backend
    ```
-2. Create and configure your `.env` file:
-   ```bash
-   cp .env.example .env
-   # Add your GEMINI_API_KEY to the .env file
-   ```
+2. Create and configure your `.env` file (see `.env.example`).
 3. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-4. Start the FastAPI server:
+4. Run Database Migrations:
+   ```bash
+   python -m alembic upgrade head
+   ```
+5. Start the FastAPI server:
    ```bash
    uvicorn main:app --reload
    ```
-   The backend will be available at `http://localhost:8000`. You can access the interactive Swagger docs at `http://localhost:8000/docs`.
 
 ### Frontend Setup
 1. Navigate to the frontend directory:
@@ -67,13 +65,30 @@ Turn any OpenAPI spec into a production-ready AI agent in seconds. `api2bot-stud
    ```
 2. Install dependencies:
    ```bash
-   npm install # or bun install
+   npm install
    ```
 3. Start the development server:
    ```bash
    npm run dev
    ```
-   The frontend will be available at `http://localhost:5173`.
+
+---
+
+## 🛡️ Security & Testing
+
+### Automated Penetration Test
+To run the automated security scan against your local instance:
+```bash
+cd backend
+python tests/penetration_test.py
+```
+
+### CI/CD Pipeline
+Every push to `main` triggers a GitHub Action that performs:
+- 🔍 Change Detection
+- 🐍 Backend Linting (Ruff) & Security Scanning (Bandit)
+- 🧪 Pytest Suite (Billing, Agents, Security)
+- ⚛️ Frontend Build Verification
 
 ---
 
@@ -81,21 +96,16 @@ Turn any OpenAPI spec into a production-ready AI agent in seconds. `api2bot-stud
 
 ```bash
 api2bot-studio/
+├── .github/workflows/   # CI/CD Pipelines
 ├── backend/
-│   ├── routes/          # API endpoints (Agents, Chat, Logs)
-│   ├── services/        # Logic (ADK Runner, Parser, Executor)
-│   ├── models.py        # SQLAlchemy database models
-│   ├── schemas.py       # Pydantic validation schemas
-│   ├── main.py          # App entry point
-│   └── database.py      # Connection and session management
+│   ├── alembic/         # Database migrations
+│   ├── routes/          # API endpoints (Billing, Agents, Chat)
+│   ├── utils/           # Hardening (Logging, Security, Auth)
+│   └── tests/           # Security & Unit tests
 ├── frontend/
-│   ├── src/
-│   │   ├── components/  # Reusable UI components
-│   │   ├── pages/       # Main app views (Dashboard, Builder, etc.)
-│   │   ├── index.css    # Premium design system
-│   │   └── App.tsx      # Routing and providers
-│   └── tailwind.config.ts
-└── README.md
+│   ├── components/      # Billing, Agent Builder UI
+│   └── app/             # Next.js/Vite Page routes
+└── render.yaml          # One-click deployment spec
 ```
 
 ---
@@ -103,15 +113,3 @@ api2bot-studio/
 ## 📝 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
-
----
-
-## 🤝 Contributing
-
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request

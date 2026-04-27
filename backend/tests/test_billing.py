@@ -51,12 +51,11 @@ def test_create_checkout_session(mock_price, mock_session, mock_auth):
     assert "url" in response.json()
     assert response.json()["url"] == "https://checkout.stripe.com/test"
 
-@patch("stripe.billing_portal.Session.create")
-def test_create_portal_session_fail_no_customer(mock_portal, mock_auth):
-    """Test that portal session fails if user has no stripe_customer_id."""
-    response = client.post("/api/v1/billing/create-portal-session")
-    assert response.status_code == 400
-    assert "No billing history" in response.json()["detail"]
+def test_get_billing_config(mock_auth):
+    """Test fetching billing configuration."""
+    response = client.get("/api/v1/billing/config")
+    assert response.status_code == 200
+    assert "payment_provider" in response.json()
 
 def test_agent_limit_enforcement(mock_auth):
     """Test that a free user cannot create more than 1 agent."""

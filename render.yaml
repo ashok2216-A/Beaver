@@ -17,11 +17,39 @@ services:
       - key: MISTRAL_API_KEY
         sync: false # Set this in Render Dashboard
       - key: ALLOWED_ORIGINS
-        value: "https://api-agent-frontend.onrender.com" # Restrict to your frontend domain
+        value: "https://api-agent-frontend.onrender.com"
+      - key: FRONTEND_URL
+        value: "https://api-agent-frontend.onrender.com"
       - key: APP_ENV
         value: production
       - key: LOG_LEVEL
         value: INFO
+      - key: PAYMENT_PROVIDER
+        value: both # razorpay | stripe | both
+
+      # ── Auth (Clerk) ──────────────────────────────────────────
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_JWKS_URL
+        sync: false
+
+      # ── Billing (Stripe) ──────────────────────────────────────
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRO_PLAN_ID
+        sync: false
+
+      # ── Billing (Razorpay) ────────────────────────────────────
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: RAZORPAY_PLAN_ID
+        sync: false
 
   # ── Frontend: Static Site ─────────────────────────────────────────────────
   - type: static_site

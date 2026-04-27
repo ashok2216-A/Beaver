@@ -18,9 +18,9 @@ from fastapi import FastAPI, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from utils.limiter import limiter
 
 from config import get_settings
 from database import Base, engine
@@ -28,26 +28,22 @@ import models
 from routes import agents, chat, auth, billing
 from utils.auth import get_current_user
 
+from utils.logging_config import setup_logging
+from utils.validate_env import validate_environment
+
 # ─── Logging setup ────────────────────────────────────────────────────────────
 settings = get_settings()
-
-logging.basicConfig(
-    level=getattr(logging, settings.log_level.upper(), logging.INFO),
-    format="%(asctime)s │ %(levelname)-8s │ %(name)s │ %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+setup_logging(log_level=settings.log_level, is_prod=settings.is_production)
 log = logging.getLogger(__name__)
-
-
-# ─── Rate Limiter ─────────────────────────────────────────────────────────────
-limiter = Limiter(key_func=get_remote_address)
-
 
 # ─── Lifespan ─────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     log.info("🚀 api2bot-studio backend starting up…")
+    
+    log.info("⚙️ Step 0/3: Validating environment configuration…")
+    validate_environment()
     
     log.info("⚙️ Step 1/3: Loading configuration and settings…")
     _ = get_settings()
