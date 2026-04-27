@@ -55,11 +55,14 @@ services:
   - type: static_site
     name: api-agent-frontend
     buildCommand: cd frontend && pnpm install && pnpm run build
-    staticPublishPath: frontend/dist
+    staticPublishPath: frontend/out
     envVars:
-      - key: VITE_API_BASE_URL
-        value: https://api-agent-backend.onrender.com
+      - key: NEXT_PUBLIC_API_URL
+        value: https://api-agent-backend.onrender.com/api/v1
     routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://api-agent-backend.onrender.com/api/*
       - type: rewrite
         source: /*
         destination: /index.html
