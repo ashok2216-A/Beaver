@@ -92,12 +92,15 @@ export default function LogsPage() {
       const response = await fetch("/api/v1/chat/logs/all", {
         headers: { Authorization: `Bearer ${token}` }
       })
-      if (!response.ok) throw new Error("Failed to fetch logs")
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(`Error ${response.status}: ${errorData.detail || "Failed to fetch logs"}`)
+      }
       const data = await response.json()
       setLogs(data.items || [])
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching logs:", error)
-      toast.error("Failed to load activity logs")
+      toast.error(error.message || "Failed to load activity logs")
     } finally {
       setLoading(false)
     }
@@ -220,9 +223,9 @@ export default function LogsPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <AgentAvatar id={log.agent_id} size="sm" />
-                          <Badge variant="outline" className="font-medium bg-primary/5 text-primary border-primary/20 truncate max-w-[120px]">
+                          <span className="text-sm font-semibold text-foreground truncate max-w-[150px]">
                             {log.agent_name || `Agent #${log.agent_id}`}
-                          </Badge>
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
