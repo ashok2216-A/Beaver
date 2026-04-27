@@ -1,69 +1,20 @@
 {
   "templates": [
-    { "id": "openai", "name": "OpenAI", "category": "AI", "domain": "openai.com", "source_url": "https://platform.openai.com/docs/api-reference", "base_url": "https://api.openai.com/v1", "auth_type": "bearer", "description": "The gold standard for LLMs." },
-    { "id": "anthropic", "name": "Anthropic", "category": "AI", "domain": "anthropic.com", "source_url": "https://docs.anthropic.com/en/api/reference", "base_url": "https://api.anthropic.com/v1", "auth_type": "apikey", "description": "Claude 3 models." },
-    { "id": "groq", "name": "Groq AI", "category": "AI", "domain": "groq.com", "source_url": "https://console.groq.com/docs/api-reference", "base_url": "https://api.groq.com/openai/v1", "auth_type": "bearer", "description": "LPU-powered inference." },
-    { "id": "openrouter", "name": "OpenRouter", "category": "AI", "domain": "openrouter.ai", "source_url": "https://openrouter.ai/docs#requests", "base_url": "https://openrouter.ai/api/v1", "auth_type": "bearer", "description": "Unified LLM interface." },
-    { "id": "together", "name": "Together AI", "category": "AI", "domain": "together.ai", "source_url": "https://docs.together.ai/reference", "base_url": "https://api.together.xyz/v1", "auth_type": "bearer", "description": "OS model inference." },
-    { "id": "mistral", "name": "Mistral AI", "category": "AI", "domain": "mistral.ai", "source_url": "https://docs.mistral.ai/api/", "base_url": "https://api.mistral.ai/v1", "auth_type": "bearer", "description": "European high-performance LLMs." },
-    { "id": "perplexity", "name": "Perplexity", "category": "AI", "domain": "perplexity.ai", "source_url": "https://docs.perplexity.ai/reference", "base_url": "https://api.perplexity.ai", "auth_type": "bearer", "description": "Search-enabled LLM." },
-    { "id": "cohere", "name": "Cohere", "category": "AI", "domain": "cohere.com", "source_url": "https://docs.cohere.com/reference/about", "base_url": "https://api.cohere.ai/v1", "auth_type": "bearer", "description": "Enterprise AI for RAG." },
-    { "id": "pinecone", "name": "Pinecone", "category": "AI", "domain": "pinecone.io", "source_url": "https://docs.pinecone.io/reference/api/2024-07/control-plane/list_indexes", "base_url": "https://api.pinecone.io", "auth_type": "apikey", "description": "Vector database for AI." },
-    
-    { "id": "stripe", "name": "Stripe", "category": "Payments", "domain": "stripe.com", "source_url": "https://stripe.com/docs/api", "base_url": "https://api.stripe.com/v1", "auth_type": "bearer", "description": "Online payments." },
-    { "id": "lemonsqueezy", "name": "Lemon Squeezy", "category": "Payments", "domain": "lemonsqueezy.com", "source_url": "https://docs.lemonsqueezy.com/api", "base_url": "https://api.lemonsqueezy.com/v1", "auth_type": "bearer", "description": "MoR for SaaS." },
-    { "id": "paddle", "name": "Paddle", "category": "Payments", "domain": "paddle.com", "source_url": "https://developer.paddle.com/api-reference", "base_url": "https://api.paddle.com", "auth_type": "bearer", "description": "Global billing." },
-    { "id": "paypal", "name": "PayPal", "category": "Payments", "domain": "paypal.com", "source_url": "https://developer.paypal.com/docs/api", "base_url": "https://api-m.paypal.com", "auth_type": "bearer", "description": "Legacy payments." },
-    { "id": "razorpay", "name": "Razorpay", "category": "Payments", "domain": "razorpay.com", "source_url": "https://razorpay.com/docs/api/", "base_url": "https://api.razorpay.com/v1", "auth_type": "bearer", "description": "India's payment leader." },
-
-    { "id": "github", "name": "GitHub", "category": "DevTools", "domain": "github.com", "source_url": "https://docs.github.com/en/rest", "base_url": "https://api.github.com", "auth_type": "bearer", "description": "Git hosting." },
-    { "id": "gitlab", "name": "GitLab", "category": "DevTools", "domain": "gitlab.com", "source_url": "https://docs.gitlab.com/ee/api/rest/", "base_url": "https://gitlab.com/api/v4", "auth_type": "bearer", "description": "DevOps platform." },
-    { "id": "vercel", "name": "Vercel", "category": "DevTools", "domain": "vercel.com", "source_url": "https://vercel.com/docs/rest-api", "base_url": "https://api.vercel.com", "auth_type": "bearer", "description": "Cloud deployments." },
-    { "id": "supabase", "name": "Supabase", "category": "DevTools", "domain": "supabase.com", "source_url": "https://supabase.com/docs/guides/api", "base_url": "https://{project}.supabase.co/rest/v1", "auth_type": "apikey", "description": "BaaS platform." },
-    { "id": "railway", "name": "Railway", "category": "DevTools", "domain": "railway.app", "source_url": "https://docs.railway.app/reference/public-api", "base_url": "https://backboard.railway.app/graphql", "auth_type": "bearer", "description": "Modern infra." },
-    { "id": "appwrite", "name": "Appwrite", "category": "DevTools", "domain": "appwrite.io", "source_url": "https://appwrite.io/docs/references/cloud/rest", "base_url": "https://cloud.appwrite.io/v1", "auth_type": "apikey", "description": "Backend for everyone." },
-    { "id": "neon", "name": "Neon", "category": "DevTools", "domain": "neon.tech", "source_url": "https://neon.tech/docs/reference/api", "base_url": "https://console.neon.tech/api/v2", "auth_type": "bearer", "description": "Serverless Postgres." },
-
-    { "id": "clerk", "name": "Clerk Auth", "category": "Auth", "domain": "clerk.com", "source_url": "https://clerk.com/docs/reference/backend-api", "base_url": "https://api.clerk.com/v1", "auth_type": "bearer", "description": "User auth." },
-    { "id": "auth0", "name": "Auth0", "category": "Auth", "domain": "auth0.com", "source_url": "https://auth0.com/docs/api/management/v2", "base_url": "https://{domain}/api/v2", "auth_type": "bearer", "description": "Enterprise identity." },
-    { "id": "kinde", "name": "Kinde", "category": "Auth", "domain": "kinde.com", "source_url": "https://kinde.com/docs/developer-tools/kinde-api/api-introduction/", "base_url": "https://{domain}.kinde.com/api/v1", "auth_type": "bearer", "description": "Auth for modern apps." },
-
-    { "id": "hubspot", "name": "HubSpot", "category": "CRM", "domain": "hubspot.com", "source_url": "https://developers.hubspot.com/docs/api/overview", "base_url": "https://api.hubapi.com", "auth_type": "bearer", "description": "Marketing CRM." },
-    { "id": "salesforce", "name": "Salesforce", "category": "CRM", "domain": "salesforce.com", "source_url": "https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_what_is_rest_api.htm", "base_url": "https://{instance}.salesforce.com/services/data/v59.0", "auth_type": "bearer", "description": "Enterprise CRM." },
-    { "id": "pipedrive", "name": "Pipedrive", "category": "CRM", "domain": "pipedrive.com", "source_url": "https://developers.pipedrive.com/docs/api/v1", "base_url": "https://api.pipedrive.com/v1", "auth_type": "apikey", "description": "Sales focus CRM." },
-    { "id": "intercom", "name": "Intercom", "category": "CRM", "domain": "intercom.com", "source_url": "https://developers.intercom.com/intercom-api-reference", "base_url": "https://api.intercom.io", "auth_type": "bearer", "description": "Customer engagement." },
-    { "id": "zendesk", "name": "Zendesk", "category": "CRM", "domain": "zendesk.com", "source_url": "https://developer.zendesk.com/api-reference/ticketing/introduction/", "base_url": "https://{subdomain}.zendesk.com/api/v2", "auth_type": "bearer", "description": "Support & Ticketing API." },
-
-    { "id": "notion", "name": "Notion", "category": "Productivity", "domain": "notion.so", "source_url": "https://developers.notion.com/reference", "base_url": "https://api.notion.com/v1", "auth_type": "bearer", "description": "Workspace API." },
-    { "id": "slack", "name": "Slack", "category": "Productivity", "domain": "slack.com", "source_url": "https://api.slack.com/methods", "base_url": "https://slack.com/api", "auth_type": "bearer", "description": "Team chat." },
-    { "id": "discord", "name": "Discord", "category": "Productivity", "domain": "discord.com", "source_url": "https://discord.com/developers/docs", "base_url": "https://discord.com/api/v10", "auth_type": "bearer", "description": "Community chat." },
-    { "id": "linear", "name": "Linear", "category": "Productivity", "domain": "linear.app", "source_url": "https://developers.linear.app/docs/graphql", "base_url": "https://api.linear.app/graphql", "auth_type": "apikey", "description": "Issue tracking." },
-    { "id": "asana", "name": "Asana", "category": "Productivity", "domain": "asana.com", "source_url": "https://developers.asana.com/reference", "base_url": "https://app.asana.com/api/1.0", "auth_type": "bearer", "description": "Work management." },
-    { "id": "clickup", "name": "ClickUp", "category": "Productivity", "domain": "clickup.com", "source_url": "https://clickup.com/api", "base_url": "https://api.clickup.com/api/v2", "auth_type": "bearer", "description": "Task management." },
-    { "id": "monday", "name": "Monday.com", "category": "Productivity", "domain": "monday.com", "source_url": "https://developer.monday.com/api-reference", "base_url": "https://api.monday.com/v2", "auth_type": "bearer", "description": "Work OS." },
-
-    { "id": "resend", "name": "Resend", "category": "Email", "domain": "resend.com", "source_url": "https://resend.com/docs/api-reference", "base_url": "https://api.resend.com", "auth_type": "bearer", "description": "Email API." },
-    { "id": "loops", "name": "Loops", "category": "Email", "domain": "loops.so", "source_url": "https://loops.so/docs/api-reference", "base_url": "https://app.loops.so/api/v1", "auth_type": "bearer", "description": "Marketing email." },
-    { "id": "sendgrid", "name": "SendGrid", "category": "Email", "domain": "sendgrid.com", "source_url": "https://docs.sendgrid.com/api-reference", "base_url": "https://api.sendgrid.com/v3", "auth_type": "bearer", "description": "Transactional email." },
-    { "id": "mailchimp", "name": "Mailchimp", "category": "Email", "domain": "mailchimp.com", "source_url": "https://mailchimp.com/developer/marketing/api/", "base_url": "https://{dc}.api.mailchimp.com/3.0", "auth_type": "bearer", "description": "Marketing leader." },
-
-    { "id": "twilio", "name": "Twilio", "category": "Comms", "domain": "twilio.com", "source_url": "https://www.twilio.com/docs/usage/api", "base_url": "https://api.twilio.com/2010-04-01", "auth_type": "bearer", "description": "SMS & Voice." },
-    { "id": "vonage", "name": "Vonage", "category": "Comms", "domain": "vonage.com", "source_url": "https://developer.vonage.com/en/api", "base_url": "https://rest.nexmo.com", "auth_type": "apikey", "description": "Communication API." },
-
-    { "id": "cloudinary", "name": "Media", "domain": "cloudinary.com", "category": "Media", "source_url": "https://cloudinary.com/documentation/image_upload_api_reference", "base_url": "https://api.cloudinary.com/v1_1", "auth_type": "apikey", "description": "Image/Video API." },
-    { "id": "uploadcare", "name": "Uploadcare", "category": "Media", "domain": "uploadcare.com", "source_url": "https://uploadcare.com/api-refs/rest-api/v0.7/", "base_url": "https://api.uploadcare.com", "auth_type": "apikey", "description": "File handling." },
-
-    { "id": "sanity", "name": "Sanity", "category": "CMS", "domain": "sanity.io", "source_url": "https://www.sanity.io/docs/http-api", "base_url": "https://{project}.api.sanity.io/v2021-10-21", "auth_type": "bearer", "description": "Structured content." },
-    { "id": "contentful", "name": "Contentful", "category": "CMS", "domain": "contentful.com", "source_url": "https://www.contentful.com/developers/docs/references", "base_url": "https://api.contentful.com", "auth_type": "bearer", "description": "Headless CMS." },
-    { "id": "strapi", "name": "Strapi", "category": "CMS", "domain": "strapi.io", "source_url": "https://docs.strapi.io/dev-docs/api/rest", "base_url": "https://{host}/api", "auth_type": "bearer", "description": "Open headless CMS." },
-
-    { "id": "datadog", "name": "Datadog", "category": "Ops", "domain": "datadoghq.com", "source_url": "https://docs.datadoghq.com/api/latest/", "base_url": "https://api.datadoghq.com/api/v2", "auth_type": "apikey", "description": "Monitoring." },
-    { "id": "sentry", "name": "Sentry", "category": "Ops", "domain": "sentry.io", "source_url": "https://docs.sentry.io/api/", "base_url": "https://sentry.io/api/0", "auth_type": "bearer", "description": "Error tracking." },
-
-    { "id": "posthog", "name": "PostHog", "category": "Analytics", "domain": "posthog.com", "source_url": "https://posthog.com/docs/api", "base_url": "https://app.posthog.com/api", "auth_type": "bearer", "description": "Product analytics." },
-    { "id": "mixpanel", "name": "Mixpanel", "category": "Analytics", "domain": "mixpanel.com", "source_url": "https://developer.mixpanel.com/reference", "base_url": "https://api.mixpanel.com", "auth_type": "bearer", "description": "Event analytics." },
-    
-    { "id": "firecrawl", "name": "Firecrawl", "category": "Scraping", "domain": "firecrawl.dev", "source_url": "https://docs.firecrawl.dev/api-reference", "base_url": "https://api.firecrawl.dev/v1", "auth_type": "bearer", "description": "Web to LLM." },
-    { "id": "brightdata", "name": "Bright Data", "category": "Scraping", "domain": "brightdata.com", "source_url": "https://brightdata.com/docs/api", "base_url": "https://api.brightdata.com", "auth_type": "bearer", "description": "Proxy & scraping." }
+    {
+      "id": "github",
+      "name": "GitHub API",
+      "description": "Full GitHub REST API for managing repos, issues, and more.",
+      "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/ghes-3.5/ghes-3.5.json",
+      "auth_type": "bearer",
+      "category": "DevOps"
+    },
+    {
+      "id": "stripe",
+      "name": "Stripe API",
+      "description": "The standard for online payments and subscription management.",
+      "url": "https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json",
+      "auth_type": "bearer",
+      "category": "Payments"
+    }
   ]
 }
