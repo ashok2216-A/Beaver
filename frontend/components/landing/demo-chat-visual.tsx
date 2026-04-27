@@ -115,20 +115,22 @@ export function DemoChatAnimation() {
                 background: transparent;
               }
               .custom-scrollbar::-webkit-scrollbar-thumb {
-                background: rgba(255, 255, 255, 0.1);
+                background: rgba(255, 255, 255, 0.15);
                 border-radius: 10px;
+                border: 2px solid transparent;
+                background-clip: padding-box;
               }
               .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                background: rgba(255, 255, 255, 0.2);
+                background: rgba(255, 255, 255, 0.25);
               }
             `}</style>
             {messages.map((msg, i) => (
               <div 
                 key={i} 
-                className={`transition-all duration-500 animate-in fade-in slide-in-from-bottom-2`}
+                className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"} transition-all duration-500 animate-in fade-in slide-in-from-bottom-2`}
               >
                 {msg.type === "user" ? (
-                  <div className="bg-white/[0.03] border border-white/5 rounded-xl p-4 text-sm text-white/90">
+                  <div className="bg-white/[0.03] border border-white/5 rounded-xl p-4 text-sm text-white/90 max-w-[85%]">
                     {msg.text}
                   </div>
                 ) : msg.isProcessing ? (

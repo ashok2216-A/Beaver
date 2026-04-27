@@ -22,8 +22,16 @@ from schemas import (
 from services.parser import parse_openapi
 from services.ai_discovery import smart_ingest_url
 from utils.auth import get_current_user
-from utils.security import validate_url_safe
+from utils.security import validate_url_safe, encrypt_secret, decrypt_secret
 from slowapi import Limiter
+
+def encrypt_dict(d: dict | None) -> dict:
+    if not d: return {}
+    return {k: encrypt_secret(str(v)) for k, v in d.items()}
+
+def decrypt_dict(d: dict | None) -> dict:
+    if not d: return {}
+    return {k: decrypt_secret(str(v)) for k, v in d.items()}
 from slowapi.util import get_remote_address
 from fastapi import Request
 
@@ -147,7 +155,7 @@ def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
         auth_type=agent.auth_type,
         auth_header=agent.auth_header,
         endpoint_count=ep_count if ep_count is not None else len(agent.endpoints),
-        custom_headers=agent.custom_headers or {},
+        custom_headers=decrypt_dict(agent.custom_headers),
         created_at=agent.created_at,
         updated_at=agent.updated_at,
     )
@@ -170,10 +178,10 @@ def create_agent(
         base_url=data.base_url,
         system_prompt=data.system_prompt,
         auth_type=data.auth_type,
-        auth_secret=data.auth_secret,
+        auth_secret=encrypt_secret(data.auth_secret),
         auth_header=data.auth_header,
         model_id=data.model_id,
-        custom_headers=data.custom_headers or {},
+        custom_headers=encrypt_dict(data.custom_headers),
         status=AgentStatus.draft,
         api_spec=data.api_spec if data.api_spec else "",
     )
@@ -250,9 +258,9 @@ async def ingest_url(
         base_url=base_url,
         system_prompt="",
         auth_type="bearer",
-        auth_secret=body.auth_secret or "",
+        auth_secret=encrypt_secret(body.auth_secret or ""),
         model_id="mistral/mistral-small-latest",
-        custom_headers=body.custom_headers or {},
+        custom_headers=encrypt_dict(body.custom_headers),
         status=AgentStatus.draft,
         api_spec="",
     )
@@ -296,7 +304,7 @@ async def ingest_file(
         system_prompt="",
         auth_type=auth_type,
         auth_header=auth_header,
-        auth_secret=auth_secret,
+        auth_secret=encrypt_secret(auth_secret or ""),
         model_id="mistral/mistral-small-latest",
         status=AgentStatus.draft,
         api_spec="",
@@ -334,9 +342,9 @@ async def ingest_smart(
         base_url=base_url,
         system_prompt="",
         auth_type="bearer",
-        auth_secret="",
+        auth_secret=encrypt_secret(""),
         model_id="mistral/mistral-small-latest",
-        custom_headers={},
+        custom_headers=encrypt_dict({}),
         status=AgentStatus.draft,
         api_spec="",
     )
@@ -431,7 +439,9 @@ def update_agent(agent_id: int, data: AgentUpdate, user: User = Depends(get_curr
         elif field == "auth_secret":
             if value == "": continue
             log.info(f"Updating auth_secret for agent {agent_id}, length={len(value)}")
-            setattr(agent, field, value.strip())
+            setattr(agent, field, encrypt_secret(value.strip()))
+        elif field == "custom_headers":
+            setattr(agent, field, encrypt_dict(value))
         else:
             setattr(agent, field, value)
     db.commit()

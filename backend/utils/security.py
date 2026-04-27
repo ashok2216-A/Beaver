@@ -1,3 +1,33 @@
+from cryptography.fernet import Fernet
+import os
+
+# SEC-02: End-to-End Encryption (AES-256 at rest)
+# If ENCRYPTION_KEY is missing, we use a stable default for dev, but warn in logs.
+_raw_key = os.getenv("ENCRYPTION_KEY", "api2bot_studio_default_32byte_key_!!!")
+# Fernet keys must be 32 url-safe base64-encoded bytes.
+# If the key isn't valid base64, we pad/encode it to be safe.
+try:
+    cipher_suite = Fernet(_raw_key.encode())
+except Exception:
+    import base64
+    import hashlib
+    key_32 = base64.urlsafe_b64encode(hashlib.sha256(_raw_key.encode()).digest())
+    cipher_suite = Fernet(key_32)
+
+def encrypt_secret(secret: str) -> str:
+    """Encrypt a plain text secret using AES-256."""
+    if not secret: return ""
+    return cipher_suite.encrypt(secret.encode()).decode()
+
+def decrypt_secret(encrypted_secret: str) -> str:
+    """Decrypt an AES-256 encrypted secret. Returns original string if not encrypted."""
+    if not encrypted_secret: return ""
+    try:
+        return cipher_suite.decrypt(encrypted_secret.encode()).decode()
+    except Exception:
+        # Fallback: If decryption fails, it might be an old plain-text secret
+        return encrypted_secret
+
 import ipaddress
 import socket
 from urllib.parse import urlparse

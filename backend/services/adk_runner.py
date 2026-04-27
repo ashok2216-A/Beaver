@@ -34,6 +34,7 @@ from google.adk.models.lite_llm import LiteLlm
 from google.genai import types as genai_types
 
 from config import get_settings
+from utils.security import decrypt_secret
 from services.executor import call_api
 
 log = logging.getLogger(__name__)
@@ -64,6 +65,10 @@ def _build_agent(
     The tool log is mutated during execution so the caller can inspect
     which endpoints were actually called after `run_async` completes.
     """
+    
+    def decrypt_dict(d: dict | None) -> dict:
+        if not d: return {}
+        return {k: decrypt_secret(str(v)) for k, v in d.items()}
 
     # ── Single universal tool ────────────────────────────────────────
     async def call_api_endpoint(path: str, method: str, params: str = "{}") -> str:
@@ -89,7 +94,7 @@ def _build_agent(
             params_dict = {}
 
         # SEC-1: Find the matching endpoint definition so executor can route params.
-        # CRITICAL: If no definition is found, the agent MUST NOT call the executor.
+        # CRITICAL: If no definition is found, or if it is locked, the agent MUST NOT call the executor.
         ep_def = next(
             (e for e in endpoints
              if e["path"] == path and e["method"].upper() == method.upper()),
@@ -103,6 +108,14 @@ def _build_agent(
                 "error": "unauthorized_endpoint",
                 "detail": f"The agent is not authorized to call {method} {path}. This endpoint is not in the allowed specification."
             })
+            
+        if ep_def.get("is_locked"):
+            log.warning(f"SECURITY: Agent attempted to call LOCKED endpoint: {method} {path}")
+            return json.dumps({
+                "status_code": 403,
+                "error": "locked_endpoint",
+                "detail": f"The endpoint {method} {path} is currently locked by the administrator."
+            })
 
         data, status, latency = await call_api(
             base_url=base_url,
@@ -111,9 +124,9 @@ def _build_agent(
             endpoint_params=ep_def.get("parameters", []),
             extracted_params=params_dict,
             auth_type=auth_type,
-            auth_secret=auth_secret,
+            auth_secret=decrypt_secret(auth_secret), # Decrypt on-the-fly
             auth_header=auth_header,
-            custom_headers=custom_headers,
+            custom_headers=decrypt_dict(custom_headers),
         )
 
         # ─── Ephemeral RAG Pipeline ───

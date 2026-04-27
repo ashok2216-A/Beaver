@@ -25,6 +25,7 @@ from models import Agent, Endpoint, Log, User
 from schemas import ChatRequest, ChatResponse, LogOut, PaginatedLogs
 from services.agent import run_agent
 from utils.auth import get_current_user
+from utils.security import encrypt_secret, decrypt_secret
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["Chat & Logs"])
@@ -161,7 +162,7 @@ async def chat(
                             method=matched.get("method", ""),
                             status_code=res.get("status_code", 0),
                             latency_ms=res.get("latency_ms", 0),
-                            api_response=json.dumps(res.get("api_response"), default=str)[:4096],
+                            api_response=encrypt_secret(json.dumps(res.get("api_response"), default=str)[:4096]),
                             llm_thought=f"Auth: {agent.auth_type} | SecretLen: {len(agent.auth_secret)}",
                             error=res.get("error", ""),
                         )
@@ -185,7 +186,7 @@ async def chat(
         method=matched.get("method", ""),
         status_code=result.get("status_code", 0),
         latency_ms=result.get("latency_ms", 0),
-        api_response=json.dumps(result.get("api_response"), default=str)[:4096],
+        api_response=encrypt_secret(json.dumps(result.get("api_response"), default=str)[:4096]),
         llm_thought=f"Auth: {agent.auth_type} | SecretLen: {len(agent.auth_secret)}",
         error=result.get("error", ""),
     )
@@ -230,6 +231,8 @@ def get_all_logs(
     # Map results to schema, including the agent_name from the join
     out_items = []
     for l, agent_name in items:
+        # Decrypt api_response for UI
+        l.api_response = decrypt_secret(l.api_response)
         obj = LogOut.model_validate(l)
         obj.agent_name = agent_name
         out_items.append(obj)
@@ -265,6 +268,9 @@ def get_logs(
               .limit(per_page)
               .all()
     )
+    for l in items:
+        l.api_response = decrypt_secret(l.api_response)
+    
     return PaginatedLogs(
         total=total,
         page=page,
@@ -289,6 +295,8 @@ def get_log(
     )
     if not entry:
         raise HTTPException(status_code=404, detail="Log entry not found")
+    
+    entry.api_response = decrypt_secret(entry.api_response)
     return LogOut.model_validate(entry)
 
 
