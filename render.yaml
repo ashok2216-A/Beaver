@@ -9,13 +9,15 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: DATABASE_URL
-        sync: false # Paste your Neon PostgreSQL URL here in the Render Dashboard
-      - key: ADMIN_KEY
-        sync: false # Set your master access key here (e.g. a long password)
+        sync: false 
       - key: GEMINI_API_KEY
-        sync: false # Set this in Render Dashboard
+        sync: false 
       - key: MISTRAL_API_KEY
-        sync: false # Set this in Render Dashboard
+        sync: false 
+      - key: SECRET_KEY
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
       - key: ALLOWED_ORIGINS
         value: "https://api-agent-frontend.onrender.com"
       - key: FRONTEND_URL
@@ -25,7 +27,7 @@ services:
       - key: LOG_LEVEL
         value: INFO
       - key: PAYMENT_PROVIDER
-        value: both # razorpay | stripe | both
+        value: both 
 
       # ── Auth (Clerk) ──────────────────────────────────────────
       - key: CLERK_SECRET_KEY
@@ -33,7 +35,7 @@ services:
       - key: CLERK_JWKS_URL
         sync: false
 
-      # ── Billing (Stripe) ──────────────────────────────────────
+      # ── Billing ──────────────────────────────────────────────
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
@@ -41,22 +43,19 @@ services:
       - key: STRIPE_PRO_PLAN_ID
         sync: false
 
-      # ── Billing (Razorpay) ────────────────────────────────────
-      - key: RAZORPAY_KEY_ID
-        sync: false
-      - key: RAZORPAY_KEY_SECRET
-        sync: false
-      - key: RAZORPAY_WEBHOOK_SECRET
-        sync: false
-      - key: RAZORPAY_PLAN_ID
-        sync: false
-
-  # ── Frontend: Static Site ─────────────────────────────────────────────────
+  # ── Frontend: Next.js Web Service (NOT Static Site) ───────────────────────
   - type: web
     name: api-agent-frontend
     runtime: node
-    buildCommand: cd frontend && pnpm install && pnpm run build
-    startCommand: cd frontend && pnpm run start
+    # Use npm instead of pnpm for maximum compatibility on Render free tier
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm run start
     envVars:
       - key: NEXT_PUBLIC_API_URL
         value: https://api-agent-backend.onrender.com/api/v1
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false # Set this in Render Dashboard
+      - key: CLERK_SECRET_KEY
+        sync: false # Needed for middleware
+      - key: NODE_VERSION
+        value: 20.0.0
