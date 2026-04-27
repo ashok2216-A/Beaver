@@ -25,10 +25,10 @@ Turn any OpenAPI spec into a production-ready AI agent in seconds. `api2bot-stud
 - **Security**: slowapi, bandit, ruff
 
 ### Frontend
-- **Library**: React 18
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS + shadcn/ui
-- **State Management**: React Query
+- **Library**: React 19 (Next.js 16)
+- **Build Tool**: Next.js (App Router)
+- **Styling**: Tailwind CSS 4 + shadcn/ui
+- **State Management**: React Hook Form + Zod
 
 ---
 
@@ -103,9 +103,9 @@ api2bot-studio/
 │   ├── utils/           # Hardening (Logging, Security, Auth)
 │   └── tests/           # Security & Unit tests
 ├── frontend/
-│   ├── components/      # Billing, Agent Builder UI
-│   └── app/             # Next.js/Vite Page routes
-└── render.yaml          # One-click deployment spec
+│   ├── components/      # UI components (shadcn/ui)
+│   └── app/             # Next.js App Router (Dashboard, Auth, Landing)
+└── render.yaml          # Render Blueprints for Automated Deployment
 ```
 
 ---
