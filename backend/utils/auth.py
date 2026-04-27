@@ -130,9 +130,20 @@ async def get_current_user(
             log.debug("API key authentication successful")
             return key_obj.owner
 
-    # 2. Clerk JWT Authentication (Dashboard/Frontend)
+    # 2. Bearer Token Authentication (JWT or API Key fallback)
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ", 1)[1]
+        
+        # Check if the bearer token is actually an API key (e.g. ak_...)
+        if token.startswith("ak_"):
+            h = hash_key(token)
+            key_obj = db.query(ApiKey).filter(ApiKey.key_hash == h).first()
+            if key_obj:
+                key_obj.last_used_at = datetime.now(timezone.utc)
+                db.commit()
+                return key_obj.owner
+        
+        # Otherwise, verify as Clerk JWT
         payload = await verify_clerk_token(token)
         clerk_id = payload.get("sub")
         if not clerk_id:
