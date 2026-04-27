@@ -1,0 +1,90 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  # 1. Detect Changes
+  detect-changes:
+    name: 🔍 Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+
+  # 2. Backend (Python 3.11)
+  backend-test:
+    name: 🐍 Backend (Python 3.11)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Lint with Ruff
+        run: pip install ruff && ruff check .
+      - name: Security Scan with Bandit
+        run: pip install bandit && bandit -r . -x ./tests
+      - name: Run Tests
+        run: python -m pytest tests/test_billing.py tests/test_security.py
+
+  # 3. Frontend (Node.js 20)
+  frontend-test:
+    name: ⚛️ Frontend (Node.js 20)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm install
+      - name: Build Frontend
+        run: npm run build
+
+  # 4. Pipeline Summary
+  summary:
+    name: 🚀 Pipeline Summary
+    needs: [backend-test, frontend-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Summary
+        run: |
+          echo "## 📊 Pipeline Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🐍 Backend | ${{ needs.backend-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ⚛️ Frontend | ${{ needs.frontend-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 **All checks complete!**" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,407 @@
+"use client";
+
+import { useEffect, useState, useRef } from "react";
+// ─── Animated Oscilloscope Canvas ───────────────────────────────────────────
+
+function OscilloscopeCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const frameRef = useRef(0);
+  const timeRef = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    const resize = () => {
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+      ctx.scale(dpr, dpr);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const render = () => {
+      const W = canvas.offsetWidth;
+      const H = canvas.offsetHeight;
+      ctx.clearRect(0, 0, W, H);
+      const t = timeRef.current;
+
+      const drawWave = (offset: number, color: string, amp: number, freq: number, phase: number) => {
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = color;
+        for (let x = 0; x <= W; x += 4) {
+          // Complex waveform
+          const y = H / 2 + offset + 
+                    Math.sin(x * freq + t * 2 + phase) * amp + 
+                    Math.sin(x * freq * 3 + t * 3) * (amp * 0.3);
+          
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      };
+
+      // Draw grid
+      ctx.strokeStyle = "rgba(255,255,255,0.05)";
+      ctx.lineWidth = 1;
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      for (let x = 0; x < W; x += 40) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+      for (let y = 0; y < H; y += 40) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+      ctx.stroke();
+
+      drawWave(-20, "#eca8d6", 40, 0.005, 0);
+      drawWave(0, "#a78bfa", 60, 0.003, Math.PI / 3);
+      drawWave(20, "#67e8f9", 30, 0.007, Math.PI / 1.5);
+
+      timeRef.current += 0.016;
+      frameRef.current = requestAnimationFrame(render);
+    };
+
+    render();
+    return () => {
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(frameRef.current);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="w-full h-full min-h-[300px] border border-white/10 rounded-xl bg-black/40" />;
+}
+
+const metrics = [
+  { 
+    value: 12847392, 
+    suffix: "", 
+    prefix: "",
+    label: "Tasks completed today",
+    sublabel: "by 23,847 active agents",
+  },
+  { 
+    value: 99, 
+    suffix: ".99%", 
+    prefix: "",
+    label: "Availability",
+    sublabel: "across all regions",
+  },
+  { 
+    value: 340, 
+    suffix: "ms", 
+    prefix: "<",
+    label: "Average execution",
+    sublabel: "p99 latency",
+  },
+];
+
+function AnimatedNumber({ end, suffix = "", prefix = "" }: { end: number; suffix?: string; prefix?: string }) {
+  const [count, setCount] = useState(0);
+  const [isScrambling, setIsScrambling] = useState(true);
+  const ref = useRef<HTMLDivElement>(null);
+  const [hasAnimated, setHasAnimated] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !hasAnimated) {
+          setHasAnimated(true);
+          const duration = 2500;
+          const startTime = performance.now();
+          const animate = (currentTime: number) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 4);
+            setCount(Math.floor(eased * end));
+            setIsScrambling(progress < 0.8);
+            if (progress < 1) requestAnimationFrame(animate);
+          };
+          requestAnimationFrame(animate);
+        }
+      },
+      { threshold: 0.5 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [end, hasAnimated]);
+
+  const displayValue = count.toLocaleString();
+
+  return (
+    <div ref={ref} className="inline-flex items-baseline">
+      <span className="text-muted-foreground mr-1">{prefix}</span>
+      <span className="tabular-nums">
+        {displayValue.split("").map((char, i) => (
+          <span
+            key={i}
+            className={`inline-block transition-all duration-150 ${
+              isScrambling && char !== "," ? "blur-[1px]" : ""
+            }`}
+          >
+            {char}
+          </span>
+        ))}
+      </span>
+      <span className="text-muted-foreground">{suffix}</span>
+    </div>
+  );
+}
+
+function GridBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const timeRef = useRef(0);
+  const frameRef = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const render = () => {
+      const rect = canvas.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+      ctx.clearRect(0, 0, width, height);
+      const gridSize = 60;
+      const time = timeRef.current;
+      for (let x = 0; x < width; x += gridSize) {
+        for (let y = 0; y < height; y += gridSize) {
+          const wave = Math.sin(x * 0.01 + y * 0.01 + time) * 0.5 + 0.5;
+          const size = 1 + wave * 2;
+          ctx.beginPath();
+          ctx.arc(x, y, size, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
+          ctx.fill();
+        }
+      }
+      const pulseY = (time * 30) % height;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, pulseY);
+      ctx.lineTo(width, pulseY);
+      ctx.stroke();
+      timeRef.current += 0.02;
+      frameRef.current = requestAnimationFrame(render);
+    };
+    render();
+
+    return () => {
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(frameRef.current);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 pointer-events-none"
+      style={{ width: "100%", height: "100%" }}
+    />
+  );
+}
+
+function DotGraph({
+  color = "white",
+  height = 32,
+  freq1 = 0.35,
+  freq2 = 0.12,
+  freqT = 0.7,
+  speed = 0.025,
+  baseline = 0.3,
+  amplitude = 0.5,
+}: {
+  color?: string;
+  height?: number;
+  freq1?: number;
+  freq2?: number;
+  freqT?: number;
+  speed?: number;
+  baseline?: number;
+  amplitude?: number;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const frameRef = useRef(0);
+  const timeRef = useRef(Math.random() * 100);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = canvas.offsetWidth || 300;
+    const H = height;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    ctx.scale(dpr, dpr);
+
+    const render = () => {
+      ctx.clearRect(0, 0, W, H);
+      const t = timeRef.current;
+      const cols = Math.floor(W / 8);
+
+      for (let i = 0; i < cols; i++) {
+        const raw = baseline + amplitude * Math.sin(i * freq1 + t) * Math.cos(i * freq2 + t * freqT);
+        const v = Math.max(0, Math.min(1, raw));
+        const dotY = H - 4 - v * (H - 8);
+        const x = i * 8 + 4;
+        const alpha = 0.15 + v * 0.55;
+        const r = 1.5 + v * 1.2;
+
+        ctx.beginPath();
+        ctx.arc(x, dotY, r, 0, Math.PI * 2);
+        ctx.fillStyle = color === "green"
+          ? `rgba(167, 139, 250, ${alpha})`
+          : `rgba(255, 255, 255, ${alpha})`;
+        ctx.fill();
+      }
+
+      timeRef.current += speed;
+      frameRef.current = requestAnimationFrame(render);
+    };
+
+    render();
+    return () => cancelAnimationFrame(frameRef.current);
+  }, [color, height, freq1, freq2, freqT, speed, baseline, amplitude]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ width: "100%", height: `${height}px`, display: "block" }}
+    />
+  );
+}
+
+export function MetricsSection() {
+  const [time, setTime] = useState<Date | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    setTime(new Date());
+    const interval = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setIsVisible(true);
+      },
+      { threshold: 0.1 }
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <section ref={sectionRef} className="relative py-32 lg:py-40 overflow-hidden">
+      <GridBackground />
+
+      <div className="relative z-10 max-w-[1400px] mx-auto px-6 lg:px-12">
+        {/* Header */}
+        <div className="grid lg:grid-cols-12 gap-8 mb-20 lg:mb-32">
+          <div className="lg:col-span-8 lg:col-start-1">
+            <div className="flex items-center gap-4 mb-6">
+              <span className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-[#eca8d6]/10 via-[#a78bfa]/10 to-[#67e8f9]/10 text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9] text-xs font-mono border border-[#a78bfa]/20">
+                <span className="w-2 h-2 rounded-full bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9] animate-pulse" />
+                LIVE
+              </span>
+              <span className="text-sm font-mono text-muted-foreground">
+                {time ? `${time.toLocaleTimeString("en-GB")} UTC` : ""}
+              </span>
+            </div>
+
+            <h2 className={`text-6xl md:text-7xl lg:text-[140px] font-display tracking-tight leading-[0.95] transition-all duration-1000 ${
+              isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+            }`}>
+              Real-time
+              <br />
+              <span className="text-muted-foreground">agent metrics.</span>
+            </h2>
+          </div>
+        </div>
+
+        {/* Organic graph canvas */}
+        <div className={`w-full mb-8 transition-all duration-1000 delay-200 ${
+          isVisible ? "opacity-100" : "opacity-0"
+        }`}>
+          <OscilloscopeCanvas />
+        </div>
+
+        {/* Metrics grid */}
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Large metric */}
+          <div className={`p-8 border border-foreground/10 bg-black transition-all duration-700 hover:border-foreground/30 ${
+            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
+          }`}>
+            <div className="text-4xl md:text-5xl lg:text-6xl font-display tracking-tight mb-4 whitespace-nowrap overflow-hidden">
+              <AnimatedNumber end={metrics[0].value} suffix={metrics[0].suffix} prefix={metrics[0].prefix} />
+            </div>
+            <div className="mb-6">
+              <DotGraph color="white" height={36} freq1={0.28} freq2={0.09} freqT={0.5} speed={0.018} baseline={0.35} amplitude={0.55} />
+            </div>
+            <div className="text-lg text-foreground mb-2">{metrics[0].label}</div>
+            <div className="text-sm text-muted-foreground font-mono">{metrics[0].sublabel}</div>
+          </div>
+
+          {/* Metrics */}
+          {metrics.slice(1).map((metric, index) => (
+            <div
+              key={metric.label}
+              className={`bg-black border border-foreground/10 p-8 flex flex-col items-start justify-between gap-6 transition-all duration-700 ${
+                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
+              }`}
+              style={{ transitionDelay: `${(index + 1) * 100}ms` }}
+            >
+              <div className="w-full">
+                <div className="text-sm text-muted-foreground font-mono mb-2">{metric.sublabel}</div>
+                <div className="text-base text-foreground mb-3">{metric.label}</div>
+                <DotGraph
+                  color={index === 0 ? "green" : "white"}
+                  height={24}
+                  freq1={index === 0 ? 0.45 : 0.22}
+                  freq2={index === 0 ? 0.18 : 0.07}
+                  freqT={index === 0 ? 1.1 : 0.4}
+                  speed={index === 0 ? 0.032 : 0.015}
+                  baseline={index === 0 ? 0.4 : 0.25}
+                  amplitude={index === 0 ? 0.45 : 0.6}
+                />
+              </div>
+              <div className="text-3xl md:text-4xl lg:text-5xl font-display tracking-tight w-full">
+                <AnimatedNumber end={metric.value} suffix={metric.suffix} prefix={metric.prefix} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom ticker */}
+        <div className={`mt-16 pt-8 border-t border-foreground/10 flex flex-wrap items-center gap-x-12 gap-y-4 text-sm font-mono text-muted-foreground transition-all duration-1000 delay-500 ${
+          isVisible ? "opacity-100" : "opacity-0"
+        }`}>
+          <span>OpenAI GPT-4 Turbo</span>
+          <span>Anthropic Claude 3</span>
+          <span>Mistral Large</span>
+          <span>Llama 3</span>
+          <span className="text-foreground">+12 more models</span>
+        </div>
+      </div>
+    </section>
+  );
+}

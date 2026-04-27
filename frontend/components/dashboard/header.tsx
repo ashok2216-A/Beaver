@@ -1,0 +1,135 @@
+'use client'
+
+import { UserButton } from "@clerk/nextjs"
+import { Button } from "@/components/ui/button"
+import { Menu, Bell } from "lucide-react"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+import { ModeToggle } from "@/components/mode-toggle"
+import { 
+  LayoutGrid, 
+  Cpu, 
+  Settings, 
+  Terminal, 
+  Sparkles,
+  Activity,
+  Fingerprint,
+  LifeBuoy,
+  Search
+} from "lucide-react"
+import { Input } from "@/components/ui/input"
+
+const navigation = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+  { name: "Agents", href: "/dashboard/agents", icon: Cpu },
+  { name: "Playground", href: "/dashboard/playground", icon: Sparkles },
+  { name: "API Keys", href: "/dashboard/api-keys", icon: Fingerprint },
+  { name: "Analytics", href: "/dashboard/analytics", icon: Activity },
+  { name: "Logs", href: "/dashboard/logs", icon: Terminal },
+  { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  { name: "Help", href: "/dashboard/help", icon: LifeBuoy },
+]
+
+export function DashboardHeader() {
+  const pathname = usePathname()
+
+  return (
+    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-border bg-card px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+      {/* Mobile menu */}
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" className="lg:hidden">
+            <Menu className="h-5 w-5" />
+            <span className="sr-only">Open sidebar</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-64 p-0">
+          <div className="flex h-full flex-col">
+            {/* Logo */}
+            <div className="flex h-16 shrink-0 items-center px-6 border-b border-border">
+              <Link href="/" className="flex items-center gap-2">
+                <div className="w-8 h-8 shrink-0">
+                  <img src="/logo.svg" alt="Beaver Logo" className="w-full h-full object-contain dark:invert" />
+                </div>
+                <span className="text-xl font-bold text-foreground">Beaver</span>
+              </Link>
+            </div>
+
+            {/* Navigation */}
+            <nav className="flex-1 px-4 py-4">
+              <ul role="list" className="space-y-1">
+                {navigation.map((item) => {
+                  const isActive = pathname === item.href || 
+                    (item.href !== "/dashboard" && pathname.startsWith(item.href))
+                  return (
+                    <li key={item.name}>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "group flex gap-x-3 rounded-md p-2 text-sm font-medium leading-6 transition-colors",
+                          isActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                      >
+                        <item.icon
+                          className={cn(
+                            "h-5 w-5 shrink-0",
+                            isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                          )}
+                        />
+                        {item.name}
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            </nav>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Separator */}
+      <div className="h-6 w-px bg-border lg:hidden" />
+
+      {/* Search */}
+      <div className="flex-1 hidden md:block">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search agents, logs..." 
+            className="pl-10 bg-muted/40 border-none rounded-xl h-10"
+          />
+        </div>
+      </div>
+
+      {/* Right side */}
+      <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6 justify-end items-center">
+        <div className="flex items-center gap-x-4 lg:gap-x-6">
+          {/* Notifications */}
+          <Button variant="ghost" size="icon" className="relative rounded-xl">
+            <Bell className="h-5 w-5 text-muted-foreground" />
+            <span className="sr-only">View notifications</span>
+          </Button>
+
+          {/* Theme Toggle */}
+          <ModeToggle />
+
+          {/* Separator */}
+          <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-border" />
+
+          {/* User menu */}
+          <UserButton 
+            appearance={{
+              elements: {
+                avatarBox: "w-8 h-8"
+              }
+            }}
+          />
+        </div>
+      </div>
+    </header>
+  )
+}
