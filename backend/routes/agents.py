@@ -46,23 +46,32 @@ limiter = Limiter(key_func=get_remote_address)
 def list_templates():
     """Return the list of available discovery templates from manifest.json."""
     import os
-    # agents.py is in backend/routes/
-    # Level 1: backend/routes/
-    # Level 2: backend/
-    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    manifest_path = os.path.join(backend_dir, "templates", "manifest.json")
     
-    if not os.path.exists(manifest_path):
-        print(f"DEBUG: Manifest NOT FOUND at: {manifest_path}")
+    # Strategy 1: Absolute path from this file
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    path1 = os.path.join(current_dir, "..", "templates", "manifest.json")
+    
+    # Strategy 2: Relative to current working directory
+    path2 = os.path.join(os.getcwd(), "templates", "manifest.json")
+    path3 = os.path.join(os.getcwd(), "backend", "templates", "manifest.json")
+
+    manifest_path = None
+    for p in [path1, path2, path3]:
+        if os.path.exists(p):
+            manifest_path = p
+            break
+
+    if not manifest_path:
+        log.error(f"MANIFEST NOT FOUND. Tried: {path1}, {path2}, {path3}")
         return {"templates": []}
         
     try:
-        with open(manifest_path, "r") as f:
+        with open(manifest_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            print(f"DEBUG: Successfully loaded {len(data.get('templates', []))} templates")
+            log.info(f"Successfully loaded {len(data.get('templates', []))} templates from {manifest_path}")
             return data
     except Exception as e:
-        print(f"DEBUG: ERROR loading manifest: {e}")
+        log.exception(f"Error loading manifest at {manifest_path}")
         return {"templates": []}
 
 

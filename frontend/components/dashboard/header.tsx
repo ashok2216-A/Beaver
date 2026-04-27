@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Menu, Bell } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { ModeToggle } from "@/components/mode-toggle"
@@ -56,8 +57,14 @@ export function DashboardHeader() {
             {/* Logo */}
             <div className="flex h-16 shrink-0 items-center px-6 border-b border-border">
               <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 shrink-0">
-                  <img src="/logo.svg" alt="Beaver Logo" className="w-full h-full object-contain dark:invert" />
+                <div className="relative w-8 h-8 shrink-0">
+                  <Image 
+                    src="/logo.svg" 
+                    alt="Beaver Logo" 
+                    fill
+                    className="object-contain dark:invert"
+                    priority
+                  />
                 </div>
                 <span className="text-xl font-bold text-foreground">Beaver</span>
               </Link>

@@ -111,10 +111,11 @@ export default function LogsPage() {
   }, [])
 
   const filteredLogs = logs.filter(log => {
+    const searchLower = searchQuery.toLowerCase()
     const matchesSearch = 
-      log.user_input.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.matched_path.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.agent_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      (log.user_input?.toLowerCase() || "").includes(searchLower) ||
+      log.matched_path.toLowerCase().includes(searchLower) ||
+      (log.agent_name?.toLowerCase() || "").includes(searchLower)
     
     const matchesStatus = 
       statusFilter === "all" || 
@@ -123,6 +124,16 @@ export default function LogsPage() {
     
     return matchesSearch && matchesStatus
   })
+
+  const safeFormatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return "Invalid date"
+      return format(d, "MMM d, HH:mm:ss")
+    } catch (e) {
+      return "Invalid date"
+    }
+  }
 
   const getStatusBadge = (code: number) => {
     if (code >= 200 && code < 300) {
@@ -218,7 +229,7 @@ export default function LogsPage() {
                   filteredLogs.map((log) => (
                     <TableRow key={log.id} className="hover:bg-muted/50 transition-colors group border-border/40">
                       <TableCell className="text-xs font-mono text-muted-foreground" suppressHydrationWarning>
-                        {format(new Date(log.created_at), "MMM d, HH:mm:ss")}
+                        {safeFormatDate(log.created_at)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -318,7 +329,14 @@ export default function LogsPage() {
                                     className="p-4 rounded-xl !bg-[#020617] border border-border/50 text-[11px] font-mono !text-[#34d399] overflow-x-auto whitespace-pre-wrap max-h-[300px] shadow-inner"
                                     style={{ backgroundColor: '#020617', color: '#34d399' }}
                                   >
-                                    {log.api_response ? JSON.stringify(JSON.parse(log.api_response), null, 2) : '// No data returned'}
+                                    {(() => {
+                                      if (!log.api_response) return '// No data returned';
+                                      try {
+                                        return JSON.stringify(JSON.parse(log.api_response), null, 2);
+                                      } catch (e) {
+                                        return log.api_response;
+                                      }
+                                    })()}
                                   </pre>
                                 </div>
 
