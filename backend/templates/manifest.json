@@ -1,0 +1,20 @@
+{
+  "templates": [
+    {
+      "id": "github",
+      "name": "GitHub API",
+      "description": "Full GitHub REST API for managing repos, issues, and more.",
+      "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/ghes-3.5/ghes-3.5.json",
+      "auth_type": "bearer",
+      "category": "DevOps"
+    },
+    {
+      "id": "stripe",
+      "name": "Stripe API",
+      "description": "The standard for online payments and subscription management.",
+      "url": "https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json",
+      "auth_type": "bearer",
+      "category": "Payments"
+    }
+  ]
+}
