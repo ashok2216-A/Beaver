@@ -3,6 +3,7 @@ utils/auth.py — Clerk-based authentication and user hydration.
 """
 from __future__ import annotations
 import logging
+import hashlib
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status, Request
@@ -12,10 +13,26 @@ from sqlalchemy.orm import Session
 
 from config import get_settings
 from database import get_db
-from models import User
+from models import User, ApiKey
 
 log = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
+
+def hash_key(key: str) -> str:
+    """Hash a raw API key for storage using SHA-256."""
+    return hashlib.sha256(key.encode()).hexdigest()
+
+def validate_api_key(key: str, db: Session) -> User | None:
+    """Check if an API key is valid and return the associated user."""
+    h = hash_key(key)
+    api_key_obj = db.query(ApiKey).filter(ApiKey.key_hash == h).first()
+    if api_key_obj:
+        # Update last_used_at for analytics
+        from datetime import datetime, timezone
+        api_key_obj.last_used_at = datetime.now(timezone.utc)
+        db.commit()
+        return api_key_obj.owner
+    return None
 
 async def get_current_user(
     request: Request,
@@ -31,10 +48,10 @@ async def get_current_user(
     # 1. Priority: Check for API Key (Headless access)
     api_key = request.headers.get("X-API-Key")
     if api_key:
-        # Support for future API Key validation
-        # user = validate_api_key(api_key, db)
-        # if user: return user
-        pass
+        user = validate_api_key(api_key, db)
+        if user: 
+            return user
+        raise HTTPException(status_code=401, detail="Invalid API Key provided via X-API-Key.")
 
     # 2. Default: Clerk Bearer Token
     if not token:

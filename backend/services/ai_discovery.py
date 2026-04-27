@@ -6,13 +6,16 @@ import httpx
 import yaml
 import logging
 from typing import Any, Dict
+from utils.security import validate_url_safe
 
 log = logging.getLogger(__name__)
 
 async def smart_ingest_url(url: str) -> Dict[str, Any]:
     """
     Fetch a URL and attempt to parse it as an OpenAPI spec (JSON or YAML).
+    Includes SSRF protection to prevent internal network scanning.
     """
+    validate_url_safe(url)
     try:
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             response = await client.get(url)
