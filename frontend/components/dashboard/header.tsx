@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { UserButton } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Menu, Bell } from "lucide-react"
@@ -34,6 +35,11 @@ const navigation = [
 
 export function DashboardHeader() {
   const pathname = usePathname()
+  const [mounted, setMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
 
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-border bg-card px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
@@ -121,13 +127,17 @@ export function DashboardHeader() {
           <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-border" />
 
           {/* User menu */}
-          <UserButton 
-            appearance={{
-              elements: {
-                avatarBox: "w-8 h-8"
-              }
-            }}
-          />
+          {mounted ? (
+            <UserButton 
+              appearance={{
+                elements: {
+                  avatarBox: "w-8 h-8"
+                }
+              }}
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
+          )}
         </div>
       </div>
     </header>
