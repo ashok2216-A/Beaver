@@ -33,3 +33,6 @@ python-json-logger>=2.0.7
 # Testing
 pytest>=8.2.0
 pytest-asyncio>=0.23.6
+
+# HTML Parsing
+beautifulsoup4>=4.12.0
