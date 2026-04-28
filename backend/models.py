@@ -119,3 +119,26 @@ class Log(Base):
     created_at   = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     agent = relationship("Agent", back_populates="logs")
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id         = Column(String(255), primary_key=True)
+    user_id    = Column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    title      = Column(String(255), default="New Chat")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+
+    messages = relationship("ChatMessage", back_populates="conversation", cascade="all, delete-orphan")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id              = Column(Integer, primary_key=True)
+    conversation_id = Column(String(255), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True)
+    role            = Column(String(32), nullable=False) # user | assistant
+    content         = Column(Text, nullable=False)
+    created_at      = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+
+    conversation = relationship("Conversation", back_populates="messages")

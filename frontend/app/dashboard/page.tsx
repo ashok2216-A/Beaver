@@ -124,7 +124,7 @@ export default function DashboardPage() {
     },
     {
       label: "Avg. Response",
-      value: stats?.avg_latency_ms ? `${stats.avg_latency_ms}ms` : "--",
+      value: stats && typeof stats.avg_latency_ms === 'number' ? `${stats.avg_latency_ms}ms` : "--",
       trend: stats?.latency_trend ?? "-0ms",
       icon: Clock,
       color: "text-emerald-500",
