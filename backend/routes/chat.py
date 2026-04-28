@@ -146,7 +146,7 @@ async def chat(
         from services.agent import run_agent_stream
         
         async def event_generator():
-            gen = await run_agent_stream(**params)
+            gen = run_agent_stream(**params)
             async for chunk_str in gen:
                 yield chunk_str
                 try:
