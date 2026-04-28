@@ -86,6 +86,30 @@ export default function AgentsPage() {
     }
   }
 
+  const toggleAgentStatus = async (agent: Agent) => {
+    try {
+      const token = await getToken()
+      const newStatus = agent.status === "live" ? "paused" : "live"
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agent.id}`, {
+        method: "PATCH",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ status: newStatus })
+      })
+      
+      if (response.ok) {
+        setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, status: newStatus } : a))
+        toast.success(`Agent ${newStatus === "live" ? "enabled" : "disabled"} successfully`)
+      } else {
+        toast.error("Failed to update agent status")
+      }
+    } catch (error) {
+      toast.error("Error updating agent status")
+    }
+  }
+
   const filteredAgents = agents.filter(a => 
     a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     (a.description && a.description.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -162,6 +186,20 @@ export default function AgentsPage() {
                         <Link href={`/dashboard/logs?id=${agent.id}`}>
                           <Activity className="mr-2 h-4 w-4" /> View Execution Logs
                         </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="cursor-pointer font-medium"
+                        onClick={() => toggleAgentStatus(agent)}
+                      >
+                        {agent.status === "live" ? (
+                          <span className="flex items-center text-amber-500">
+                            <Plus className="mr-2 h-4 w-4 rotate-45" /> Disable Agent
+                          </span>
+                        ) : (
+                          <span className="flex items-center text-emerald-500">
+                            <Plus className="mr-2 h-4 w-4" /> Enable Agent
+                          </span>
+                        )}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 

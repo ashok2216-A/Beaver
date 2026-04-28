@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Sparkles, Loader2, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2 } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
 import { cn } from "@/lib/utils"
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface Message {
   id: string
@@ -30,7 +32,7 @@ export default function PlaygroundPage() {
   const [agents, setAgents] = useState<Agent[]>([])
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [isOrchestratorMode, setIsOrchestratorMode] = useState(false)
+  const [isOrchestratorMode, setIsOrchestratorMode] = useState(true)
   
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -85,7 +87,7 @@ export default function PlaygroundPage() {
               {
                 id: 'welcome_agent',
                 role: 'assistant',
-                content: `Engine initialized for **${data[0].name}**. Give me commands.`
+                content: `🚀 **Master Agent Mode Activated.** Commands route seamlessly across the full catalog.`
               }
             ])
           }
@@ -108,6 +110,7 @@ export default function PlaygroundPage() {
   const handleAgentSelect = (agent: Agent) => {
     setSelectedAgent(agent)
     setIsDropdownOpen(false)
+    setIsOrchestratorMode(false)
     setMessages([
       {
         id: `welcome_${agent.id}`,
@@ -159,6 +162,30 @@ export default function PlaygroundPage() {
       }
     } catch (err) {
       console.error("Failed to delete conversation:", err)
+    }
+  }
+
+  const toggleAgentStatus = async (agent: any, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const token = await getToken()
+      const newStatus = agent.status === "live" ? "paused" : "live"
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agent.id}`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ status: newStatus })
+      })
+      if (res.ok) {
+        setAgents((prev: any[]) => prev.map(a => a.id === agent.id ? { ...a, status: newStatus } : a))
+        if (selectedAgent?.id === agent.id) {
+          setSelectedAgent((prev: any) => prev ? { ...prev, status: newStatus } : null)
+        }
+      }
+    } catch (err) {
+      console.error("Failed to toggle status:", err)
     }
   }
 
@@ -314,7 +341,7 @@ export default function PlaygroundPage() {
                 {
                   id: 'orchestration_mode',
                   role: 'assistant',
-                  content: '🚀 **Multi-Agent Orchestration Mode Activated.** Commands route seamlessly across the full catalog.'
+                  content: '🚀 **Master Agent Mode Activated.** Commands route seamlessly across the full catalog.'
                 }
               ])
             } else {
@@ -335,7 +362,7 @@ export default function PlaygroundPage() {
         >
           <Sparkles className={cn("w-3.5 h-3.5", isOrchestratorMode ? "text-slate-800 dark:text-white animate-pulse" : "text-muted-foreground")} />
           <span>
-            Orchestration
+            Master Agent
           </span>
         </button>
 
@@ -357,25 +384,45 @@ export default function PlaygroundPage() {
                   className="flex items-center gap-2 px-4 py-1.5 rounded-full hover:bg-muted/50 transition-all text-xs font-bold text-foreground"
                 >
                   <Server className="w-3.5 h-3.5 text-primary" />
-                  <span>{selectedAgent?.name || "Choose Agent Core"}</span>
+                  <span>{selectedAgent ? `Sub Agent: ${selectedAgent.name}` : "Select Sub Agent"}</span>
                   <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform duration-300", isDropdownOpen && "rotate-180")} />
                 </button>
 
             {isDropdownOpen && (
               <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-60 rounded-2xl bg-card/95 backdrop-blur-md border border-white/10 p-2 shadow-xl animate-in fade-in zoom-in-95 duration-200">
-                <div className="space-y-1">
+                <div className="text-[10px] font-bold text-muted-foreground/60 px-3 py-1 mb-1 uppercase tracking-wider border-b border-white/5">
+                  Select Sub Agent
+                </div>
+                <div className="space-y-1 mt-1">
                   {agents.map((agent) => (
-                    <button
+                    <div
                       key={agent.id}
-                      onClick={() => handleAgentSelect(agent)}
                       className={cn(
-                        "w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition-all hover:bg-muted/50",
-                        selectedAgent?.id === agent.id ? "text-primary bg-primary/10" : "text-muted-foreground"
+                        "w-full rounded-xl text-xs font-medium flex items-center justify-between transition-all hover:bg-muted/50 p-1",
+                        selectedAgent?.id === agent.id ? "bg-primary/5 text-primary" : "text-muted-foreground"
                       )}
                     >
-                      <span className="truncate">{agent.name}</span>
-                      <div className={cn("w-1.5 h-1.5 rounded-full", agent.status === "live" ? "bg-emerald-500" : "bg-amber-500")} />
-                    </button>
+                      <button
+                        onClick={() => handleAgentSelect(agent)}
+                        className="flex-1 text-left px-2 py-1.5 truncate flex items-center gap-2"
+                      >
+                        <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", agent.status === "live" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-amber-500")} />
+                        <span className="truncate">{agent.name}</span>
+                      </button>
+                      
+                      <button
+                        onClick={(e) => toggleAgentStatus(agent, e)}
+                        className={cn(
+                          "px-2 py-1 rounded-md text-[9px] font-bold border transition-all duration-200 uppercase",
+                          agent.status === "live"
+                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+                            : "border-amber-500/30 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                        )}
+                        title={agent.status === "live" ? "Click to Disable" : "Click to Enable"}
+                      >
+                        {agent.status === "live" ? "Live" : "Paused"}
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -420,7 +467,25 @@ export default function PlaygroundPage() {
                     ? "text-foreground bg-muted/40 dark:bg-muted/20 border border-black/5 dark:border-white/5 rounded-bl-sm" 
                     : "text-foreground bg-muted/40 dark:bg-muted/20 border border-black/5 dark:border-white/5 rounded-br-sm"
                 )}>
-                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  <div className="break-words text-sm">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        h1: ({node, ...props}) => <h1 className="text-xl font-bold mt-4 mb-2 text-foreground" {...props} />,
+                        h2: ({node, ...props}) => <h2 className="text-lg font-bold mt-3 mb-2 text-foreground" {...props} />,
+                        h3: ({node, ...props}) => <h3 className="text-base font-bold mt-2.5 mb-1.5 text-foreground" {...props} />,
+                        h4: ({node, ...props}) => <h4 className="text-sm font-bold mt-2 mb-1.5 text-foreground/90" {...props} />,
+                        ul: ({node, ...props}) => <ul className="list-disc pl-5 space-y-0.5 mb-1" {...props} />,
+                        ol: ({node, ...props}) => <ol className="list-decimal pl-5 space-y-0.5 mb-1" {...props} />,
+                        table: ({node, ...props}) => <div className="overflow-x-auto my-2 w-full"><table className="min-w-full border-collapse border border-slate-200 dark:border-white/10" {...props} /></div>,
+                        th: ({node, ...props}) => <th className="border border-slate-200 dark:border-white/10 px-3 py-1 bg-muted/30 text-left font-semibold text-xs" {...props} />,
+                        td: ({node, ...props}) => <td className="border border-slate-200 dark:border-white/10 px-3 py-1 text-xs text-slate-700 dark:text-slate-300" {...props} />,
+                        code: ({node, ...props}) => <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono border border-black/5 dark:border-white/5" {...props} />,
+                      }}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
                 </div>
 
                 {/* AI execution diagnostics */}
