@@ -2,8 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import { ArrowUpRight } from "lucide-react";
+import Link from "next/link";
 
 interface FooterLink {
+
   name: string;
   href: string;
   badge?: string;
@@ -50,12 +52,13 @@ export function FooterSection() {
           <div className="grid grid-cols-2 md:grid-cols-6 gap-12 lg:gap-8">
             {/* Brand Column */}
             <div className="col-span-2">
-              <a href="#" className="inline-flex items-center gap-3 mb-6">
+              <Link href="/" className="inline-flex items-center gap-3 mb-6">
                 <div className="w-8 h-8 shrink-0">
                   <img src="/logo.svg" alt="Beaver Logo" className="w-full h-full object-contain invert" />
                 </div>
                 <span className="text-2xl font-display text-white">Beaver</span>
-              </a>
+              </Link>
+
 
               <p className="text-white/50 leading-relaxed mb-8 max-w-xs text-sm">
                 Turn any API into an AI assistant. The ultimate playground for agentic API tooling.
@@ -83,7 +86,7 @@ export function FooterSection() {
                 <ul className="space-y-4">
                   {(links as FooterLink[]).map((link) => (
                     <li key={link.name}>
-                      <a
+                      <Link
                         href={link.href}
                         className="text-sm text-white/40 hover:text-white transition-colors inline-flex items-center gap-2"
                       >
@@ -93,9 +96,10 @@ export function FooterSection() {
                             {link.badge}
                           </span>
                         )}
-                      </a>
+                      </Link>
                     </li>
                   ))}
+
                 </ul>
               </div>
             ))}

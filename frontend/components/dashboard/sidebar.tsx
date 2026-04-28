@@ -34,9 +34,10 @@ const secondaryNavigation = [
   { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
   { name: "Documentation", href: "/docs", icon: BookOpen },
-  { name: "API Reference", href: "/docs#api-integration", icon: Code2 },
-  { name: "Help", href: "/docs", icon: LifeBuoy },
+  { name: "API Reference", href: "/api-reference", icon: Code2 },
+  { name: "Help", href: "/dashboard/help", icon: LifeBuoy },
 ]
+
 
 export function DashboardSidebar({ 
   isCollapsed, 
