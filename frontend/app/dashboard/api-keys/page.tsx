@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn, addNotification } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -44,6 +44,7 @@ export default function ApiKeysPage() {
   const [newKeyName, setNewKeyName] = useState("")
   const [createdKey, setCreatedKey] = useState<ApiKey | null>(null)
   const [isCopied, setIsCopied] = useState(false)
+  const [deletingKeyId, setDeletingKeyId] = useState<number | null>(null)
 
   const fetchKeys = async () => {
     try {
@@ -85,6 +86,7 @@ export default function ApiKeysPage() {
         setKeys(prev => [data, ...prev])
         setNewKeyName("")
         toast.success("API key generated successfully")
+        addNotification("🔑 API Key Generated", `"${data.name || "Access Key"}" issued securely.`)
       } else {
         toast.error("Failed to generate key")
       }
@@ -95,22 +97,8 @@ export default function ApiKeysPage() {
     }
   }
 
-  const handleDeleteKey = async (id: number) => {
-    if (!confirm("Are you sure? Any applications using this key will immediately stop working.")) return
-    
-    try {
-      const token = await getToken()
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/keys/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (res.ok) {
-        setKeys(prev => prev.filter(k => k.id !== id))
-        toast.success("API key revoked")
-      }
-    } catch (err) {
-      toast.error("Revocation failed")
-    }
+  const handleDeleteKey = (id: number) => {
+    setDeletingKeyId(id)
   }
 
   const copyToClipboard = (text: string) => {
@@ -262,6 +250,45 @@ export default function ApiKeysPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {deletingKeyId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 animate-in fade-in">
+          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center gap-3 text-rose-500">
+              <AlertTriangle className="h-6 w-6 shrink-0" />
+              <h3 className="text-lg font-bold">Revoke API Key?</h3>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Are you absolutely sure? Any external pipelines or coordinator workflows using this token will immediately fail.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" onClick={() => setDeletingKeyId(null)} className="rounded-xl">Cancel</Button>
+              <Button variant="destructive" onClick={async () => {
+                const keyId = deletingKeyId
+                setDeletingKeyId(null)
+                try {
+                  const token = await getToken()
+                  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/keys/${keyId}`, {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${token}` }
+                  })
+                  if (res.ok) {
+                    setKeys(prev => prev.filter(k => k.id !== keyId))
+                    toast.success("API key revoked successfully")
+                    addNotification("🗑️ Key Revoked", `Revoked developer boundaries safely.`)
+                  } else {
+                    toast.error("Failed to revoke key")
+                  }
+                } catch {
+                  toast.error("An error occurred")
+                }
+              }} className="rounded-xl font-bold px-6 shadow-glow-sm bg-rose-500 hover:bg-rose-600 text-white">
+                Revoke Key
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

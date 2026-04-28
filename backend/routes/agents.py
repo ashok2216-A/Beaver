@@ -115,10 +115,21 @@ def _get_agent_or_404(agent_id: int, user: User, db: Session) -> Agent:
 
 def _ingest_spec(agent: Agent, spec: dict | str, db: Session) -> Agent:
     """Parse spec, persist endpoints using bulk insert, attach to agent."""
+    if isinstance(spec, str):
+        # Try JSON
+        try:
+            spec = json.loads(spec)
+        except Exception:
+            # Try YAML
+            try:
+                spec = yaml.safe_load(spec)
+            except Exception:
+                raise HTTPException(status_code=422, detail="Invalid JSON or YAML format for API Spec")
+
     if isinstance(spec, dict):
         raw = json.dumps(spec, default=str)
     else:
-        raw = spec
+        raw = str(spec)
 
     agent.api_spec = raw
     db.add(agent)

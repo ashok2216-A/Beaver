@@ -69,7 +69,10 @@ export function DashboardSidebar({
           )}
         </button>
 
-        <div className="flex grow flex-col gap-y-5 overflow-y-auto px-4 pb-4">
+        <div className={cn(
+          "flex grow flex-col gap-y-5 pb-4",
+          isCollapsed ? "px-2 overflow-visible" : "px-4 overflow-y-auto"
+        )}>
           {/* Logo */}
           <div className={cn(
             "flex h-16 shrink-0 items-center transition-all duration-300",
@@ -98,7 +101,7 @@ export function DashboardSidebar({
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-7">
               <li>
-                <ul role="list" className="-mx-2 space-y-1">
+                <ul role="list" className={cn("space-y-1", isCollapsed ? "mx-0" : "-mx-2")}>
                   {navigation.map((item) => {
                     const isActive = pathname === item.href || 
                       (item.href !== "/dashboard" && pathname.startsWith(item.href))
@@ -107,11 +110,11 @@ export function DashboardSidebar({
                         <Link
                           href={item.href}
                           className={cn(
-                            "group flex gap-x-3 rounded-xl p-2 text-sm font-medium leading-6 transition-all duration-200",
+                            "group relative flex rounded-xl p-2 text-sm font-medium leading-6 transition-all duration-200",
                             isActive
                               ? "bg-primary/10 text-primary"
                               : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                            isCollapsed && "justify-center"
+                            isCollapsed ? "justify-center gap-x-0" : "gap-x-3"
                           )}
                         >
                           <item.icon
@@ -126,6 +129,11 @@ export function DashboardSidebar({
                           )}>
                             {item.name}
                           </span>
+                          {isCollapsed && (
+                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-2.5 py-1 bg-popover text-popover-foreground text-[11px] font-bold rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 shadow-glow-sm border border-border pointer-events-none z-[100] whitespace-nowrap">
+                              {item.name}
+                            </div>
+                          )}
                         </Link>
                       </li>
                     )
@@ -134,7 +142,7 @@ export function DashboardSidebar({
               </li>
 
               <li className="mt-auto">
-                <ul role="list" className="-mx-2 space-y-1">
+                <ul role="list" className={cn("space-y-1", isCollapsed ? "mx-0" : "-mx-2")}>
                   {secondaryNavigation.map((item) => {
                     const isActive = pathname === item.href
                     return (
@@ -142,11 +150,11 @@ export function DashboardSidebar({
                         <Link
                           href={item.href}
                           className={cn(
-                            "group flex gap-x-3 rounded-xl p-2 text-sm font-medium leading-6 transition-all duration-200",
+                            "group relative flex rounded-xl p-2 text-sm font-medium leading-6 transition-all duration-200",
                             isActive
                               ? "bg-primary/10 text-primary"
                               : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                            isCollapsed && "justify-center"
+                            isCollapsed ? "justify-center gap-x-0" : "gap-x-3"
                           )}
                         >
                           <item.icon
@@ -161,6 +169,11 @@ export function DashboardSidebar({
                           )}>
                             {item.name}
                           </span>
+                          {isCollapsed && (
+                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-2.5 py-1 bg-popover text-popover-foreground text-[11px] font-bold rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 shadow-glow-sm border border-border pointer-events-none z-[100] whitespace-nowrap">
+                              {item.name}
+                            </div>
+                          )}
                         </Link>
                       </li>
                     )

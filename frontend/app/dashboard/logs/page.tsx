@@ -52,6 +52,7 @@ import {
   SelectValue 
 } from "@/components/ui/select"
 import { toast } from "sonner"
+import { addNotification } from "@/lib/utils"
 
 interface LogEntry {
   id: number
@@ -110,6 +111,36 @@ export default function LogsPage() {
     fetchLogs()
   }, [])
 
+  const handleExport = () => {
+    if (filteredLogs.length === 0) {
+      toast.error("No logs available to export")
+      return
+    }
+    const headers = ["ID", "Agent Name", "User Input", "Matched Path", "Method", "Status Code", "Latency (ms)", "Created At"]
+    const rows = filteredLogs.map(log => [
+      log.id,
+      log.agent_name || `Agent ${log.agent_id}`,
+      `"${log.user_input.replace(/"/g, '""')}"`,
+      log.matched_path || "N/A",
+      log.method || "N/A",
+      log.status_code,
+      log.latency_ms,
+      log.created_at
+    ])
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", `activity_logs.csv`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success("Logs exported successfully")
+    addNotification("📊 Logs Exported", `${filteredLogs.length} activity logs downloaded as CSV comfortably.`)
+  }
+
   const filteredLogs = logs.filter(log => {
     const searchLower = searchQuery.toLowerCase()
     const matchesSearch = 
@@ -162,7 +193,7 @@ export default function LogsPage() {
             <RefreshCcw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || filteredLogs.length === 0}>
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>

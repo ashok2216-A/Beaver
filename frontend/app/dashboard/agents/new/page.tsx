@@ -44,6 +44,7 @@ export default function NewAgentPage() {
   const [agentName, setAgentName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [description, setDescription] = useState("");
+  const [apiSpec, setApiSpec] = useState("");
   const [authType, setAuthType] = useState("bearer");
   const [authHeader, setAuthHeader] = useState("");
   const [authSecret, setAuthSecret] = useState("");
@@ -212,7 +213,7 @@ export default function NewAgentPage() {
             auth_header: authHeader,
             auth_secret: authSecret,
             model_id: "gemini-2.0-flash",
-            api_spec: ""
+            api_spec: apiSpec
           })
         });
       }
@@ -232,6 +233,20 @@ export default function NewAgentPage() {
       const data = await res.json();
       setProgress(100);
       toast.success("Agent generated!");
+
+      try {
+        const stored = localStorage.getItem("api2bot_notifications");
+        const list = stored ? JSON.parse(stored) : [];
+        list.unshift({
+          id: Date.now(),
+          title: `🤖 Agent "${agentName || data.name || "Custom"}" Created`,
+          description: `Specification parameters parsed cleanly. Available in workspace logs.`
+        });
+        localStorage.setItem("api2bot_notifications", JSON.stringify(list));
+      } catch (e) {
+        console.error(e);
+      }
+
       setTimeout(() => {
         router.push(`/dashboard/agents/${data.id}`);
       }, 500);
@@ -399,6 +414,18 @@ export default function NewAgentPage() {
                   className="w-full rounded-xl border border-border bg-background p-4 text-sm outline-none focus:border-primary/50 transition-all min-h-[120px]"
                 />
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold flex items-center gap-2">
+                  API Specification (OpenAPI JSON/YAML)
+                  <span className="text-xs font-normal text-muted-foreground">(Required)</span>
+                </label>
+                <textarea
+                  value={apiSpec}
+                  onChange={(e) => setApiSpec(e.target.value)}
+                  placeholder='{"openapi": "3.0.0", "info": { "title": "My API"... }'
+                  className="w-full rounded-xl border border-border bg-background p-4 text-sm outline-none focus:border-primary/50 transition-all font-mono min-h-[160px]"
+                />
+              </div>
             </div>
           )}
 
@@ -496,7 +523,7 @@ export default function NewAgentPage() {
               variant="hero" 
               size="lg" 
               onClick={handleGenerate} 
-              disabled={generating || (tab === "url" && !url) || (tab === "upload" && !file) || (tab === "templates" && !agentName)}
+              disabled={generating || (tab === "url" && !url) || (tab === "upload" && !file) || (tab === "templates" && !agentName) || (tab === "manual" && (!agentName || !apiSpec))}
               className="rounded-xl h-12 px-8 min-w-[180px] shadow-glow"
             >
               {generating ? (

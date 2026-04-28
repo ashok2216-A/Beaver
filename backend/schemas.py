@@ -62,7 +62,7 @@ class AgentCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     description: str = ""
     base_url: str = ""
-    api_spec: dict[str, Any]           # parsed OpenAPI JSON
+    api_spec: Any           # parsed OpenAPI JSON/YAML or raw string
     system_prompt: str = ""
     auth_type: str = "bearer"          # bearer | apikey | none
     auth_header: Optional[str] = None

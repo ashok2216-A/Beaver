@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Sparkles, Loader2, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2 } from "lucide-react"
+import { Sparkles, Loader2, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2, Terminal } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
-import { cn } from "@/lib/utils"
+import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -115,7 +115,7 @@ export default function PlaygroundPage() {
       {
         id: `welcome_${agent.id}`,
         role: 'assistant',
-        content: `Switched operational parameters to **${agent.name}**.`
+        content: `Switched to **${agent.name}**.`
       }
     ])
   }
@@ -264,6 +264,7 @@ export default function PlaygroundPage() {
       
       {/* ChatGPT Style History Sidebar */}
       <div className="w-64 flex flex-col bg-muted/10 border-r border-white/5 p-4 shrink-0 overflow-y-auto custom-scrollbar animate-in slide-in-from-left duration-300">
+        <h2 className="text-xl font-bold text-foreground mb-4 px-1">Playground</h2>
         <button
           onClick={() => {
             setSessionId("")
@@ -341,7 +342,7 @@ export default function PlaygroundPage() {
                 {
                   id: 'orchestration_mode',
                   role: 'assistant',
-                  content: '🚀 **Master Agent Mode Activated.** Commands route seamlessly across the full catalog.'
+                  content: '👋 **Welcome to Master Agent Mode!** I am fully prepped to process and route your cross-platform instructions flawlessly.'
                 }
               ])
             } else {
@@ -349,7 +350,7 @@ export default function PlaygroundPage() {
                 {
                   id: 'orchestration_mode_off',
                   role: 'assistant',
-                  content: 'Returned query parameters to focused endpoints.'
+                  content: '🎯 **Standard Toolkit Mode Engaged.** Responses will adapt securely to your selected agent.'
                 }
               ])
             }
@@ -489,11 +490,17 @@ export default function PlaygroundPage() {
                 </div>
 
                 {/* AI execution diagnostics */}
-                {isAI && message.agent_name && (
+                {isAI && message.agent_name && (!isOrchestratorMode || (message.matched_endpoint && message.matched_endpoint.path)) && (
                   <div className="flex items-center gap-3 text-[10px] px-2 mt-1">
                     <span className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-md font-bold font-mono tracking-wide">
                       {message.agent_name}
                     </span>
+                    {message.matched_endpoint && message.matched_endpoint.path && (
+                      <span className="bg-primary/5 text-primary border border-primary/20 px-2.5 py-0.5 rounded-md font-bold font-mono tracking-wide flex items-center gap-1">
+                        <Terminal className="w-3 h-3" />
+                        {message.matched_endpoint.method} {message.matched_endpoint.path}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>

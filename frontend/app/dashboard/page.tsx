@@ -76,25 +76,8 @@ export default function DashboardPage() {
     fetchData()
   }, [getToken])
   
-  const handleDeleteAgent = async (agentId: number) => {
-    if (!confirm("Are you sure you want to delete this agent? This action cannot be undone.")) return
-    
-    try {
-      const token = await getToken()
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
-      if (response.ok) {
-        setAgents(prev => prev.filter(a => a.id !== agentId))
-        toast.success("Agent deleted successfully")
-      } else {
-        toast.error("Failed to delete agent")
-      }
-    } catch (error) {
-      toast.error("Error deleting agent")
-    }
+  const handleRemoveRecentAgent = (agentId: number) => {
+    setAgents(prev => prev.filter(a => a.id !== agentId))
   }
 
   const statCards = [
@@ -211,7 +194,7 @@ export default function DashboardPage() {
                     </div>
                     <button 
                       className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                      onClick={() => handleDeleteAgent(agent.id)}
+                      onClick={() => handleRemoveRecentAgent(agent.id)}
                     >
                       <Plus className="h-5 w-5 rotate-45" />
                     </button>
