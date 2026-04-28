@@ -22,9 +22,16 @@ async def smart_ingest_url(url: str) -> Dict[str, Any]:
             response.raise_for_status()
             
             content_type = response.headers.get("Content-Type", "").lower()
+            text_preview = response.text.strip()
             
-            if "json" in content_type or response.text.strip().startswith("{"):
+            if "json" in content_type or text_preview.startswith("{"):
                 return response.json()
+            elif "html" in content_type or text_preview.startswith("<"):
+                raise ValueError(
+                    "The provided URL points to an HTML webpage. "
+                    "Please provide the direct link to the raw OpenAPI JSON/YAML specification file "
+                    "(e.g., a URL ending in .json or .yaml)."
+                )
             else:
                 return yaml.safe_load(response.text)
                 
