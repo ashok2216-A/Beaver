@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
@@ -13,12 +13,16 @@ import {
   Settings2, 
   Trash2,
   ExternalLink,
-  Activity
+  Activity,
+  AlertTriangle
 } from "lucide-react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
-import { cn } from "@/lib/utils"
+import { cn, addNotification } from "@/lib/utils"
 import { AgentAvatar } from "@/components/dashboard/agent-avatar"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import {
   DropdownMenu,
@@ -38,11 +42,19 @@ interface Agent {
   created_at: string
 }
 
-export default function AgentsPage() {
+function AgentsContent() {
   const { getToken } = useAuth()
+  const searchParams = useSearchParams()
   const [agents, setAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
+  const [deletingAgentId, setDeletingAgentId] = useState<number | null>(null)
+
+  useEffect(() => {
+    const q = searchParams.get("query")
+    if (q) setSearchQuery(q)
+  }, [searchParams])
 
   useEffect(() => {
     async function fetchAgents() {
@@ -65,25 +77,8 @@ export default function AgentsPage() {
     fetchAgents()
   }, [getToken])
   
-  const handleDeleteAgent = async (agentId: number) => {
-    if (!confirm("Are you sure you want to delete this agent? This action cannot be undone.")) return
-    
-    try {
-      const token = await getToken()
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
-      if (response.ok) {
-        setAgents(prev => prev.filter(a => a.id !== agentId))
-        toast.success("Agent deleted successfully")
-      } else {
-        toast.error("Failed to delete agent")
-      }
-    } catch (error) {
-      toast.error("Error deleting agent")
-    }
+  const handleDeleteAgent = (agentId: number) => {
+    setDeletingAgentId(agentId)
   }
 
   const toggleAgentStatus = async (agent: Agent) => {
@@ -102,6 +97,10 @@ export default function AgentsPage() {
       if (response.ok) {
         setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, status: newStatus } : a))
         toast.success(`Agent ${newStatus === "live" ? "enabled" : "disabled"} successfully`)
+        addNotification(
+          newStatus === "live" ? "🟢 Agent Enabled" : "🟠 Agent Paused",
+          `"${agent.name}" state updated to ${newStatus} securely.`
+        )
       } else {
         toast.error("Failed to update agent status")
       }
@@ -167,6 +166,12 @@ export default function AgentsPage() {
                     <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl">
                       <DropdownMenuLabel>Agent Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        onClick={() => setEditingAgent(agent)}
+                      >
+                        <Settings2 className="mr-2 h-4 w-4 text-primary" /> Edit Name & Desc
+                      </DropdownMenuItem>
                       <DropdownMenuItem asChild className="cursor-pointer">
                         <Link href={`/dashboard/agents/${agent.id}`}>
                           <Settings2 className="mr-2 h-4 w-4" /> Configure Details
@@ -259,6 +264,111 @@ export default function AgentsPage() {
           </div>
         </Card>
       )}
+
+      {editingAgent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 animate-in fade-in">
+          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
+            <h3 className="text-lg font-bold">Edit Agent Profile</h3>
+            <form onSubmit={async (e) => {
+              e.preventDefault()
+              const formData = new FormData(e.currentTarget)
+              const name = formData.get("name") as string
+              const description = formData.get("description") as string
+              
+              try {
+                const token = await getToken()
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${editingAgent.id}`, {
+                  method: "PATCH",
+                  headers: { 
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}` 
+                  },
+                  body: JSON.stringify({ name, description })
+                })
+                
+                if (response.ok) {
+                  const updated = await response.json()
+                  setAgents(prev => prev.map(a => a.id === updated.id ? updated : a))
+                  toast.success("Profile updated successfully")
+                  addNotification("📝 Profile Updated", `Updated metadata constraints comfortably for ${name}.`)
+                  setEditingAgent(null)
+                } else {
+                  toast.error("Failed to save profile")
+                }
+              } catch {
+                toast.error("An error occurred")
+              }
+            }} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Name</label>
+                <Input name="name" defaultValue={editingAgent.name} required className="h-11 rounded-xl bg-background/50" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Description</label>
+                <Textarea name="description" defaultValue={editingAgent.description} rows={3} className="rounded-xl bg-background/50 text-xs leading-relaxed resize-none" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="ghost" onClick={() => setEditingAgent(null)} className="rounded-xl">Cancel</Button>
+                <Button type="submit" variant="hero" className="rounded-xl font-bold px-6 shadow-glow">Save</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {deletingAgentId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 animate-in fade-in">
+          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center gap-3 text-rose-500">
+              <AlertTriangle className="h-6 w-6 shrink-0" />
+              <h3 className="text-lg font-bold">Delete AI Agent?</h3>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Are you absolutely sure? This removes the coordinator instance permanently and disrupts tools.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" onClick={() => setDeletingAgentId(null)} className="rounded-xl">Cancel</Button>
+              <Button variant="destructive" onClick={async () => {
+                const agentId = deletingAgentId
+                setDeletingAgentId(null)
+                try {
+                  const token = await getToken()
+                  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${token}` }
+                  })
+                  
+                  if (response.ok) {
+                    setAgents(prev => prev.filter(a => a.id !== agentId))
+                    toast.success("Agent deleted successfully")
+                    addNotification("🗑️ Agent Removed", `Deleted agent successfully.`)
+                  } else {
+                    toast.error("Failed to delete agent")
+                  }
+                } catch {
+                  toast.error("An error occurred")
+                }
+              }} className="rounded-xl font-bold px-6 shadow-glow-sm bg-rose-500 hover:bg-rose-600 text-white">
+                Delete Agent
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  )
+}
+
+export default function AgentsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3 text-center">
+        <Bot className="w-12 h-12 text-primary animate-pulse" />
+        <h3 className="text-base font-bold text-foreground">Setting up your dashboard</h3>
+        <p className="text-xs text-muted-foreground">Preparing your intelligent assistants...</p>
+      </div>
+    }>
+      <AgentsContent />
+    </Suspense>
   )
 }

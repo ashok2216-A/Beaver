@@ -545,6 +545,16 @@ export default function AgentBuilderPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Description</label>
+                  <Textarea 
+                    name="description" 
+                    defaultValue={agent.description} 
+                    className="min-h-[80px] rounded-xl bg-background/50 border-border/50 text-xs leading-relaxed resize-none"
+                    placeholder="Short description of the agent's capabilities..."
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">System Prompt</label>
                   <Textarea 
                     name="system_prompt" 
