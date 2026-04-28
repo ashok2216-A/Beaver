@@ -142,12 +142,41 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=4096)
 
 
+class ChatMessageOut(BaseModel):
+    id: int
+    conversation_id: str
+    role: str
+    content: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ConversationOut(BaseModel):
+    id: str
+    user_id: str
+    title: str
+    created_at: datetime
+    messages: list[ChatMessageOut] = []
+
+    model_config = {"from_attributes": True}
+
+
+class ConversationListOut(BaseModel):
+    id: str
+    title: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class ChatResponse(BaseModel):
     answer: str
     endpoint: Optional[dict[str, Any]] = None
     api_response: Optional[Any] = None
     latency_ms: int
     log_id: int
+    conversation_id: Optional[str] = None
 
 
 # ─── Logs ─────────────────────────────────────────────────────────────────────
@@ -190,3 +219,21 @@ class StatsOut(BaseModel):
     agent_trend: str = "+0"
     message_trend: str = "+0%"
     latency_trend: str = "-0ms"
+
+
+class HealthStatsOut(BaseModel):
+    api_availability: str
+    llm_success: str
+    latency_ms: str
+    upgrade_percentage: int
+
+
+class DailyVelocity(BaseModel):
+    date: str
+    requests: int
+
+
+class VelocityOut(BaseModel):
+    items: list[DailyVelocity]
+
+

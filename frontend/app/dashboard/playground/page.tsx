@@ -1,29 +1,105 @@
 'use client'
 
 import { useState, useRef, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Bot, User, Loader2 } from "lucide-react"
+import { Sparkles, Loader2, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2 } from "lucide-react"
+import { useAuth } from "@clerk/nextjs"
+import { cn } from "@/lib/utils"
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
+  latency_ms?: number
+  matched_endpoint?: {
+    path: string
+    method: string
+  }
+  agent_name?: string
+}
+
+interface Agent {
+  id: number
+  name: string
+  description: string
+  status: string
 }
 
 export default function PlaygroundPage() {
+  const { getToken } = useAuth()
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isOrchestratorMode, setIsOrchestratorMode] = useState(true)
+  
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: '1',
+      id: 'welcome',
       role: 'assistant',
-      content: 'Hello! I\'m your API assistant. Select an agent to start chatting, or create one if you haven\'t already.'
+      content: 'Hello! I\'m your AI Core Assistant. Select an active agent endpoint above, or enable Multi-Agent Orchestration to automate tool execution across your entire fleet.'
     }
   ])
+  
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingAgents, setIsLoadingAgents] = useState(true)
+  const [history, setHistory] = useState<any[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true)
+  const [sessionId, setSessionId] = useState<string>("")
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  const fetchHistory = async () => {
+    try {
+      const token = await getToken()
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/conversations`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setHistory(data || [])
+      }
+    } catch (err) {
+      console.error("Failed to load conversation history:", err)
+    } finally {
+      setIsLoadingHistory(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchHistory()
+  }, [getToken])
+
+  useEffect(() => {
+    async function fetchAgents() {
+      try {
+        const token = await getToken()
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setAgents(data || [])
+          if (data && data.length > 0) {
+            setSelectedAgent(data[0])
+            setMessages([
+              {
+                id: 'welcome_agent',
+                role: 'assistant',
+                content: `🚀 **Master Agent Mode Activated.** Commands route seamlessly across the full catalog.`
+              }
+            ])
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load playground agents:", err)
+      } finally {
+        setIsLoadingAgents(false)
+      }
+    }
+    fetchAgents()
+  }, [getToken])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -31,112 +107,453 @@ export default function PlaygroundPage() {
     }
   }, [messages])
 
-  const handleSend = () => {
-    if (!input.trim() || isLoading) return
+  const handleAgentSelect = (agent: Agent) => {
+    setSelectedAgent(agent)
+    setIsDropdownOpen(false)
+    setIsOrchestratorMode(false)
+    setMessages([
+      {
+        id: `welcome_${agent.id}`,
+        role: 'assistant',
+        content: `Switched operational parameters to **${agent.name}**.`
+      }
+    ])
+  }
 
+  const loadConversation = async (id: string) => {
+    setSessionId(id)
+    setIsLoading(true)
+    try {
+      const token = await getToken()
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/conversations/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setMessages(data.messages || [])
+      }
+    } catch (err) {
+      console.error("Failed to load conversation:", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const deleteConversation = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const token = await getToken()
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/conversations/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        if (sessionId === id) {
+          setSessionId("")
+          setMessages([
+            {
+              id: 'welcome_agent',
+              role: 'assistant',
+              content: `Operational context cleared.`
+            }
+          ])
+        }
+        fetchHistory()
+      }
+    } catch (err) {
+      console.error("Failed to delete conversation:", err)
+    }
+  }
+
+  const toggleAgentStatus = async (agent: any, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const token = await getToken()
+      const newStatus = agent.status === "live" ? "paused" : "live"
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agent.id}`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ status: newStatus })
+      })
+      if (res.ok) {
+        setAgents((prev: any[]) => prev.map(a => a.id === agent.id ? { ...a, status: newStatus } : a))
+        if (selectedAgent?.id === agent.id) {
+          setSelectedAgent((prev: any) => prev ? { ...prev, status: newStatus } : null)
+        }
+      }
+    } catch (err) {
+      console.error("Failed to toggle status:", err)
+    }
+  }
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return
+    if (!isOrchestratorMode && !selectedAgent) return
+
+    const promptText = input.trim()
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input
+      content: promptText
     }
 
     setMessages(prev => [...prev, userMessage])
     setInput("")
     setIsLoading(true)
 
-    // Simulate response
-    setTimeout(() => {
+    try {
+      const token = await getToken()
+      const activeSessionId = sessionId || crypto.randomUUID()
+      if (!sessionId) {
+        setSessionId(activeSessionId)
+      }
+
+      const endpointUrl = isOrchestratorMode 
+        ? `${process.env.NEXT_PUBLIC_API_URL}/chat/orchestrate?session_id=${activeSessionId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/chat/${selectedAgent?.id}?session_id=${activeSessionId}`
+
+      const res = await fetch(endpointUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ message: promptText })
+      })
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        const errorString = typeof errData.detail === 'object' && errData.detail !== null
+          ? JSON.stringify(errData.detail)
+          : String(errData.detail || "Failed to reach agent core.")
+        throw new Error(errorString)
+      }
+
+      const data = await res.json()
+      
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'To use the playground, you\'ll need to create an agent first. Go to the Agents page and upload an OpenAPI specification to get started.'
+        content: typeof data.answer === 'object' && data.answer !== null
+          ? JSON.stringify(data.answer, null, 2)
+          : String(data.answer || "No response text."),
+        latency_ms: data.latency_ms,
+        matched_endpoint: data.endpoint,
+        agent_name: data.agent_name
       }
       setMessages(prev => [...prev, assistantMessage])
+      fetchHistory()
+
+    } catch (err: any) {
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: err.message || "An error occurred while processing your message."
+      }
+      setMessages(prev => [...prev, assistantMessage])
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold text-foreground">Playground</h1>
-        <p className="text-muted-foreground">
-          Test your agents with natural language queries
-        </p>
+    <div className="h-[calc(100vh-8.5rem)] flex overflow-hidden">
+      
+      {/* ChatGPT Style History Sidebar */}
+      <div className="w-64 flex flex-col bg-muted/10 border-r border-white/5 p-4 shrink-0 overflow-y-auto custom-scrollbar animate-in slide-in-from-left duration-300">
+        <button
+          onClick={() => {
+            setSessionId("")
+            setMessages([
+              {
+                id: 'welcome_agent',
+                role: 'assistant',
+                content: `Operational domain refreshed. Give me commands.`
+              }
+            ])
+          }}
+          className="mb-4 w-full flex items-center justify-center gap-2 text-xs py-2 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/10 text-slate-800 dark:text-slate-100 font-bold hover:shadow-[0_6px_16px_rgba(0,0,0,0.12)] shadow-[0_4px_12px_rgba(0,0,0,0.08)] active:translate-y-0.5 active:shadow-[0_2px_4px_rgba(0,0,0,0.06)] transition-all duration-200"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          New Chat
+        </button>
+
+        <h3 className="text-[10px] font-bold text-muted-foreground/80 mb-4 flex items-center gap-2 px-2 uppercase tracking-widest">
+          Chat History
+        </h3>
+        {isLoadingHistory ? (
+          <div className="flex flex-col items-center justify-center py-10">
+            <Loader2 className="w-4 h-4 animate-spin text-primary/60" />
+          </div>
+        ) : history.length === 0 ? (
+          <div className="text-[10px] text-muted-foreground/40 text-center py-10 px-2 italic">
+            No active chat threads.
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {history.map((convItem) => (
+              <div
+                key={convItem.id}
+                className={cn(
+                  "relative w-full rounded-xl border flex items-center group transition-all duration-200",
+                  sessionId === convItem.id 
+                    ? "bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/20 shadow-[0_4px_12px_rgba(0,0,0,0.1)]" 
+                    : "border-transparent hover:bg-muted/10 hover:border-white/5"
+                )}
+              >
+                <button
+                  onClick={() => loadConversation(convItem.id)}
+                  className="flex-1 text-left p-2.5 text-xs flex flex-col gap-1 text-muted-foreground hover:text-foreground"
+                >
+                  <span className={cn("truncate transition-all w-[140px]", sessionId === convItem.id ? "text-primary font-bold" : "")}>
+                    {convItem.title || "Conversation"}
+                  </span>
+                  <span className="text-[9px] text-muted-foreground/40">
+                    {new Date(convItem.created_at).toLocaleDateString()}
+                  </span>
+                </button>
+                
+                <button
+                  onClick={(e) => deleteConversation(convItem.id, e)}
+                  className="p-2 mr-1 rounded-lg text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 flex items-center justify-center shrink-0"
+                  title="Delete thread"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden">
-        <CardHeader className="border-b border-border py-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Bot className="h-5 w-5" />
-            Chat with your agent
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-          <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-            <div className="space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex gap-3 ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
-                >
-                  {message.role === 'assistant' && (
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <Bot className="h-4 w-4 text-primary" />
-                    </div>
-                  )}
-                  <div
-                    className={`rounded-lg px-4 py-2 max-w-[80%] ${
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-foreground'
-                    }`}
-                  >
-                    <p className="text-sm">{message.content}</p>
-                  </div>
-                  {message.role === 'user' && (
-                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex gap-3 justify-start">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Bot className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="rounded-lg px-4 py-2 bg-muted">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
+      <div className="flex-1 flex flex-col items-center relative overflow-hidden">
+      
+      {/* Top Floating Dropdown Menu */}
+      <div className="z-20 sticky top-0 mt-2 bg-background/80 backdrop-blur-xl border border-white/5 py-2 px-4 rounded-full flex items-center gap-4 shadow-lg">
+        <button
+          onClick={() => {
+            setIsOrchestratorMode(!isOrchestratorMode)
+            if (!isOrchestratorMode) {
+              setMessages([
+                {
+                  id: 'orchestration_mode',
+                  role: 'assistant',
+                  content: '🚀 **Master Agent Mode Activated.** Commands route seamlessly across the full catalog.'
+                }
+              ])
+            } else {
+              setMessages([
+                {
+                  id: 'orchestration_mode_off',
+                  role: 'assistant',
+                  content: 'Returned query parameters to focused endpoints.'
+                }
+              ])
+            }
+          }}
+          className={cn("text-xs px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 border transition-all duration-300",
+            isOrchestratorMode 
+              ? "bg-gradient-to-r from-[#eca8d6]/30 via-[#a78bfa]/30 to-[#67e8f9]/30 border border-[#a78bfa]/40 text-slate-800 dark:text-white shadow-[0_0_15px_rgba(168,85,247,0.2)]"
+              : "bg-muted border-transparent hover:border-white/10 text-muted-foreground"
+          )}
+        >
+          <Sparkles className={cn("w-3.5 h-3.5", isOrchestratorMode ? "text-slate-800 dark:text-white animate-pulse" : "text-muted-foreground")} />
+          <span>
+            Master Agent
+          </span>
+        </button>
 
-          <div className="p-4 border-t border-border">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                handleSend()
-              }}
-              className="flex gap-2"
-            >
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your message..."
-                disabled={isLoading}
-              />
-              <Button type="submit" disabled={!input.trim() || isLoading}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
+        {!isOrchestratorMode && (
+          <>
+            <div className="w-[1px] h-4 bg-white/10" />
+            {isLoadingAgents ? (
+              <span className="text-xs text-muted-foreground flex items-center gap-2 px-3 py-1">
+                <Loader2 className="h-3 w-3 animate-spin text-primary" />
+              </span>
+            ) : agents.length === 0 ? (
+              <span className="text-xs text-muted-foreground px-3 py-1 flex items-center gap-1.5 text-amber-500 font-medium">
+                No active agents
+              </span>
+            ) : (
+              <div className="relative">
+                <button 
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center gap-2 px-4 py-1.5 rounded-full hover:bg-muted/50 transition-all text-xs font-bold text-foreground"
+                >
+                  <Server className="w-3.5 h-3.5 text-primary" />
+                  <span>{selectedAgent ? `Sub Agent: ${selectedAgent.name}` : "Select Sub Agent"}</span>
+                  <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform duration-300", isDropdownOpen && "rotate-180")} />
+                </button>
+
+            {isDropdownOpen && (
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-60 rounded-2xl bg-card/95 backdrop-blur-md border border-white/10 p-2 shadow-xl animate-in fade-in zoom-in-95 duration-200">
+                <div className="text-[10px] font-bold text-muted-foreground/60 px-3 py-1 mb-1 uppercase tracking-wider border-b border-white/5">
+                  Select Sub Agent
+                </div>
+                <div className="space-y-1 mt-1">
+                  {agents.map((agent) => (
+                    <div
+                      key={agent.id}
+                      className={cn(
+                        "w-full rounded-xl text-xs font-medium flex items-center justify-between transition-all hover:bg-muted/50 p-1",
+                        selectedAgent?.id === agent.id ? "bg-primary/5 text-primary" : "text-muted-foreground"
+                      )}
+                    >
+                      <button
+                        onClick={() => handleAgentSelect(agent)}
+                        className="flex-1 text-left px-2 py-1.5 truncate flex items-center gap-2"
+                      >
+                        <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", agent.status === "live" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-amber-500")} />
+                        <span className="truncate">{agent.name}</span>
+                      </button>
+                      
+                      <button
+                        onClick={(e) => toggleAgentStatus(agent, e)}
+                        className={cn(
+                          "px-2 py-1 rounded-md text-[9px] font-bold border transition-all duration-200 uppercase",
+                          agent.status === "live"
+                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+                            : "border-amber-500/30 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                        )}
+                        title={agent.status === "live" ? "Click to Disable" : "Click to Enable"}
+                      >
+                        {agent.status === "live" ? "Live" : "Paused"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </>
+    )}
+  </div>
+
+      {/* Full width scroll container so scrollbar stays in the corner */}
+      <div 
+        ref={scrollRef} 
+        className="flex-1 w-full overflow-y-auto custom-scrollbar flex flex-col items-center"
+      >
+        <div className="w-full max-w-3xl px-4 md:px-6 pt-10 pb-32 space-y-8">
+        {messages.map((message) => {
+          const isAI = message.role === 'assistant'
+          return (
+            <div
+              key={message.id}
+              className={cn(
+                "flex items-start gap-5 animate-in fade-in duration-300",
+                !isAI ? "flex-row-reverse" : "flex-row"
+              )}
+            >
+              {/* Avatar Icons */}
+              <div className={cn(
+                "w-8 h-8 rounded-xl flex items-center justify-center border shrink-0",
+                isAI 
+                  ? "bg-primary/10 border-primary/20 text-primary" 
+                  : "bg-muted border-white/5 text-muted-foreground"
+              )}>
+                {isAI ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
+              </div>
+
+              {/* Message Block */}
+              <div className={cn("space-y-2 max-w-[85%]", !isAI ? "flex flex-col items-end" : "flex flex-col items-start")}>
+                <div className={cn(
+                  "rounded-2xl px-5 py-3.5 text-sm leading-relaxed w-fit max-w-full shadow-sm transition-all duration-200",
+                  isAI 
+                    ? "text-foreground bg-muted/40 dark:bg-muted/20 border border-black/5 dark:border-white/5 rounded-bl-sm" 
+                    : "text-foreground bg-muted/40 dark:bg-muted/20 border border-black/5 dark:border-white/5 rounded-br-sm"
+                )}>
+                  <div className="break-words text-sm">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        h1: ({node, ...props}) => <h1 className="text-xl font-bold mt-4 mb-2 text-foreground" {...props} />,
+                        h2: ({node, ...props}) => <h2 className="text-lg font-bold mt-3 mb-2 text-foreground" {...props} />,
+                        h3: ({node, ...props}) => <h3 className="text-base font-bold mt-2.5 mb-1.5 text-foreground" {...props} />,
+                        h4: ({node, ...props}) => <h4 className="text-sm font-bold mt-2 mb-1.5 text-foreground/90" {...props} />,
+                        ul: ({node, ...props}) => <ul className="list-disc pl-5 space-y-0.5 mb-1" {...props} />,
+                        ol: ({node, ...props}) => <ol className="list-decimal pl-5 space-y-0.5 mb-1" {...props} />,
+                        table: ({node, ...props}) => <div className="overflow-x-auto my-2 w-full"><table className="min-w-full border-collapse border border-slate-200 dark:border-white/10" {...props} /></div>,
+                        th: ({node, ...props}) => <th className="border border-slate-200 dark:border-white/10 px-3 py-1 bg-muted/30 text-left font-semibold text-xs" {...props} />,
+                        td: ({node, ...props}) => <td className="border border-slate-200 dark:border-white/10 px-3 py-1 text-xs text-slate-700 dark:text-slate-300" {...props} />,
+                        code: ({node, ...props}) => <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono border border-black/5 dark:border-white/5" {...props} />,
+                      }}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+
+                {/* AI execution diagnostics */}
+                {isAI && message.agent_name && (
+                  <div className="flex items-center gap-3 text-[10px] px-2 mt-1">
+                    <span className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-md font-bold font-mono tracking-wide">
+                      {message.agent_name}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Dynamic Loading block */}
+        {isLoading && (
+          <div className="flex items-start gap-5">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 text-primary animate-pulse">
+              <Bot className="h-4 w-4" />
+            </div>
+            <div className="rounded-2xl px-5 py-3.5 bg-muted/20 border border-white/5 flex items-center gap-3 animate-in fade-in duration-200">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+              <span className="text-xs text-muted-foreground italic">Consulting AI fleet models...</span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
-  )
+
+      {/* Floating ChatGPT Action Pill bar */}
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-10 animate-in slide-in-from-bottom-4 duration-300">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleSend()
+          }}
+          className="relative flex items-center bg-card/80 backdrop-blur-2xl rounded-2xl border border-white/10 p-2 pr-3 focus-within:border-primary/40 focus-within:shadow-[0_0_20px_rgba(var(--primary),0.1)] transition-all duration-300 shadow-2xl"
+        >
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={isOrchestratorMode ? "Message Orchestrator Engine..." : (selectedAgent ? `Message ${selectedAgent.name}...` : "Select an agent context.")}
+            disabled={isLoading || (!isOrchestratorMode && !selectedAgent)}
+            className="w-full h-11 bg-transparent px-4 text-sm outline-none placeholder-muted-foreground/60 focus:outline-none"
+          />
+          <Button 
+            type="submit" 
+            disabled={!input.trim() || isLoading || (!isOrchestratorMode && !selectedAgent)}
+            size="icon"
+            className="h-9 w-9 rounded-xl shadow-glow bg-primary hover:bg-primary/90 transition-all ml-2"
+          >
+            <ArrowRight className="h-4 w-4 text-primary-foreground" />
+          </Button>
+        </form>
+        <p className="text-[10px] text-center text-muted-foreground/40 mt-2 font-medium tracking-wide">
+          API requests route dynamically over verified Open specifications.
+        </p>
+      </div>
+    </div>
+  </div>
+)
 }
+
+const AlertCircle = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" x2="12" y1="8" y2="12" />
+    <line x1="12" x2="12.01" y1="16" y2="16" />
+  </svg>
+)

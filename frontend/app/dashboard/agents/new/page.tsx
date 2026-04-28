@@ -218,8 +218,15 @@ export default function NewAgentPage() {
       }
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Failed to generate agent");
+        const err = await res.json().catch(() => ({ detail: "An unexpected error occurred" }));
+        const errorMessage = typeof err.detail === "string" 
+          ? err.detail 
+          : Array.isArray(err.detail)
+            ? err.detail.map((e: any) => e.msg || JSON.stringify(e)).join(", ")
+            : typeof err.detail === "object" && err.detail !== null
+              ? JSON.stringify(err.detail)
+              : "Failed to generate agent";
+        throw new Error(errorMessage);
       }
 
       const data = await res.json();

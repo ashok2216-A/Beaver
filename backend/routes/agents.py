@@ -17,7 +17,7 @@ from schemas import (
     AgentCreate, AgentOut, AgentDetail, AgentUpdate,
     EndpointOut, IngestUrlRequest, MessageOut,
     IngestPreviewRequest, IngestPreviewOut, StatsOut,
-    PaginatedEndpoints,
+    PaginatedEndpoints, HealthStatsOut, VelocityOut
 )
 from services.parser import parse_openapi
 from services.ai_discovery import smart_ingest_url
@@ -446,6 +446,76 @@ def get_global_stats(user: User = Depends(get_current_user), db: Session = Depen
         message_trend=message_trend,
         latency_trend=latency_trend
     )
+
+
+@router.get("/stats/health", response_model=HealthStatsOut)
+def get_health_stats(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Calculate availability, success, and latency for display."""
+    total_logs = db.query(Log).join(Agent).filter(Agent.owner_id == user.id).count()
+    
+    if total_logs == 0:
+        return HealthStatsOut(
+            api_availability="100%",
+            llm_success="100%",
+            latency_ms="0ms",
+            upgrade_percentage=0
+        )
+        
+    success_logs = db.query(Log).join(Agent).filter(
+        Agent.owner_id == user.id, 
+        Log.status_code >= 200, 
+        Log.status_code < 400
+    ).count()
+    
+    # Check both empty error strings and None
+    no_error_logs = db.query(Log).join(Agent).filter(
+        Agent.owner_id == user.id,
+        (Log.error == None) | (Log.error == "")
+    ).count()
+    
+    latency_avg = db.query(func.avg(Log.latency_ms)).join(Agent).filter(Agent.owner_id == user.id).scalar() or 0
+    
+    api_availability = f"{min(100.0, (success_logs / total_logs) * 100):.1f}%"
+    llm_success = f"{min(100.0, (no_error_logs / total_logs) * 100):.1f}%"
+    latency_ms = f"{int(latency_avg)}ms"
+    
+    # Upgrade percentage - based on free-tier 100 queries limit
+    upgrade_percentage = min(int((total_logs / 100.0) * 100), 100)
+    
+    return HealthStatsOut(
+        api_availability=api_availability,
+        llm_success=llm_success,
+        latency_ms=latency_ms,
+        upgrade_percentage=upgrade_percentage
+    )
+
+
+@router.get("/stats/velocity", response_model=VelocityOut)
+def get_request_velocity(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Return day-by-day tool usage logs for the last 30 days."""
+    from datetime import datetime, timedelta, timezone
+    
+    now = datetime.now(timezone.utc)
+    start_date = (now - timedelta(days=29)).replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    logs = db.query(Log.created_at).join(Agent).filter(
+        Agent.owner_id == user.id,
+        Log.created_at >= start_date
+    ).all()
+    
+    daily_counts = {}
+    for i in range(30):
+        day = start_date + timedelta(days=i)
+        day_str = day.strftime("%b %d")
+        daily_counts[day_str] = 0
+        
+    for log in logs:
+        log_day_str = log.created_at.strftime("%b %d")
+        if log_day_str in daily_counts:
+            daily_counts[log_day_str] += 1
+            
+    items = [{"date": k, "requests": v} for k, v in daily_counts.items()]
+    return VelocityOut(items=items)
 
 
 @router.get("", response_model=list[AgentOut])
