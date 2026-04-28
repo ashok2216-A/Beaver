@@ -264,6 +264,7 @@ export default function PlaygroundPage() {
       
       {/* ChatGPT Style History Sidebar */}
       <div className="w-64 flex flex-col bg-muted/10 border-r border-white/5 p-4 shrink-0 overflow-y-auto custom-scrollbar animate-in slide-in-from-left duration-300">
+        <h2 className="text-xl font-bold text-foreground mb-4 px-1">Playground</h2>
         <button
           onClick={() => {
             setSessionId("")
