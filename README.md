@@ -1,4 +1,4 @@
-# 🚀 api2bot-studio
+# 🚀 Beaver
 
 Turn any OpenAPI spec into a production-ready AI agent in seconds. `api2bot-studio` parses your API documentation and spins up a Gemini-powered agent that can interact with your live endpoints via natural language.
 
