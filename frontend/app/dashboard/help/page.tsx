@@ -26,7 +26,7 @@ export default function HelpPage() {
           </CardHeader>
           <CardContent>
             <Button variant="outline" asChild>
-              <Link href="#" className="inline-flex items-center">
+              <Link href="/docs" className="inline-flex items-center">
                 Read Documentation
                 <ExternalLink className="ml-2 h-4 w-4" />
               </Link>
@@ -46,13 +46,14 @@ export default function HelpPage() {
           </CardHeader>
           <CardContent>
             <Button variant="outline" asChild>
-              <Link href="#" className="inline-flex items-center">
+              <Link href="/api-reference" className="inline-flex items-center">
                 View API Docs
                 <ExternalLink className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </CardContent>
         </Card>
+
 
         <Card>
           <CardHeader>
