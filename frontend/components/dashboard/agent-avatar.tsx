@@ -80,8 +80,9 @@ export const AgentAvatar = ({ id, name, className = "", size = "md", minimal = f
       {/* Pattern Layer: Dynamic Dot Matrix */}
       <div 
         className={cn(
-          "grid gap-1 w-full h-full",
-          minimal ? "p-0" : "p-2",
+          "grid w-full h-full",
+          size === "sm" ? "gap-0.5" : "gap-1",
+          minimal ? "p-0" : size === "sm" ? "p-1" : "p-2",
           gridCols[avatarData.gridSize as keyof typeof gridCols] || "grid-cols-4"
         )}
         style={{ gridTemplateRows: `repeat(${avatarData.gridSize}, minmax(0, 1fr))` }}
