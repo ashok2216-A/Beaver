@@ -253,6 +253,20 @@ export default function NewAgentPage() {
 
     } catch (err: any) {
       toast.error(err.message || "Failed to generate agent");
+      
+      try {
+        const stored = localStorage.getItem("api2bot_notifications");
+        const list = stored ? JSON.parse(stored) : [];
+        list.unshift({
+          id: Date.now(),
+          title: `🚫 Limit Reached`,
+          description: err.message || "Failed to generate agent due to plan limits."
+        });
+        localStorage.setItem("api2bot_notifications", JSON.stringify(list));
+      } catch (e) {
+        console.error(e);
+      }
+
       setGenerating(false);
       clearInterval(interval);
     }
