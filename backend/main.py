@@ -13,8 +13,7 @@ Security hardening:
 import logging
 import time
 from contextlib import asynccontextmanager
-
-from fastapi import FastAPI, Request, Depends, status
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -24,7 +23,6 @@ from utils.limiter import limiter
 
 from config import get_settings
 from database import Base, engine
-import models
 from routes import agents, chat, auth, billing
 from utils.auth import get_current_user
 

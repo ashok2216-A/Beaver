@@ -2,6 +2,7 @@
 database.py — SQLAlchemy engine, session factory, and Base.
 Supports SQLite (dev) and PostgreSQL (prod) via DATABASE_URL.
 """
+import logging
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from config import get_settings
@@ -37,7 +38,6 @@ if settings.database_url.startswith("sqlite"):
         cursor.close()
 
 # Silence SQLAlchemy's noisy engine logging
-import logging
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
