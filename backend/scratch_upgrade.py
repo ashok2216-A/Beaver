@@ -1,13 +1,9 @@
 from database import engine
 from sqlalchemy.orm import Session
-from models import User
+from models import Endpoint
 
 with Session(engine) as session:
-    users = session.query(User).all()
-    print(f"Found {len(users)} users.")
-    for u in users:
-        print(f"Updating user: {u.email} ({u.id})")
-        u.plan_type = "pro"
-        u.subscription_status = "active"
-    session.commit()
-    print("Done upgrading users!")
+    endpoints = session.query(Endpoint).filter(Endpoint.agent_id == 79, Endpoint.path.like("%email%")).all()
+    print(f"Found {len(endpoints)} email endpoints.")
+    for ep in endpoints:
+        print(f"[{ep.id}] {ep.method} {ep.path} | Body: {ep.request_body}")
