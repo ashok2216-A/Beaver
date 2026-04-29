@@ -1,13 +1,19 @@
 from database import engine
 from sqlalchemy.orm import Session
-from models import Agent
-from utils.security import decrypt_secret
+from models import Agent, Endpoint
 
 with Session(engine) as session:
-    agents = session.query(Agent).filter(Agent.id == 76).all()
+    agents = session.query(Agent).all()
+    print("--- LIVE DATABASE AGENT INVENTORY (WITH ENDPOINT DESCRIPTIONS) ---")
     for a in agents:
-        try:
-            plain_secret = decrypt_secret(a.auth_secret) if a.auth_secret else "EMPTY"
-        except:
-            plain_secret = "FAILED_DECRYPT"
-        print(f"[{a.id}] {a.name}: Key = {plain_secret}")
+        print(f"\n[ID {a.id}] {a.name}")
+        
+        endpoints = session.query(Endpoint).filter(Endpoint.agent_id == a.id).limit(2).all()
+        if endpoints:
+            for ep in endpoints:
+                method = ep.method.value if hasattr(ep.method, 'value') else ep.method
+                print(f"  - [{method} {ep.path}]")
+                print(f"    Summary: {ep.summary}")
+                print(f"    Description: {ep.description or 'None'}")
+        else:
+            print("  - Tools: None")

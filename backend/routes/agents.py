@@ -157,6 +157,23 @@ def _ingest_spec(agent: Agent, spec: dict | str, db: Session) -> Agent:
         })
     
     db.bulk_insert_mappings(Endpoint, endpoints)
+    
+    try:
+        import litellm
+        eps_summary = ", ".join([f"{ep['method']} {ep['path']} ({ep.get('summary', '')})" for ep in endpoints[:15]])
+        prompt = f"Write a single, highly concise 2-sentence description summarizing the core purpose of this API based on its endpoints: {eps_summary}. Return ONLY the plain text description. Do not include quotes or formatting."
+        
+        res = litellm.completion(
+            model="mistral/mistral-small-latest",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=60,
+            temperature=0.1
+        )
+        agent.description = res.choices[0].message.content.strip().replace('"', '')
+        db.add(agent)
+    except Exception as e:
+        log.warning(f"Failed to auto-enrich agent description: {e}")
+            
     db.commit()
     db.refresh(agent)
     return agent

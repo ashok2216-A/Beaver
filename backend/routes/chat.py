@@ -173,19 +173,30 @@ async def chat_orchestrate(
             agents_context = []
             for a in agents:
                 eps = [ep for ep in all_metadata if ep.agent_id == a.id]
-                tools_str = ", ".join([ep.path for ep in eps[:2]])
-                desc = a.description or f"Handles {tools_str}"
-                agents_context.append(f"ID {a.id} ({a.name}): {desc}")
+                tools_str = ", ".join([f"[{ep.method} {ep.path} - {ep.summary or 'Tool'}]" for ep in eps[:3]])
+                desc = a.description or "Generic Task Agent"
+                agents_context.append(f"ID {a.id} ({a.name}) | Desc: {desc} | Tools: {tools_str}")
             context_str = "\n".join(agents_context)
             
-            prompt = f"""Select the best Agent ID for the request. Respond ONLY with the integer ID.
+            history_str = ""
+            if session_id:
+                history_msgs = db.query(ChatMessage).filter(
+                    ChatMessage.conversation_id == session_id
+                ).order_by(ChatMessage.created_at.desc()).limit(6).all()
+                history_msgs.reverse()
+                history_str = "\n".join([f"{m.role.upper()}: {m.content}" for m in history_msgs])
+            else:
+                history_str = f"USER: {req.message}"
+            
+            prompt = f"""Select the best Agent ID for the last request. Respond ONLY with the integer ID.
             
 Agents:
 {context_str}
 
-Request: {req.message}"""
+Conversation:
+{history_str}"""
             
-            response = litellm.completion(
+            response = await litellm.acompletion(
                 model="mistral/mistral-small-latest",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
