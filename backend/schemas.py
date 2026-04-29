@@ -100,6 +100,7 @@ class AgentOut(BaseModel):
     system_prompt: str
     auth_type: str
     auth_header: Optional[str] = None
+    is_authorized: bool = False
     endpoint_count: int = 0
     custom_headers: dict[str, str] = Field(default_factory=dict)
     created_at: datetime

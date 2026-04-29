@@ -180,6 +180,16 @@ def _ingest_spec(agent: Agent, spec: dict | str, db: Session) -> Agent:
 
 
 def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
+    has_secret = False
+    if agent.auth_secret:
+        try:
+            from utils.security import decrypt_secret
+            plain = decrypt_secret(agent.auth_secret)
+            if plain and len(plain.strip()) > 0 and plain.strip() not in ["string", "none"]:
+                has_secret = True
+        except:
+            has_secret = False
+
     return AgentOut(
         id=agent.id,
         owner_id=agent.owner_id,
@@ -188,6 +198,7 @@ def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
         base_url=agent.base_url,
         status=agent.status.value,
         model_id=agent.model_id,
+        is_authorized=has_secret,
         system_prompt=agent.system_prompt,
         auth_type=agent.auth_type,
         auth_header=agent.auth_header,
