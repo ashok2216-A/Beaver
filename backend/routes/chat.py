@@ -23,8 +23,7 @@ import uuid
 
 from database import get_db
 from models import Agent, Endpoint, Log, User, Conversation, ChatMessage
-from schemas import ChatRequest, ChatResponse, LogOut, PaginatedLogs, ConversationOut, ConversationListOut, ChatMessageOut
-from services.agent import run_agent
+from schemas import ChatRequest, ChatResponse, LogOut, PaginatedLogs, ConversationOut, ConversationListOut
 from utils.auth import get_current_user
 from utils.security import encrypt_secret, decrypt_secret
 
