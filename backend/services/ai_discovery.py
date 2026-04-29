@@ -40,16 +40,36 @@ async def smart_ingest_url(url: str) -> dict:
     Returns a valid OpenAPI 3.0.0 spec dict.
     """
     from utils.security import validate_url_safe
-    validate_url_safe(url)
+    if url.startswith("http"):
+        validate_url_safe(url)
 
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                       "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/json,application/yaml,*/*",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/json,application/yaml,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
     }
 
-    async with httpx.AsyncClient(timeout=20.0, follow_redirects=True, headers=headers) as client:
+    if not url.startswith("http"):
+        try:
+            import os
+            import yaml
+            import json
+            for p in [url, os.path.join("backend", "templates", os.path.basename(url)), os.path.join(os.path.dirname(__file__), "..", "templates", os.path.basename(url))]:
+                if os.path.exists(p):
+                    with open(p, 'r', encoding='utf-8') as f:
+                        text = f.read()
+                    try:
+                        data = json.loads(text)
+                    except:
+                        data = yaml.safe_load(text)
+                    if isinstance(data, dict):
+                        return data
+            else:
+                raise FileNotFoundError("Local template not found.")
+        except Exception as e:
+            raise Exception(f"Failed to read local template: {e}")
 
+    async with httpx.AsyncClient(timeout=20.0, follow_redirects=True, headers=headers) as client:
         # ── LEVEL 1: Direct file check ───────────────────────────────────
         try:
             r = await client.get(url)
@@ -90,16 +110,33 @@ async def smart_ingest_url(url: str) -> dict:
             try:
                 test_r = await client.get(f"{origin}{path}")
                 if test_r.status_code == 200:
-                    text_lower = test_r.text[:500].lower()
-                    if '"openapi"' in text_lower or '"swagger"' in text_lower or "openapi:" in text_lower:
-                        log.info(f"Spec Hunter found: {origin}{path}")
-                        if path.endswith(".json") or "json" in test_r.headers.get("Content-Type", ""):
-                            return test_r.json()
-                        else:
+                    text_lower = test_r.text[:10000].lower()
+                    log.info(f"Spec Hunter checked {origin}{path}: openapi in text={('openapi' in text_lower)} paths: in text={('paths:' in text_lower)}")
+                    if "openapi" in text_lower or "swagger" in text_lower or "paths:" in text_lower:
+                        parsed_spec = None
+                        # Try JSON
+                        try:
+                            import json
+                            parsed_spec = json.loads(test_r.text)
+                            if isinstance(parsed_spec, dict) and ("openapi" in parsed_spec or "swagger" in parsed_spec or "paths" in parsed_spec):
+                                log.info(f"Spec Hunter matched JSON: {origin}{path}")
+                                return parsed_spec
+                        except Exception as e:
+                            log.info(f"Spec Hunter JSON parse error for {origin}{path}: {e}")
+                            pass
+                            
+                        # Try YAML
+                        try:
                             import yaml
-                            return yaml.safe_load(test_r.text)
+                            parsed_spec = yaml.safe_load(test_r.text)
+                            if isinstance(parsed_spec, dict) and ("openapi" in parsed_spec or "swagger" in parsed_spec or "paths" in parsed_spec):
+                                log.info(f"Spec Hunter matched YAML: {origin}{path}")
+                                return parsed_spec
+                        except Exception as e:
+                            log.info(f"Spec Hunter YAML parse error for {origin}{path}: {e}")
+                            pass
             except:
-                continue
+                pass
 
         # Check for spec URLs embedded in the HTML (SwaggerUI/Redoc)
         embedded_patterns = [
@@ -285,11 +322,11 @@ async def smart_ingest_url(url: str) -> dict:
                     sitemap_soup = BeautifulSoup(sm.text, "xml")
                     for loc in sitemap_soup.find_all("loc"):
                         page_url = loc.get_text(strip=True)
-                        page_path = urlparse(page_url).path
-                        # Only include pages from the same section
-                        if (page_url not in seen_urls and 
-                            doc_domain in page_url and
-                            section_prefix and page_path.startswith(section_prefix)):
+                        page_path = urlparse(page_url).path.lower()
+                        
+                        is_api_related = any(term in page_path for term in ["api", "reference", "docs", "endpoint"])
+                        
+                        if page_url not in seen_urls and is_api_related:
                             links_to_crawl.append(page_url)
                             seen_urls.add(page_url)
                     if links_to_crawl:
@@ -321,6 +358,7 @@ async def smart_ingest_url(url: str) -> dict:
                     links_to_crawl.append(full)
                     seen_urls.add(full)
 
+        links_to_crawl = links_to_crawl[:20]
         log.info(f"Deep crawling {len(links_to_crawl)} pages...")
         for page_url in links_to_crawl:
             try:

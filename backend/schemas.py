@@ -22,6 +22,14 @@ class EndpointOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class EndpointCreate(BaseModel):
+    path: str = Field(..., min_length=1)
+    method: str = Field(..., min_length=2)
+    summary: Optional[str] = ""
+    description: Optional[str] = ""
+    parameters: Optional[list[dict[str, Any]]] = []
+    request_body: Optional[dict[str, Any]] = {}
+
 
 class PaginatedEndpoints(BaseModel):
     total: int
@@ -100,6 +108,7 @@ class AgentOut(BaseModel):
     system_prompt: str
     auth_type: str
     auth_header: Optional[str] = None
+    is_authorized: bool = False
     endpoint_count: int = 0
     custom_headers: dict[str, str] = Field(default_factory=dict)
     created_at: datetime

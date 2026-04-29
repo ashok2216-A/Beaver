@@ -130,7 +130,7 @@ async def call_api(
         log.warning("API call with credentials sent over unencrypted HTTP: %s", url.split("?")[0])
 
     # Classify remaining params by their spec location
-    loc_map: dict[str, str] = {p["name"]: p.get("in", "query") for p in endpoint_params}
+    loc_map: dict[str, str] = {p["name"]: p.get("in", "query") for p in endpoint_params if isinstance(p, dict) and "name" in p}
     query_params: dict[str, Any] = {}
     body_params:  dict[str, Any] = {}
 

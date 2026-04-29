@@ -25,6 +25,7 @@ interface Agent {
   description: string
   status: string
   base_url: string
+  is_authorized: boolean
   created_at: string
 }
 
@@ -205,22 +206,28 @@ export default function DashboardPage() {
                     {agent.description || `Auto-discovered from ${agent.base_url}`}
                   </p>
                   
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
                     <div className={cn(
-                      "flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border",
+                      "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border",
                       agent.status === 'live' 
                         ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
                         : "bg-muted/50 text-muted-foreground border-transparent"
                     )}>
                       <div className={cn(
-                        "w-1.5 h-1.5 rounded-full",
+                        "w-1 h-1 rounded-full",
                         agent.status === 'live' ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"
                       )} />
                       {agent.status.toUpperCase()}
                     </div>
-                    <span className="text-xs font-bold text-muted-foreground/60 uppercase">
-                      {new Date(agent.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
+
+                    <div className={cn(
+                      "flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border",
+                      agent.is_authorized 
+                        ? "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" 
+                        : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                    )}>
+                      {agent.is_authorized ? "AUTH OK" : "NO AUTH"}
+                    </div>
                   </div>
                 </CardContent>
                 

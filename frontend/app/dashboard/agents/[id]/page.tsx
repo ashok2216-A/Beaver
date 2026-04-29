@@ -77,6 +77,56 @@ export default function AgentBuilderPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [customHeaders, setCustomHeaders] = useState<[string, string][]>([])
   
+  const [isAddEndpointOpen, setIsAddEndpointOpen] = useState(false)
+  const [newMethod, setNewMethod] = useState("GET")
+  const [newPath, setNewPath] = useState("")
+  const [newSummary, setNewSummary] = useState("")
+  const [isSavingEndpoint, setIsSavingEndpoint] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(380)
+  const [settingsWidth, setSettingsWidth] = useState(340)
+  const isResizingLeft = useRef(false)
+  const isResizingRight = useRef(false)
+
+  const startResizingLeft = (mouseDownEvent: React.MouseEvent) => {
+    isResizingLeft.current = true
+    document.body.style.userSelect = 'none'
+    const handleMouseMove = (mouseMoveEvent: MouseEvent) => {
+      if (!isResizingLeft.current) return
+      const newWidth = mouseMoveEvent.clientX
+      if (newWidth >= 280 && newWidth <= 550) {
+        setSidebarWidth(newWidth)
+      }
+    }
+    const handleMouseUp = () => {
+      isResizingLeft.current = false
+      document.body.style.userSelect = 'auto'
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
+  const startResizingRight = (mouseDownEvent: React.MouseEvent) => {
+    isResizingRight.current = true
+    document.body.style.userSelect = 'none'
+    const handleMouseMove = (mouseMoveEvent: MouseEvent) => {
+      if (!isResizingRight.current) return
+      const newWidth = window.innerWidth - mouseMoveEvent.clientX
+      if (newWidth >= 280 && newWidth <= 550) {
+        setSettingsWidth(newWidth)
+      }
+    }
+    const handleMouseUp = () => {
+      isResizingRight.current = false
+      document.body.style.userSelect = 'auto'
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Load Agent & Endpoints
@@ -122,6 +172,45 @@ export default function AgentBuilderPage() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
+
+  const handleAddEndpoint = async () => {
+    if (!newPath.trim()) {
+      toast.error("Path is required")
+      return
+    }
+    setIsSavingEndpoint(true)
+    try {
+      const token = await getToken()
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${id}/endpoints`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          method: newMethod,
+          path: newPath,
+          summary: newSummary
+        })
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || "Failed to create endpoint")
+      }
+
+      const data = await res.json()
+      setEndpoints(prev => [data, ...prev])
+      setNewPath("")
+      setNewSummary("")
+      setIsAddEndpointOpen(false)
+      toast.success("Endpoint added successfully")
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save endpoint")
+    } finally {
+      setIsSavingEndpoint(false)
+    }
+  }
 
   const handleSendMessage = async () => {
     if (!input.trim() || isSending) return
@@ -340,14 +429,28 @@ export default function AgentBuilderPage() {
       </header>
 
       {/* Main 3-Panel Content */}
-      <div className="flex-1 flex min-h-0 divide-x divide-border overflow-hidden">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         
         {/* Left Panel: Endpoints List */}
-        <aside className="w-[300px] flex flex-col bg-card/30 shrink-0 h-full overflow-hidden">
+        <aside 
+          style={{ width: `${sidebarWidth}px` }} 
+          className="flex flex-col bg-card/30 shrink-0 h-full overflow-hidden select-none border-r border-border/50"
+        >
           <div className="p-5 space-y-4 border-b border-border/50">
-            <div>
-              <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">Endpoints</h2>
-              <p className="text-xs text-muted-foreground">{endpoints.length} tools discovered</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">Endpoints</h2>
+                <p className="text-xs text-muted-foreground">{endpoints.length} tools discovered</p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 rounded-xl border-border/50 bg-background/50 text-xs font-bold text-muted-foreground hover:text-primary hover:border-primary/40 shadow-sm px-3 flex items-center gap-1.5"
+                onClick={() => setIsAddEndpointOpen(true)}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Endpoint
+              </Button>
             </div>
 
             <div className="relative">
@@ -389,13 +492,27 @@ export default function AgentBuilderPage() {
             </div>
 
             <div className="flex items-center justify-between pt-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Bulk Actions</span>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleBulkLock(true)}>
-                  <Lock className="h-3.5 w-3.5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                {selectedMethod === 'ALL' ? 'All Methods' : `${selectedMethod} Only`}
+              </span>
+              <div className="flex gap-1.5">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 text-[9px] font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1 rounded-lg px-1.5 border border-transparent hover:border-destructive/20" 
+                  onClick={() => handleBulkLock(true)}
+                >
+                  <Lock className="h-2.5 w-2.5" />
+                  Lock {selectedMethod}
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => handleBulkLock(false)}>
-                  <Unlock className="h-3.5 w-3.5" />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 text-[9px] font-bold text-muted-foreground hover:text-primary hover:bg-primary/10 gap-1 rounded-lg px-1.5 border border-transparent hover:border-primary/20" 
+                  onClick={() => handleBulkLock(false)}
+                >
+                  <Unlock className="h-2.5 w-2.5" />
+                  Unlock {selectedMethod}
                 </Button>
               </div>
             </div>
@@ -442,6 +559,14 @@ export default function AgentBuilderPage() {
             </div>
           </div>
         </aside>
+        
+        {/* Drag Handle for Resizing */}
+        <div 
+          onMouseDown={startResizingLeft}
+          className="w-1 cursor-col-resize hover:bg-primary/40 bg-transparent transition-all z-10 flex items-center justify-center group shrink-0"
+        >
+          <div className="h-10 w-[2px] rounded bg-muted-foreground/20 group-hover:bg-primary/80 transition-colors pointer-events-none select-none" />
+        </div>
 
         {/* Center Panel: Chat Playground */}
         <main className="flex-1 flex flex-col bg-muted/20 relative">
@@ -526,8 +651,19 @@ export default function AgentBuilderPage() {
           </div>
         </main>
 
+        {/* Drag Handle for Resizing Right Panel */}
+        <div 
+          onMouseDown={startResizingRight}
+          className="w-1 cursor-col-resize hover:bg-primary/40 bg-transparent transition-all z-10 flex items-center justify-center group shrink-0"
+        >
+          <div className="h-10 w-[2px] rounded bg-muted-foreground/20 group-hover:bg-primary/80 transition-colors pointer-events-none select-none" />
+        </div>
+
         {/* Right Panel: Settings & Configuration */}
-        <aside className="w-[340px] flex flex-col bg-card/30 shrink-0 h-full overflow-hidden">
+        <aside 
+          style={{ width: `${settingsWidth}px` }} 
+          className="flex flex-col bg-card/30 shrink-0 h-full overflow-hidden select-none border-l border-border/50"
+        >
           <div className="p-5 flex items-center justify-between border-b border-border/50">
             <div className="flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-primary" />
@@ -672,6 +808,100 @@ export default function AgentBuilderPage() {
           </div>
         </aside>
       </div>
+
+      {/* Add Endpoint Modal */}
+      {isAddEndpointOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-card border border-border/50 rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-border/50 flex justify-between items-center">
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+                Add Custom Endpoint
+              </h3>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="rounded-xl h-8 w-8 text-muted-foreground hover:bg-muted text-lg"
+                onClick={() => setIsAddEndpointOpen(false)}
+              >
+                &times;
+              </Button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">HTTP Method</label>
+                <div className="grid grid-cols-5 gap-1.5 p-1 rounded-xl bg-muted/30 border border-border/50">
+                  {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => {
+                    const isSel = newMethod === m
+                    const activeColor = {
+                      GET: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+                      POST: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+                      PUT: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+                      PATCH: "bg-violet-500/20 text-violet-400 border-violet-500/30",
+                      DELETE: "bg-rose-500/20 text-rose-400 border-rose-500/30",
+                    }[m as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE']
+
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setNewMethod(m)}
+                        className={cn(
+                          "py-1.5 rounded-lg text-[10px] font-bold border transition-all text-center",
+                          isSel 
+                            ? `${activeColor} shadow-sm font-black` 
+                            : "border-transparent text-muted-foreground hover:text-foreground hover:bg-card"
+                        )}
+                      >
+                        {m}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Path</label>
+                <Input 
+                  placeholder="/v1/users/{id}" 
+                  value={newPath}
+                  onChange={(e) => setNewPath(e.target.value)}
+                  className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Summary / Action Name</label>
+                <Input 
+                  placeholder="Get single user payload" 
+                  value={newSummary}
+                  onChange={(e) => setNewSummary(e.target.value)}
+                  className="h-11 rounded-xl bg-background/50 border-border/50 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-border/50 flex gap-3 bg-muted/20">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsAddEndpointOpen(false)}
+                className="w-1/2 h-11 rounded-xl border-border/50 bg-background/50"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="hero" 
+                onClick={handleAddEndpoint}
+                disabled={isSavingEndpoint || !newPath.trim()}
+                className="w-1/2 h-11 rounded-xl shadow-glow font-bold"
+              >
+                {isSavingEndpoint ? "Saving..." : "Add Endpoint"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

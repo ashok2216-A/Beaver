@@ -15,7 +15,7 @@ from database import get_db
 from models import Agent, Endpoint, AgentStatus, User, Log
 from schemas import (
     AgentCreate, AgentOut, AgentDetail, AgentUpdate,
-    EndpointOut, IngestUrlRequest, MessageOut,
+    EndpointOut, EndpointCreate, IngestUrlRequest, MessageOut,
     IngestPreviewRequest, IngestPreviewOut, StatsOut,
     PaginatedEndpoints, HealthStatsOut, VelocityOut
 )
@@ -157,12 +157,39 @@ def _ingest_spec(agent: Agent, spec: dict | str, db: Session) -> Agent:
         })
     
     db.bulk_insert_mappings(Endpoint, endpoints)
+    
+    try:
+        import litellm
+        eps_summary = ", ".join([f"{ep['method']} {ep['path']} ({ep.get('summary', '')})" for ep in endpoints[:15]])
+        prompt = f"Write a single, highly concise 2-sentence description summarizing the core purpose of this API based on its endpoints: {eps_summary}. Return ONLY the plain text description. Do not include quotes or formatting."
+        
+        res = litellm.completion(
+            model="mistral/mistral-small-latest",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=60,
+            temperature=0.1
+        )
+        agent.description = res.choices[0].message.content.strip().replace('"', '')
+        db.add(agent)
+    except Exception as e:
+        log.warning(f"Failed to auto-enrich agent description: {e}")
+            
     db.commit()
     db.refresh(agent)
     return agent
 
 
 def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
+    has_secret = False
+    if agent.auth_secret:
+        try:
+            from utils.security import decrypt_secret
+            plain = decrypt_secret(agent.auth_secret)
+            if plain and len(plain.strip()) > 0 and plain.strip() not in ["string", "none"]:
+                has_secret = True
+        except:
+            has_secret = False
+
     return AgentOut(
         id=agent.id,
         owner_id=agent.owner_id,
@@ -171,6 +198,7 @@ def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
         base_url=agent.base_url,
         status=agent.status.value,
         model_id=agent.model_id,
+        is_authorized=has_secret,
         system_prompt=agent.system_prompt,
         auth_type=agent.auth_type,
         auth_header=agent.auth_header,
@@ -228,17 +256,37 @@ def create_agent(
 @limiter.limit("10/minute")
 async def ingest_preview(request: Request, body: IngestPreviewRequest):
     """Fetch a spec URL and return basic metadata for the UI preview."""
-    validate_url_safe(body.url)
-    try:
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-            r = await client.get(body.url)
-            r.raise_for_status()
-    except Exception as exc:
-        log.error(f"Preview fetch failed: {exc}")
-        raise HTTPException(status_code=422, detail=f"Failed to fetch spec for preview: {exc}")
+    import os
+    import json
+    import yaml
+    
+    if not body.url.startswith("http"):
+        try:
+            for p in [body.url, os.path.join("backend", "templates", os.path.basename(body.url)), os.path.join(os.path.dirname(__file__), "..", "templates", os.path.basename(body.url))]:
+                if os.path.exists(p):
+                    with open(p, 'r', encoding='utf-8') as f:
+                        raw_text = f.read()
+                    break
+            else:
+                raise FileNotFoundError("Local file not found.")
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"Failed to read local file: {e}")
+    else:
+        validate_url_safe(body.url)
+        try:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                r = await client.get(body.url)
+                r.raise_for_status()
+                raw_text = r.text
+        except Exception as exc:
+            log.error(f"Preview fetch failed: {exc}")
+            raise HTTPException(status_code=422, detail=f"Failed to fetch spec for preview: {exc}")
 
     try:
-        spec = r.json() if "json" in r.headers.get("Content-Type", "").lower() else yaml.safe_load(r.text)
+        try:
+            spec = json.loads(raw_text)
+        except:
+            spec = yaml.safe_load(raw_text)
     except Exception:
         raise HTTPException(status_code=422, detail="Could not parse spec format (must be JSON or YAML).")
 
@@ -267,24 +315,40 @@ async def ingest_url(
                 detail="Free plan limit reached (1 agent). Please upgrade to Pro for unlimited agents."
             )
 
-    validate_url_safe(body.url)
-    if body.base_url:
-        validate_url_safe(body.base_url)
-        
-    try:
-        # Increased timeout for large specs (e.g. Stripe, Notion)
-        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-            r = await client.get(body.url)
-        r.raise_for_status()
-    except httpx.HTTPError as exc:
-        raise HTTPException(status_code=422, detail=f"Failed to fetch spec: {exc}")
+    import os
+    import json
+    import yaml
+    
+    if not body.url.startswith("http"):
+        try:
+            for p in [body.url, os.path.join("backend", "templates", os.path.basename(body.url)), os.path.join(os.path.dirname(__file__), "..", "templates", os.path.basename(body.url))]:
+                if os.path.exists(p):
+                    with open(p, 'r', encoding='utf-8') as f:
+                        raw_text = f.read()
+                    break
+            else:
+                raise FileNotFoundError("Local file not found.")
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"Failed to read local file: {e}")
+    else:
+        validate_url_safe(body.url)
+        if body.base_url:
+            validate_url_safe(body.base_url)
+            
+        try:
+            async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+                r = await client.get(body.url)
+                r.raise_for_status()
+                raw_text = r.text
+        except httpx.HTTPError as exc:
+            raise HTTPException(status_code=422, detail=f"Failed to fetch spec: {exc}")
 
     try:
-        spec = r.json()
-    except Exception:
         try:
-            spec = yaml.safe_load(r.text)
-        except Exception:
+            spec = json.loads(raw_text)
+        except:
+            spec = yaml.safe_load(raw_text)
+    except Exception:
             raise HTTPException(status_code=422, detail="Could not parse fetched spec.")
 
     base_url = body.base_url or spec.get("servers", [{}])[0].get("url", "")
@@ -380,7 +444,8 @@ async def ingest_smart(
     """
     Automated discovery: Hunter + AI Fallback.
     """
-    validate_url_safe(body.url)
+    if body.url.startswith("http"):
+        validate_url_safe(body.url)
     try:
         spec = await smart_ingest_url(body.url)
     except Exception as e:
@@ -617,6 +682,36 @@ def get_endpoints(
         per_page=per_page,
         items=[EndpointOut.model_validate(ep) for ep in items]
     )
+
+
+@router.post("/{agent_id}/endpoints", response_model=EndpointOut)
+def add_custom_endpoint(
+    agent_id: int,
+    body: EndpointCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Add a custom API endpoint manually."""
+    _get_agent_or_404(agent_id, user, db)
+    
+    path = body.path.strip()
+    if not path.startswith("/"):
+        path = "/" + path
+        
+    ep = Endpoint(
+        agent_id=agent_id,
+        method=body.method.strip().upper(),
+        path=path,
+        summary=body.summary.strip() if body.summary else f"{body.method.upper()} {path}",
+        description=body.description.strip() if body.description else "",
+        parameters=body.parameters or [],
+        request_body=body.request_body or {},
+        is_locked=False
+    )
+    db.add(ep)
+    db.commit()
+    db.refresh(ep)
+    return EndpointOut.model_validate(ep)
 
 
 @router.patch("/{agent_id}/endpoints/{endpoint_id}/toggle-lock", response_model=EndpointOut)
