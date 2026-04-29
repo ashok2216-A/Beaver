@@ -25,15 +25,18 @@ from utils.auth import get_current_user
 from utils.security import validate_url_safe, encrypt_secret, decrypt_secret
 from slowapi import Limiter
 
+from slowapi.util import get_remote_address
+from fastapi import Request
+
 def encrypt_dict(d: dict | None) -> dict:
-    if not d: return {}
+    if not d: 
+        return {}
     return {k: encrypt_secret(str(v)) for k, v in d.items()}
 
 def decrypt_dict(d: dict | None) -> dict:
-    if not d: return {}
+    if not d: 
+        return {}
     return {k: decrypt_secret(str(v)) for k, v in d.items()}
-from slowapi.util import get_remote_address
-from fastapi import Request
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/agents", tags=["Agents"])
