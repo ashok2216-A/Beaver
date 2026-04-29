@@ -293,9 +293,12 @@ async def run_agent_stream(
     )
 
     try:
-        await _session_service.get_session(app_name=APP_NAME, session_id=session_id)
-    except Exception:
+        from google.adk.errors.already_exists_error import AlreadyExistsError
         await _session_service.create_session(app_name=APP_NAME, user_id="user", session_id=session_id)
+    except AlreadyExistsError:
+        pass
+    except Exception:
+        pass
 
     message = genai_types.Content(role="user", parts=[genai_types.Part(text=user_input)])
     
@@ -328,7 +331,30 @@ async def run_agent_stream(
         log.exception("Stream error")
         raw_error = str(exc).lower()
         
-        # Short, direct warnings (OpenAI/Claude style)
+        if "session not found" in raw_error:
+            try:
+                # Force create and retry
+                from google.adk.errors.already_exists_error import AlreadyExistsError
+                try:
+                    await _session_service.create_session(app_name=APP_NAME, user_id="user", session_id=session_id)
+                except AlreadyExistsError:
+                    pass
+                
+                async for event in runner.run_async(
+                    user_id="user",
+                    session_id=session_id,
+                    new_message=message,
+                ):
+                    if event.is_final_response():
+                        if event.content and event.content.parts:
+                            for part in event.content.parts:
+                                if hasattr(part, "text") and part.text:
+                                    final_text += part.text
+                                    yield json.dumps({"type": "token", "text": part.text}) + "\n"
+                return
+            except Exception:
+                pass
+
         if "credentials" in raw_error or "auth" in raw_error or "api key" in raw_error:
             friendly_error = "⚠️ **Model Authentication Failed**. Please check your API key settings."
         elif "quota" in raw_error or "rate limit" in raw_error:

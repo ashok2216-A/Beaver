@@ -165,32 +165,79 @@ async def chat_orchestrate(
         agent = agent_map[best_agent_id]
         endpoint_list = []
     else:
-        user_input = _sanitize_input(req.message).lower()
-        keywords = [w for w in re.findall(r'\w+', user_input) if len(w) > 2]
-        
-        ranked_endpoints = []
-        for ep in all_metadata:
-            score = 0
-            path_lower = ep.path.lower()
-            summary_lower = (ep.summary or "").lower()
+        try:
+            import litellm
+            from config import get_settings
+            settings = get_settings()
             
-            for kw in keywords:
-                if kw in path_lower: score += 10
-                if kw in summary_lower: score += 5
+            agents_context = []
+            for a in agents:
+                eps = [ep for ep in all_metadata if ep.agent_id == a.id]
+                tools_str = ", ".join([ep.path for ep in eps[:2]])
+                desc = a.description or f"Handles {tools_str}"
+                agents_context.append(f"ID {a.id} ({a.name}): {desc}")
+            context_str = "\n".join(agents_context)
+            
+            prompt = f"""Select the best Agent ID for the request. Respond ONLY with the integer ID.
+            
+Agents:
+{context_str}
+
+Request: {req.message}"""
+            
+            response = litellm.completion(
+                model="mistral/mistral-small-latest",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.0,
+                max_tokens=10
+            )
+            
+            raw_id = response.choices[0].message.content.strip()
+            cleaned_id = "".join([c for c in raw_id if c.isdigit()])
+            
+            if cleaned_id and int(cleaned_id) in agent_map:
+                best_agent_id = int(cleaned_id)
+                agent = agent_map[best_agent_id]
+                log.info(f"LLM ROUTER successfully selected Agent ID: {best_agent_id}")
                 
-            score += max(0, 5 - (ep.path.count('/') * 0.5))
+                endpoints = db.query(Endpoint).filter(
+                    Endpoint.agent_id == best_agent_id,
+                    Endpoint.is_locked == False
+                ).limit(15).all()
+            else:
+                raise ValueError("Invalid ID received from LLM")
+                
+        except Exception as e:
+            log.warning(f"LLM Router failed or timed out: {e}. Falling back to Keyword matching.")
+            user_input = _sanitize_input(req.message).lower()
+            keywords = [w for w in re.findall(r'\w+', user_input) if len(w) > 2]
             
-            if score > 0 or len(all_metadata) <= 20:
+            ranked_endpoints = []
+            for ep in all_metadata:
+                score = 0
+                path_lower = ep.path.lower()
+                summary_lower = (ep.summary or "").lower()
+                
+                agent_obj = agent_map.get(ep.agent_id)
+                agent_name = (agent_obj.name or "").lower() if agent_obj else ""
+                agent_desc = (agent_obj.description or "").lower() if agent_obj else ""
+                
+                for kw in keywords:
+                    if kw in path_lower: score += 10
+                    if kw in summary_lower: score += 5
+                    if kw in agent_name: score += 15
+                    if kw in agent_desc: score += 10
+                    
+                score += max(0, 5 - (ep.path.count('/') * 0.5))
                 ranked_endpoints.append((score, ep.id, ep.agent_id))
 
-        ranked_endpoints.sort(key=lambda x: x[0], reverse=True)
-        
-        best_match = ranked_endpoints[0]
-        best_agent_id = best_match[2]
-        agent = agent_map[best_agent_id]
-        
-        top_ids = [item[1] for item in ranked_endpoints if item[2] == best_agent_id][:15]
-        endpoints = db.query(Endpoint).filter(Endpoint.id.in_(top_ids)).all()
+            ranked_endpoints.sort(key=lambda x: x[0], reverse=True)
+            best_match = ranked_endpoints[0]
+            best_agent_id = best_match[2]
+            agent = agent_map[best_agent_id]
+            
+            top_ids = [item[1] for item in ranked_endpoints if item[2] == best_agent_id][:15]
+            endpoints = db.query(Endpoint).filter(Endpoint.id.in_(top_ids)).all()
 
         endpoint_list = [
             {
@@ -213,9 +260,9 @@ async def chat_orchestrate(
         "auth_header": agent.auth_header,
         "auth_secret": agent.auth_secret,
         "custom_headers": agent.custom_headers,
-        "agent_name": f"{agent.name} (Automated Cross-Agent Orchestrator)",
+        "agent_name": "orchestrated_agent",
         "model": agent.model_id,
-        "session_id": None,
+        "session_id": session_id,
     }
 
     from services.agent import run_agent
@@ -342,7 +389,7 @@ async def chat(
         "custom_headers": agent.custom_headers,
         "agent_name": agent.name,
         "model": agent.model_id,
-        "session_id": None,
+        "session_id": session_id,
     }
 
     if stream:
