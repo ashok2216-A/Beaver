@@ -179,7 +179,7 @@ async def call_api(
                     method_upper,
                     url,
                     params=query_params,
-                    json=body_params or None,
+                    json=body_params if body_params else {},
                     headers=headers,
                 )
             else:
