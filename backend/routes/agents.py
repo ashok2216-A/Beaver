@@ -17,7 +17,8 @@ from schemas import (
     AgentCreate, AgentOut, AgentDetail, AgentUpdate,
     EndpointOut, EndpointCreate, IngestUrlRequest, MessageOut,
     IngestPreviewRequest, IngestPreviewOut, StatsOut,
-    PaginatedEndpoints, HealthStatsOut, VelocityOut
+    PaginatedEndpoints, HealthStatsOut, VelocityOut,
+    BulkDeleteRequest
 )
 from services.parser import parse_openapi
 from services.ai_discovery import smart_ingest_url
@@ -649,6 +650,26 @@ def delete_agent(agent_id: int, user: User = Depends(get_current_user), db: Sess
     db.delete(agent)
     db.commit()
     return MessageOut(message=f"Agent {agent_id} deleted.")
+
+
+@router.post("/bulk-delete", response_model=MessageOut)
+def bulk_delete_agents(
+    body: BulkDeleteRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete multiple agents belonging to the current user."""
+    from sqlalchemy import delete
+    
+    # Only delete agents that belong to the user
+    stmt = delete(Agent).where(
+        Agent.id.in_(body.ids),
+        Agent.owner_id == user.id
+    )
+    result = db.execute(stmt)
+    db.commit()
+    
+    return MessageOut(message=f"Successfully deleted {result.rowcount} agents.")
 
 
 @router.get("/{agent_id}/endpoints", response_model=PaginatedEndpoints)

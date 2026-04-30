@@ -83,13 +83,6 @@ export default function PlaygroundPage() {
           setAgents(data || [])
           if (data && data.length > 0) {
             setSelectedAgent(data[0])
-            setMessages([
-              {
-                id: 'welcome_agent',
-                role: 'assistant',
-                content: `🚀 **Master Agent Mode Activated.** Commands route seamlessly across the full catalog.`
-              }
-            ])
           }
         }
       } catch (err) {
@@ -154,7 +147,7 @@ export default function PlaygroundPage() {
             {
               id: 'welcome_agent',
               role: 'assistant',
-              content: `Operational context cleared.`
+              content: `🧠 **Operational Context Refreshed.** Standing by for new instructions.`
             }
           ])
         }
@@ -272,7 +265,7 @@ export default function PlaygroundPage() {
               {
                 id: 'welcome_agent',
                 role: 'assistant',
-                content: `Operational domain refreshed. Give me commands.`
+                content: `🧠 **Neural Path Reset.** Ready for a fresh mission.`
               }
             ])
           }}
@@ -342,7 +335,7 @@ export default function PlaygroundPage() {
                 {
                   id: 'orchestration_mode',
                   role: 'assistant',
-                  content: '👋 **Welcome to Master Agent Mode!** I am fully prepped to process and route your cross-platform instructions flawlessly.'
+                  content: '✨ **Unified Orchestration Active.** I am now cross-referencing all connected agent tools to fulfill your complex instructions.'
                 }
               ])
             } else {
@@ -439,7 +432,7 @@ export default function PlaygroundPage() {
         ref={scrollRef} 
         className="flex-1 w-full overflow-y-auto custom-scrollbar flex flex-col items-center"
       >
-        <div className="w-full max-w-3xl px-4 md:px-6 pt-10 pb-32 space-y-8">
+        <div className="w-full max-w-3xl px-4 md:px-6 pt-10 pb-40 space-y-8">
         {messages.map((message) => {
           const isAI = message.role === 'assistant'
           return (

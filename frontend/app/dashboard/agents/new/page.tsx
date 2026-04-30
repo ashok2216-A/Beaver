@@ -36,7 +36,7 @@ export default function NewAgentPage() {
   const router = useRouter();
   const { getToken } = useAuth();
   
-  const [tab, setTab] = useState<"templates" | "url" | "upload" | "manual">("templates");
+  const [tab, setTab] = useState<"templates" | "url" | "manual">("templates");
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState("");
   
@@ -154,7 +154,7 @@ export default function NewAgentPage() {
   };
 
   const handleGenerate = async () => {
-    if (!file && !url && tab !== "manual") {
+    if (!file && !url && tab !== "manual" && !apiSpec) {
       toast.error("Provide a source first");
       return;
     }
@@ -169,7 +169,7 @@ export default function NewAgentPage() {
       const token = await getToken();
       let res;
       
-      if (tab === "upload" && file) {
+      if (tab === "manual" && file && !apiSpec) {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("name", agentName || file.name);
@@ -287,8 +287,7 @@ export default function NewAgentPage() {
         <div className="inline-flex rounded-2xl border border-border bg-card p-1.5 shadow-sm">
           <TabButton active={tab === "templates"} onClick={() => setTab("templates")} icon={<Sparkles className="h-4 w-4 text-primary" />} label="Templates" />
           <TabButton active={tab === "url"} onClick={() => setTab("url")} icon={<Search className="h-4 w-4 text-primary" />} label="Discover Spec" />
-          <TabButton active={tab === "upload"} onClick={() => setTab("upload")} icon={<UploadCloud className="h-4 w-4 text-primary" />} label="Upload file" />
-          <TabButton active={tab === "manual"} onClick={() => setTab("manual")} icon={<Globe className="h-4 w-4 text-emerald-500" />} label="Manual Setup" />
+          <TabButton active={tab === "manual"} onClick={() => setTab("manual")} icon={<Globe className="h-4 w-4 text-emerald-500" />} label="Manual / Upload" />
         </div>
       </div>
 
@@ -339,40 +338,6 @@ export default function NewAgentPage() {
                 ))
               )}
             </div>
-          ) : tab === "upload" ? (
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
-              className={cn(
-                "relative rounded-3xl border-2 border-dashed p-12 text-center transition-all",
-                dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-primary/5"
-              )}
-            >
-              <div className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-glow">
-                <UploadCloud className="h-8 w-8" />
-              </div>
-              <h3 className="mt-5 text-xl font-bold">Drop your OpenAPI spec here</h3>
-              <p className="mt-1 text-sm text-muted-foreground">JSON or YAML, up to 10 MB</p>
-              <label className="mt-6 inline-block">
-                <input type="file" accept=".json,.yaml,.yml" className="sr-only" onChange={(e) => handleFiles(e.target.files)} />
-                <span className="inline-flex h-11 cursor-pointer items-center rounded-xl border border-border bg-background px-6 text-sm font-bold hover:bg-muted transition-all">
-                  Choose file
-                </span>
-              </label>
-              {file && (
-                <div className="mt-8 flex items-center gap-4 rounded-2xl border border-border bg-background p-4 text-left max-w-sm mx-auto">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                    <FileJson className="h-6 w-6" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold truncate">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB · Ready</p>
-                  </div>
-                  <Check className="h-5 w-5 text-emerald-500" />
-                </div>
-              )}
-            </div>
           ) : tab === "url" ? (
             <div className="space-y-6">
               <div className="space-y-2">
@@ -399,6 +364,7 @@ export default function NewAgentPage() {
             </div>
           ) : (
             <div className="space-y-8">
+              {/* Top Row: Name and URL */}
               <div className="grid gap-8 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-bold">Agent Name</label>
@@ -419,26 +385,68 @@ export default function NewAgentPage() {
                   />
                 </div>
               </div>
+
+              {/* Middle Row: Description */}
               <div className="space-y-2">
                 <label className="text-sm font-bold">Description (Optional)</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="What does this agent do?"
-                  className="w-full rounded-xl border border-border bg-background p-4 text-sm outline-none focus:border-primary/50 transition-all min-h-[120px]"
+                  className="w-full rounded-xl border border-border bg-background p-4 text-sm outline-none focus:border-primary/50 transition-all min-h-[80px]"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold flex items-center gap-2">
-                  API Specification (OpenAPI JSON/YAML)
-                  <span className="text-xs font-normal text-muted-foreground">(Required)</span>
-                </label>
-                <textarea
-                  value={apiSpec}
-                  onChange={(e) => setApiSpec(e.target.value)}
-                  placeholder='{"openapi": "3.0.0", "info": { "title": "My API"... }'
-                  className="w-full rounded-xl border border-border bg-background p-4 text-sm outline-none focus:border-primary/50 transition-all font-mono min-h-[160px]"
-                />
+
+              {/* Bottom Row: Side-by-Side Upload and Spec */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
+                <div className="space-y-2 flex flex-col">
+                  <label className="text-sm font-bold">Import OpenAPI Spec</label>
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
+                    className={cn(
+                      "relative flex-1 min-h-[200px] rounded-2xl border-2 border-dashed p-6 text-center transition-all flex flex-col items-center justify-center",
+                      dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-primary/5"
+                    )}
+                  >
+                    <div className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-glow mb-3">
+                      <UploadCloud className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-sm font-bold">Drag & Drop file</h3>
+                    <p className="text-[10px] text-muted-foreground mt-1">JSON or YAML supported</p>
+                    <label className="mt-4">
+                      <input type="file" accept=".json,.yaml,.yml" className="sr-only" onChange={(e) => handleFiles(e.target.files)} />
+                      <span className="inline-flex h-8 cursor-pointer items-center rounded-lg border border-border bg-background px-4 text-[10px] font-bold hover:bg-muted transition-all">
+                        Browse Files
+                      </span>
+                    </label>
+                    {file && (
+                      <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-background p-2 text-left w-full max-w-[240px]">
+                        <div className="h-7 w-7 rounded bg-primary/10 flex items-center justify-center text-primary">
+                          <FileJson className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-bold truncate">{file.name}</p>
+                        </div>
+                        <Check className="h-3 w-3 text-emerald-500" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2 flex flex-col">
+                  <label className="text-sm font-bold flex items-center gap-2">
+                    Raw API Specification
+                    {!file && <span className="text-[10px] font-normal text-muted-foreground">(Required if no file)</span>}
+                  </label>
+                  <textarea
+                    value={apiSpec}
+                    onChange={(e) => setApiSpec(e.target.value)}
+                    placeholder='{"openapi": "3.0.0", ...}'
+                    className="flex-1 w-full rounded-2xl border border-border bg-background p-4 text-xs outline-none focus:border-primary/50 transition-all font-mono min-h-[200px]"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -537,7 +545,7 @@ export default function NewAgentPage() {
               variant="hero" 
               size="lg" 
               onClick={handleGenerate} 
-              disabled={generating || (tab === "url" && !url) || (tab === "upload" && !file) || (tab === "templates" && !agentName) || (tab === "manual" && (!agentName || !apiSpec))}
+              disabled={generating || (tab === "url" && !url) || (tab === "manual" && (!agentName || (!apiSpec && !file)))}
               className="rounded-xl h-12 px-8 min-w-[180px] shadow-glow"
             >
               {generating ? (

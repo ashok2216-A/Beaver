@@ -220,6 +220,10 @@ class MessageOut(BaseModel):
     message: str
 
 
+class BulkDeleteRequest(BaseModel):
+    ids: list[int]
+
+
 class StatsOut(BaseModel):
     agent_count: int
     message_count: int
