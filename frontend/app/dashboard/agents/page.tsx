@@ -14,7 +14,10 @@ import {
   Trash2,
   ExternalLink,
   Activity,
-  AlertTriangle
+  AlertTriangle,
+  CheckSquare,
+  Square,
+  Loader2
 } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
@@ -51,6 +54,9 @@ function AgentsContent() {
   const [searchQuery, setSearchQuery] = useState("")
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
   const [deletingAgentId, setDeletingAgentId] = useState<number | null>(null)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false)
 
   useEffect(() => {
     const q = searchParams.get("query")
@@ -115,6 +121,42 @@ function AgentsContent() {
     (a.description && a.description.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    )
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    setIsBulkProcessing(true)
+    try {
+      const token = await getToken()
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/bulk-delete`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ ids: selectedIds })
+      })
+      
+      if (response.ok) {
+        setAgents(prev => prev.filter(a => !selectedIds.includes(a.id)))
+        toast.success(`Successfully deleted ${selectedIds.length} agents`)
+        addNotification("🗑️ Bulk Removal Complete", `Cleaned up ${selectedIds.length} agents from your fleet.`)
+        setSelectedIds([])
+        setIsBulkDeleting(false)
+      } else {
+        toast.error("Failed to delete agents")
+      }
+    } catch (err) {
+      toast.error("An error occurred during bulk deletion")
+    } finally {
+      setIsBulkProcessing(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -132,14 +174,29 @@ function AgentsContent() {
         </Button>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input 
-          placeholder="Search agents..." 
-          className="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+      <div className="flex items-center justify-between">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input 
+            placeholder="Search agents..." 
+            className="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        {agents.length > 0 && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => {
+              if (selectedIds.length === filteredAgents.length) setSelectedIds([])
+              else setSelectedIds(filteredAgents.map(a => a.id))
+            }}
+            className="text-xs font-bold text-muted-foreground hover:text-primary"
+          >
+            {selectedIds.length === filteredAgents.length ? "Deselect All" : "Select All"}
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -151,10 +208,28 @@ function AgentsContent() {
       ) : filteredAgents.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredAgents.map((agent) => (
-            <Card key={agent.id} className="rounded-3xl bg-card shadow-sm hover:shadow-glow-sm transition-all duration-300 overflow-hidden group p-0">
+            <Card 
+              key={agent.id} 
+              className={cn(
+                "rounded-3xl bg-card shadow-sm hover:shadow-glow-sm transition-all duration-300 overflow-hidden group p-0 relative",
+                selectedIds.includes(agent.id) && "shadow-glow-sm bg-primary/5"
+              )}
+            >
+              <button 
+                onClick={() => toggleSelect(agent.id)}
+                className={cn(
+                  "absolute top-4 left-4 z-10 p-1.5 rounded-lg transition-all border",
+                  selectedIds.includes(agent.id) 
+                    ? "bg-primary border-primary text-white scale-110" 
+                    : "bg-background/80 border-border text-muted-foreground opacity-0 group-hover:opacity-100"
+                )}
+              >
+                {selectedIds.includes(agent.id) ? <CheckSquare className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
+              </button>
+
               <CardContent className="pt-4 px-6 pb-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="group-hover:scale-110 transition-transform duration-300">
+                  <div className={cn("group-hover:scale-110 transition-transform duration-300", selectedIds.includes(agent.id) ? "ml-8" : "ml-0")}>
                     <AgentAvatar id={agent.id} size="lg" />
                   </div>
                   
@@ -363,6 +438,61 @@ function AgentsContent() {
                 }
               }} className="rounded-xl font-bold px-6 shadow-glow-sm bg-rose-500 hover:bg-rose-600 text-white">
                 Delete Agent
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation */}
+      {isBulkDeleting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 animate-in fade-in">
+          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center gap-3 text-rose-500">
+              <AlertTriangle className="h-6 w-6 shrink-0" />
+              <h3 className="text-lg font-bold">Mass Delete {selectedIds.length} Agents?</h3>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              This will permanently remove <strong>{selectedIds.length}</strong> AI agents and all associated configurations. This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" onClick={() => setIsBulkDeleting(false)} disabled={isBulkProcessing} className="rounded-xl">Cancel</Button>
+              <Button variant="destructive" onClick={handleBulkDelete} disabled={isBulkProcessing} className="rounded-xl font-bold px-6 shadow-glow-sm bg-rose-500 hover:bg-rose-600 text-white">
+                {isBulkProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : `Delete ${selectedIds.length} Agents`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Action Bar */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 animate-in slide-in-from-bottom-8 duration-300">
+          <div className="flex items-center gap-6 px-6 py-3 rounded-2xl bg-card/80 backdrop-blur-xl border border-primary/20 shadow-2xl">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shadow-glow">
+                {selectedIds.length}
+              </div>
+              <span className="text-sm font-bold">Agents selected</span>
+            </div>
+            <div className="h-6 w-px bg-border/50" />
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setSelectedIds([])}
+                className="text-xs font-bold text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={() => setIsBulkDeleting(true)}
+                className="rounded-lg font-bold px-4 bg-rose-500 hover:bg-rose-600"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Selected
               </Button>
             </div>
           </div>
