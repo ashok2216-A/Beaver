@@ -195,7 +195,10 @@ export default function NewAgentPage() {
             url, 
             name: agentName,
             description,
-            base_url: baseUrl
+            base_url: baseUrl,
+            auth_type: authType,
+            auth_header: authHeader,
+            auth_secret: authSecret
           })
         });
       } else {

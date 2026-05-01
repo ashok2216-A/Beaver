@@ -17,7 +17,9 @@ import {
   Database,
   Shield,
   Trash2,
-  Plus
+  Plus,
+  Terminal,
+  Activity
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AgentAvatar } from "@/components/dashboard/agent-avatar"
@@ -71,7 +73,13 @@ export default function AgentBuilderPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedMethod, setSelectedMethod] = useState("ALL")
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([])
+  const [messages, setMessages] = useState<{ 
+    role: 'user' | 'assistant', 
+    content: string,
+    endpoint?: { path: string, method: string },
+    status_code?: number,
+    latency_ms?: number
+  }[]>([])
   const [input, setInput] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -255,6 +263,18 @@ export default function AgentBuilderPage() {
                 setMessages(prev => {
                   const updated = [...prev]
                   updated[updated.length - 1].content = assistantContent
+                  return updated
+                })
+              }
+              if (data.type === 'final') {
+                setMessages(prev => {
+                  const updated = [...prev]
+                  const last = updated[updated.length - 1]
+                  if (last && last.role === 'assistant') {
+                    last.endpoint = data.data.endpoint
+                    last.status_code = data.data.status_code
+                    last.latency_ms = data.data.latency_ms
+                  }
                   return updated
                 })
               }
@@ -602,6 +622,35 @@ export default function AgentBuilderPage() {
                           {m.content}
                         </ReactMarkdown>
                         {!m.content && <span className="text-xs text-muted-foreground animate-pulse italic">Thinking...</span>}
+                        
+                        {/* Live Trace Badge */}
+                        {m.role === 'assistant' && m.endpoint && (
+                          <div className="mt-3 pt-3 border-t border-border/30 flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted border border-border/50 text-[10px] font-bold text-muted-foreground">
+                              <Terminal className="h-3 w-3" />
+                              <span className="font-mono uppercase">{m.endpoint.method}</span>
+                              <span className="font-mono opacity-60 truncate max-w-[150px]">{m.endpoint.path}</span>
+                            </div>
+                            
+                            {m.status_code && (
+                              <div className={cn(
+                                "flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold shadow-sm",
+                                m.status_code >= 200 && m.status_code < 300 
+                                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" 
+                                  : "bg-rose-500/10 border-rose-500/20 text-rose-500"
+                              )}>
+                                <Activity className="h-3 w-3" />
+                                {m.status_code}
+                              </div>
+                            )}
+
+                            {m.latency_ms && (
+                              <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tighter">
+                                {m.latency_ms}ms
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

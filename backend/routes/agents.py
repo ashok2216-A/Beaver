@@ -456,18 +456,19 @@ async def ingest_smart(
         raise HTTPException(status_code=422, detail=str(e))
 
     # Basic discovery of metadata from generated/found spec
-    name = spec.get("info", {}).get("title", "Discovered Agent")
-    description = spec.get("info", {}).get("description", "")
-    base_url = spec.get("servers", [{}])[0].get("url", "https://api.example.com")
+    discovered_name = spec.get("info", {}).get("title", "Discovered Agent")
+    discovered_description = spec.get("info", {}).get("description", "")
+    discovered_base_url = spec.get("servers", [{}])[0].get("url", "https://api.example.com")
     
     agent = Agent(
         owner_id=user.id,
-        name=name,
-        description=description,
-        base_url=base_url,
+        name=body.name or discovered_name,
+        description=body.description or discovered_description,
+        base_url=body.base_url or discovered_base_url,
         system_prompt="",
-        auth_type="bearer",
-        auth_secret=encrypt_secret(""),
+        auth_type=body.auth_type or "bearer",
+        auth_header=body.auth_header,
+        auth_secret=encrypt_secret(body.auth_secret or ""),
         model_id="mistral/mistral-small-latest",
         custom_headers=encrypt_dict({}),
         status=AgentStatus.draft,
