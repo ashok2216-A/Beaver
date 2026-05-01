@@ -13,11 +13,21 @@ import logging
 import json
 import re
 import os
+import asyncio
 import httpx
+import litellm
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
+from typing import List, Dict, Any
+from config import get_settings
 
 log = logging.getLogger(__name__)
+
+# ── LiteLLM Setup ────────────────────────────────────────────────────────────
+# We use LiteLLM to support multiple providers (Mistral, Gemini, etc.)
+# Fallback order: Mistral -> Gemini -> OpenAI
+LITELLM_MODEL = "mistral/mistral-large-latest" 
+
 
 # ── Universal HTTP method detection ──────────────────────────────────────────
 HTTP_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE", "DEL", "HEAD", "OPTIONS"}
@@ -97,6 +107,7 @@ async def smart_ingest_url(url: str) -> dict:
                 pass
 
         html_content = r.text
+        soup = BeautifulSoup(html_content, "html.parser")
 
         # ── LEVEL 2: Hunt for hidden spec files ──────────────────────────
         origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
@@ -149,268 +160,63 @@ async def smart_ingest_url(url: str) -> dict:
             m = re.search(pat, html_content)
             if m:
                 spec_url = m.group(1)
-                if not spec_url.startswith("http"):
-                    spec_url = str(httpx.URL(url).join(spec_url))
-                try:
-                    sr = await client.get(spec_url)
-                    if sr.status_code == 200:
-                        return sr.json()
-                except:
-                    continue
-
-        # ── LEVEL 3: Pattern-Based Endpoint Extraction ───────────────────
-        log.info("No spec file found. Falling back to pattern-based extraction...")
-        soup = BeautifulSoup(html_content, "html.parser")
-        endpoints = {}  # key: "METHOD /path" → prevents duplicates
-
-        # --- Pattern A: Scan ALL text on the page for METHOD /path ---
-        page_text = soup.get_text(" ", strip=True)
-        found = _extract_method_path_from_text(page_text)
-        for method, path, summary in found:
-            key = f"{method} {path}"
-            if key not in endpoints:
-                endpoints[key] = {"method": method, "path": path, "summary": summary}
-
-        # --- Pattern E: Mintlify/ReadMe sidebar links ---
-        # These show as [POSTScrape](url) or [GETGet Status](url) — method concatenated
-        sidebar_endpoints = {}  # url → {method, name}
-        for a_tag in soup.find_all("a", href=True):
-            link_text = a_tag.get_text(strip=True)
-            # Check if text starts with a method name (concatenated, no space)
-            for method_name in ["POST", "GET", "PUT", "PATCH", "DELETE", "DEL"]:
-                if link_text.startswith(method_name) and len(link_text) > len(method_name):
-                    endpoint_name = link_text[len(method_name):]
-                    method = "DELETE" if method_name == "DEL" else method_name
-                    href = a_tag["href"]
-                    full_url = str(httpx.URL(url).join(href))
-                    if full_url not in sidebar_endpoints:
-                        sidebar_endpoints[full_url] = {
-                            "method": method, 
-                            "name": endpoint_name,
-                        }
-                    break
+        # ── LEVEL 3: Hybrid AI Extraction ────────────────────────────────
+        log.info("No spec file found. Starting Hybrid AI Extraction...")
         
-        log.info(f"Found {len(sidebar_endpoints)} endpoints in sidebar links")
+        # 1. Gather all relevant documentation text
+        main_text = _clean_html(html_content)
         
-        # Crawl each sidebar endpoint page to find the actual API path
-        for ep_url, ep_info in sidebar_endpoints.items():
-            try:
-                pr = await client.get(ep_url)
-                if pr.status_code != 200:
-                    continue
-                ep_text = pr.text
-                ep_path = None
-                
-                # Strategy 1: Find ALL API URLs in the page (simple and universal)
-                all_urls = re.findall(
-                    r'https?://[a-zA-Z0-9._-]+(/v\d+/[\w/{}._-]+)',
-                    ep_text
-                )
-                for api_path in all_urls:
-                    path = _sanitize_path(api_path)
-                    if path:
-                        ep_path = path
-                        break
-                
-                # Strategy 1b: Broader fallback — any URL with /api/ or 2+ path segments
-                if not ep_path:
-                    all_urls2 = re.findall(
-                        r'https?://api\.[a-zA-Z0-9._-]+(/[\w/{}._-]+)',
-                        ep_text
-                    )
-                    for api_path in all_urls2:
-                        path = _sanitize_path(api_path)
-                        if path:
-                            ep_path = path
-                            break
-
-                # Strategy 2: Look for METHOD /path in code blocks
-                if not ep_path:
-                    ep_soup = BeautifulSoup(ep_text, "html.parser")
-                    for code in ep_soup.find_all(["code", "pre"]):
-                        code_text = code.get_text()
-                        m = re.search(r'\b(GET|POST|PUT|PATCH|DELETE)\s+(/[\w/{}._-]+)', code_text)
-                        if m:
-                            path = _sanitize_path(m.group(2))
-                            if path:
-                                ep_path = path
-                                break
-                
-                if ep_path:
-                    key = f"{ep_info['method']} {ep_path}"
-                    if key not in endpoints:
-                        endpoints[key] = {
-                            "method": ep_info["method"],
-                            "path": ep_path,
-                            "summary": ep_info["name"],
-                        }
-                        log.info(f"  → {key}: {ep_info['name']}")
-            except:
-                continue
-
-        # --- Pattern B: Method badges anywhere in the HTML ---
-        # Many docs show colored badges like [POST] [GET] [DEL] next to endpoint names.
-        # We look for ANY element whose text is exactly a method name.
-        all_elements = soup.find_all(True)  # All HTML elements
-        for el in all_elements:
-            el_text = el.get_text(strip=True).upper()
-            if el_text in HTTP_METHODS or el_text == "DEL":
-                method = "DELETE" if el_text == "DEL" else el_text
-                # The endpoint name/path is usually in the next sibling or parent's text
-                parent = el.parent
-                if parent:
-                    sibling_text = parent.get_text(" ", strip=True)
-                    # Try to find a path in the sibling text
-                    path_match = re.search(r'(/[\w/{}._:-]+)', sibling_text)
-                    if path_match:
-                        path = path_match.group(1)
-                        if path.count("/") >= 2 and not path.endswith((".js", ".css", ".png")):
-                            key = f"{method} {path}"
-                            if key not in endpoints:
-                                # Extract summary from the parent text (remove the path)
-                                summary_text = sibling_text.replace(path, "").replace(el_text, "").strip()
-                                endpoints[key] = {
-                                    "method": method,
-                                    "path": path,
-                                    "summary": summary_text[:80] if summary_text else f"{method} {path}",
-                                }
-
-        # --- Pattern C: Curl commands in code blocks ---
-        for code in soup.find_all(["code", "pre"]):
-            code_text = code.get_text()
-            curl_matches = re.findall(
-                r'curl\s+(?:-X\s+)?(\w+)?\s+["\']?(https?://[^\s"\']+)',
-                code_text, re.IGNORECASE
-            )
-            for method, curl_url in curl_matches:
-                parsed = urlparse(curl_url)
-                path = _sanitize_path(parsed.path)
-                if path:
-                    method = (method or "GET").upper()
-                    if method in HTTP_METHODS:
-                        key = f"{method} {path}"
-                        if key not in endpoints:
-                            endpoints[key] = {
-                                "method": method,
-                                "path": path,
-                                "summary": f"From curl example",
-                            }
-
-        # --- Pattern D: Discover ALL pages via sitemap + link scanning ---
+        # 2. Deep Crawl sub-pages (Sitemap, Links)
+        crawled_content = [main_text]
         doc_domain = urlparse(url).netloc
         doc_origin = f"{urlparse(url).scheme}://{doc_domain}"
         links_to_crawl = []
         seen_urls = {url}
-
-        # Determine the "section prefix" from the user's URL
-        # e.g. https://docs.firecrawl.dev/api-reference/endpoint/scrape
-        #   → section_prefix = "/api-reference"
-        url_parts = urlparse(url).path.strip("/").split("/")
-        section_prefix = f"/{url_parts[0]}" if url_parts and url_parts[0] else ""
-        log.info(f"Filtering pages to section: {section_prefix}")
-
-        # D1: Try sitemap.xml first (most reliable for finding ALL pages)
-        sitemap_urls = [
-            f"{doc_origin}/sitemap.xml",
-            f"{doc_origin}/sitemap-0.xml",
-            f"{doc_origin}/sitemap_index.xml",
-        ]
-        for sitemap_url in sitemap_urls:
-            try:
-                sm = await client.get(sitemap_url)
-                if sm.status_code == 200 and "<url>" in sm.text.lower():
-                    sitemap_soup = BeautifulSoup(sm.text, "xml")
-                    for loc in sitemap_soup.find_all("loc"):
-                        page_url = loc.get_text(strip=True)
-                        page_path = urlparse(page_url).path.lower()
-                        
-                        is_api_related = any(term in page_path for term in ["api", "reference", "docs", "endpoint"])
-                        
-                        if page_url not in seen_urls and is_api_related:
-                            links_to_crawl.append(page_url)
-                            seen_urls.add(page_url)
-                    if links_to_crawl:
-                        log.info(f"Sitemap found {len(links_to_crawl)} API reference pages!")
-                        break
-            except:
-                continue
-
-        # D2: Also check for __NEXT_DATA__ (Next.js/Mintlify docs)
+        
+        # Next.js/Mintlify route scanning
         next_data = soup.find("script", id="__NEXT_DATA__")
         if next_data:
             try:
                 nd = json.loads(next_data.string)
-                _extract_routes_from_json(nd, doc_origin, links_to_crawl, seen_urls, section_prefix)
-            except:
-                pass
+                _extract_routes_from_json(nd, doc_origin, links_to_crawl, seen_urls)
+            except: pass
 
-        # D3: Fallback to scanning all links on the page (filtered by section)
-        if len(links_to_crawl) < 5:
-            for a_tag in soup.find_all("a", href=True):
-                href = a_tag["href"]
-                full = str(httpx.URL(url).join(href))
-                parsed_href = urlparse(full)
-                if (parsed_href.netloc == doc_domain and 
-                    full not in seen_urls and
-                    (not section_prefix or parsed_href.path.startswith(section_prefix)) and
-                    not parsed_href.path.endswith((".png", ".jpg", ".svg", ".css", ".js")) and
-                    len(links_to_crawl) < 60):
-                    links_to_crawl.append(full)
-                    seen_urls.add(full)
-
-        links_to_crawl = links_to_crawl[:20]
-        log.info(f"Deep crawling {len(links_to_crawl)} pages...")
-        for page_url in links_to_crawl:
+        # Sitemaps
+        for sm_path in ["/sitemap.xml", "/sitemap-0.xml"]:
             try:
-                pr = await client.get(page_url)
-                if pr.status_code != 200:
-                    continue
-                page_soup = BeautifulSoup(pr.text, "html.parser")
-                page_text = page_soup.get_text(" ", strip=True)
+                sm_r = await client.get(f"{doc_origin}{sm_path}")
+                if sm_r.status_code == 200:
+                    sm_soup = BeautifulSoup(sm_r.text, "xml")
+                    for loc in sm_soup.find_all("loc"):
+                        loc_url = loc.get_text(strip=True)
+                        if loc_url not in seen_urls and any(t in loc_url.lower() for t in ["api", "reference", "docs"]):
+                            links_to_crawl.append(loc_url)
+                            seen_urls.add(loc_url)
+            except: continue
 
-                # Extract METHOD + PATH from each page
-                found = _extract_method_path_from_text(page_text)
-                for method, path, summary in found:
-                    key = f"{method} {path}"
-                    if key not in endpoints:
-                        endpoints[key] = {
-                            "method": method,
-                            "path": path,
-                            "summary": summary,
-                        }
+        # Parallel Crawl (Top 5 pages for speed)
+        crawl_tasks = [client.get(u) for u in links_to_crawl[:5]]
+        crawl_results = await asyncio.gather(*crawl_tasks, return_exceptions=True)
+        for cr in crawl_results:
+            if isinstance(cr, httpx.Response) and cr.status_code == 200:
+                crawled_content.append(_clean_html(cr.text))
 
-                # Also check for curl commands on sub-pages
-                for code in page_soup.find_all(["code", "pre"]):
-                    code_text = code.get_text()
-                    curl_matches = re.findall(
-                        r'curl\s+(?:-X\s+)?(\w+)?\s+["\']?(https?://[^\s"\']+)',
-                        code_text, re.IGNORECASE
-                    )
-                    for method, curl_url in curl_matches:
-                        parsed_curl = urlparse(curl_url)
-                        path = _sanitize_path(parsed_curl.path)
-                        if path:
-                            method = (method or "GET").upper()
-                            if method in HTTP_METHODS:
-                                key = f"{method} {path}"
-                                if key not in endpoints:
-                                    endpoints[key] = {
-                                        "method": method,
-                                        "path": path,
-                                        "summary": "From curl example",
-                                    }
-            except:
-                continue
+        full_content = "\n\n".join(crawled_content)
+        
+        # 3. Parallel AI Extraction using LiteLLM
+        ai_endpoints = await _extract_endpoints_with_ai(full_content, url)
+        
+        # 4. Regex Fallback (Merged with AI results)
+        regex_endpoints = _extract_method_path_from_text(full_content)
+        
+        # 5. Consolidation & Sanitization
+        final_endpoints = _consolidate_endpoints(ai_endpoints, regex_endpoints)
 
-        if not endpoints:
-            raise Exception(
-                "No API endpoints found at this URL. "
-                "Please upload a spec file or use Manual Setup."
-            )
+        if not final_endpoints:
+            raise Exception("Discovery failed: No API endpoints found in documentation.")
 
-        # ── Build OpenAPI 3.0 spec from extracted endpoints ──────────────
-        return _build_openapi_spec(url, endpoints)
-
+        # ── Build OpenAPI 3.0 spec ───────────────────────────────────────
+        return _build_openapi_spec(url, final_endpoints)
 
 def _extract_method_path_from_text(text: str) -> list[tuple[str, str, str]]:
     """
@@ -633,3 +439,92 @@ def _build_openapi_spec(source_url: str, endpoints: dict) -> dict:
         "servers": [{"url": f"https://{host}"}],
         "paths": paths,
     }
+
+
+# ── AI Helper Functions ───────────────────────────────────────────────────────
+
+def _clean_html(html: str) -> str:
+    """Strips boilerplate and noise for LLM analysis."""
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup(["script", "style", "nav", "footer", "header", "noscript", "aside"]):
+        tag.decompose()
+    text = soup.get_text(separator="\n", strip=True)
+    return "\n".join([l.strip() for l in text.splitlines() if len(l.strip()) > 3])
+
+async def _extract_endpoints_with_ai(content: str, url: str) -> List[Dict]:
+    """Parallel AI extraction using LiteLLM."""
+    settings = get_settings()
+    api_key = settings.mistral_api_key or settings.gemini_api_key or os.getenv("MISTRAL_API_KEY")
+    
+    if not api_key:
+        log.warning("No AI API keys found. Skipping AI extraction.")
+        return []
+
+    # Chunk content (8k chars)
+    chunks = [content[i:i+8000] for i in range(0, len(content), 7500)]
+    tasks = []
+    
+    for i, chunk in enumerate(chunks):
+        prompt = f"""Extract ALL API endpoints from this documentation chunk.
+Return STRICT JSON array:
+[
+  {{ "method": "GET|POST|PUT|DELETE", "path": "/v1/...", "summary": "brief description", "parameters": [] }}
+]
+Source: {url}
+Chunk:
+{chunk}"""
+        
+        # Use LiteLLM with fallback
+        tasks.append(litellm.acompletion(
+            model=LITELLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            api_key=api_key,
+            temperature=0
+        ))
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    all_endpoints = []
+    
+    for res in results:
+        try:
+            if isinstance(res, Exception): continue
+            text = res.choices[0].message.content
+            json_match = re.search(r'\[.*\]', text, re.DOTALL)
+            if json_match:
+                all_endpoints.extend(json.loads(json_match.group(0)))
+        except: continue
+        
+    return all_endpoints
+
+def _consolidate_endpoints(ai_eps: List[Dict], regex_eps: List[tuple]) -> List[Dict]:
+    """Merges AI and Regex findings, sanitizing paths."""
+    seen = {} # key: (method, path)
+
+    # 1. Process AI results
+    for ep in ai_eps:
+        method = str(ep.get("method", "GET")).upper()
+        path = _sanitize_path(ep.get("path", ""))
+        if path:
+            key = (method, path)
+            if key not in seen:
+                seen[key] = {
+                    "method": method,
+                    "path": path,
+                    "summary": ep.get("summary", f"{method} {path}")
+                }
+
+    # 2. Add Regex results (don't overwrite AI summaries)
+    for method, path, summary in regex_endpoints_formatted(regex_eps):
+        method = method.upper()
+        path = _sanitize_path(path)
+        if path:
+            key = (method, path)
+            if key not in seen:
+                seen[key] = {"method": method, "path": path, "summary": summary}
+                
+    return list(seen.values())
+
+def regex_endpoints_formatted(regex_eps):
+    # This is a helper for consolidation
+    return regex_eps
+

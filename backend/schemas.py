@@ -132,11 +132,20 @@ class IngestUrlRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     description: str = ""
     base_url: str = ""
+    auth_type: str = "bearer"
+    auth_header: Optional[str] = None
+    auth_secret: str = ""
     custom_headers: dict[str, str] = Field(default_factory=dict)
 
 
 class IngestPreviewRequest(BaseModel):
     url: str = Field(..., min_length=5)
+    name: Optional[str] = None
+    description: Optional[str] = None
+    base_url: Optional[str] = None
+    auth_type: Optional[str] = "bearer"
+    auth_header: Optional[str] = None
+    auth_secret: Optional[str] = ""
 
 
 class IngestPreviewOut(BaseModel):
