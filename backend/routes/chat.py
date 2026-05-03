@@ -300,6 +300,7 @@ Conversation:
 
     return {
         "answer": result.get("answer"),
+        "chunks": result.get("chunks"),
         "endpoint": matched,
         "latency_ms": result.get("latency_ms"),
         "agent_name": agent.name,
@@ -461,6 +462,7 @@ async def chat(
 
     return ChatResponse(
         answer=result["answer"],
+        chunks=result.get("chunks"),
         endpoint=matched or None,
         api_response=result.get("api_response"),
         latency_ms=result.get("latency_ms", 0),
