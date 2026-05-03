@@ -52,17 +52,21 @@ def _extract_a2ui_chunks(text: str) -> list[dict]:
     # Pattern 1: fenced code block  ```a2ui\n{...}\n```
     fenced_re = _re.compile(r'```a2ui\s*(\{.*?\})\s*```', _re.DOTALL)
     # Pattern 2: bare JSON object that starts with {"a2ui":
-    bare_re = _re.compile(r'(\{\s*"a2ui"\s*:.*?\}(?=\s*(?:$|\n[^\s])))', _re.DOTALL)
+    # We use a lookahead to try and find the outermost brace by expecting a newline or end of string.
+    bare_re = _re.compile(r'(\{\s*"a2ui"\s*:.*?\}(?=\s*($|\n|\*\*|###)))', _re.DOTALL)
 
     last_end = 0
     combined: list[tuple[int, int, str]] = []
 
+    # Collect both fenced and bare blocks
     for m in fenced_re.finditer(text):
         combined.append((m.start(), m.end(), m.group(1)))
-
-    if not combined:
-        for m in bare_re.finditer(text):
-            combined.append((m.start(), m.end(), m.group(1)))
+    
+    for m in bare_re.finditer(text):
+        # Avoid overlapping with already found fenced blocks
+        if any(c[0] <= m.start() < c[1] for c in combined):
+            continue
+        combined.append((m.start(), m.end(), m.group(1)))
 
     combined.sort(key=lambda x: x[0])
 
@@ -270,9 +274,11 @@ def _build_agent(
         "When you need specific inputs from the user to complete a request "
         "(e.g. missing required parameters, confirmation details, search criteria), "
         "you MUST respond with an interactive input form using the A2UI format.\n\n"
-        "IMPORTANT: Output the A2UI block inside a fenced code block like this:\n"
+        "CRITICAL: Always wrap the A2UI JSON in a fenced code block with the 'a2ui' language identifier. "
+        "Failure to do this will result in the user seeing raw JSON text instead of a form.\n\n"
+        "Example:\n"
         "```a2ui\n"
-        '{"a2ui": {"component": "form", "title": "<form title>", "subtitle": "<brief description>", "submit_label": "Submit", "children": [<fields>]}}\n'
+        '{"a2ui": {"component": "form", "title": "Index Details", "children": [{"component": "textfield", "key": "dim", "label": "Dimension"}]}}\n'
         "```\n\n"
         "Field component types you can use:\n"
         '  {"component": "textfield", "key": "<unique_key>", "label": "<Label>", "placeholder": "<hint>", "required": true}\n'
@@ -282,11 +288,10 @@ def _build_agent(
         '  {"component": "slider", "key": "<key>", "label": "<Label>", "min": 0, "max": 100, "value": 50}\n'
         '  {"component": "datetime", "key": "<key>", "label": "<Label>", "type": "date"}\n\n'
         "Rules:\n"
-        "- Use field keys that match the API parameter names (e.g. 'dimension', 'metric', 'name').\n"
+        "- Use field keys that match the API parameter names EXACTLY.\n"
         "- After the A2UI block, you MAY add a short explanatory text, but keep it brief.\n"
-        "- NEVER mix A2UI with raw JSON dumps of API schemas.\n"
-        "- Only use A2UI when you genuinely need input from the user. "
-        "If you already have all required info, just call the API directly."
+        "- NEVER output raw JSON without the ```a2ui ... ``` markers.\n"
+        "- Only use A2UI when you genuinely need input from the user."
     )
 
     base_instruction = (
