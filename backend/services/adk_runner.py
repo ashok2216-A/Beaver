@@ -18,22 +18,30 @@ leak (stateless REST behaviour). For multi-turn conversations, pass a stable
 session_id from the frontend.
 """
 from __future__ import annotations
+
 import asyncio
 import json
 import logging
+import os
 import re
 import uuid
 from typing import Any
 
-import os
 from google.adk.agents import Agent
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
-from google.adk.models.lite_llm import LiteLlm
 from google.genai import types as genai_types
 
 from config import get_settings
+from services.executor import call_api
 from utils.security import decrypt_secret
+
+log = logging.getLogger(__name__)
+
+# One shared in-process session store (per-process lifetime)
+_session_service = InMemorySessionService()
+APP_NAME = "api2bot-studio"
 
 
 # ─── A2UI block parser ───────────────────────────────────────────────────────
@@ -45,14 +53,13 @@ def _extract_a2ui_chunks(text: str) -> list[dict]:
       [{"type": "text", "content": "..."}, {"type": "a2ui", "content": {...}}, ...]
     Falls back to a single text chunk when no A2UI payload is found.
     """
-    import re as _re
     chunks: list[dict] = []
 
     # Pattern 1: fenced code block  ```a2ui\n{...}\n```
-    fenced_re = _re.compile(r'```a2ui\s*(\{.*?\})\s*```', _re.DOTALL)
+    fenced_re = re.compile(r'```a2ui\s*(\{.*?\})\s*```', re.DOTALL)
     # Pattern 2: bare JSON object that starts with {"a2ui":
     # We use a lookahead to try and find the outermost brace by expecting a newline or end of string.
-    bare_re = _re.compile(r'(\{\s*"a2ui"\s*:.*?\}(?=\s*($|\n|\*\*|###)))', _re.DOTALL)
+    bare_re = re.compile(r'(\{\s*"a2ui"\s*:.*?\}(?=\s*($|\n|\*\*|###)))', re.DOTALL)
 
     last_end = 0
     combined: list[tuple[int, int, str]] = []
@@ -98,15 +105,6 @@ def _extract_a2ui_chunks(text: str) -> list[dict]:
     return chunks
 
 
-from services.executor import call_api
-
-log = logging.getLogger(__name__)
-
-# One shared in-process session store (per-process lifetime)
-_session_service = InMemorySessionService()
-APP_NAME = "api2bot-studio"
-
-
 # ─── Agent factory ────────────────────────────────────────────────────────────
 
 def _build_agent(
@@ -130,7 +128,8 @@ def _build_agent(
     """
     
     def decrypt_dict(d: dict | None) -> dict:
-        if not d: return {}
+        if not d:
+            return {}
         return {k: decrypt_secret(str(v)) for k, v in d.items()}
 
     # ── Single universal tool ────────────────────────────────────────
@@ -208,7 +207,7 @@ def _build_agent(
                 for tag in soup(["script", "style", "noscript", "iframe", "header", "footer", "nav"]):
                     tag.decompose()
                 processed_data = soup.get_text(separator="\n", strip=True)
-            except:
+            except Exception:
                 pass
         
         # 2. CHUNK & RANK: If still too large, perform Ephemeral RAG
@@ -234,7 +233,7 @@ def _build_agent(
             
             final_chunks = []
             current_len = 0
-            for score, content in ranked_chunks:
+            for _, content in ranked_chunks:
                 if current_len + len(content) > MAX_TOTAL_CHARS:
                     break
                 final_chunks.append(content)
@@ -396,8 +395,10 @@ async def run_agent_stream(
     message = genai_types.Content(role="user", parts=[genai_types.Part(text=user_input)])
     
     settings = get_settings()
-    if settings.gemini_api_key: os.environ["GOOGLE_API_KEY"] = settings.gemini_api_key
-    if settings.mistral_api_key: os.environ["MISTRAL_API_KEY"] = settings.mistral_api_key
+    if settings.gemini_api_key:
+        os.environ["GOOGLE_API_KEY"] = settings.gemini_api_key
+    if settings.mistral_api_key:
+        os.environ["MISTRAL_API_KEY"] = settings.mistral_api_key
 
     final_text = ""
     error_msg = ""
@@ -418,7 +419,7 @@ async def run_agent_stream(
             
             # Optionally capture tool calls as they happen
             if hasattr(event, "call") and event.call:
-                 yield json.dumps({"type": "status", "text": f"Calling {event.call.function_name}..."}) + "\n"
+                yield json.dumps({"type": "status", "text": f"Calling {event.call.function_name}..."}) + "\n"
 
     except Exception as exc:
         log.exception("Stream error")
@@ -522,8 +523,6 @@ async def run_agent_async(
         "chunks": _extract_a2ui_chunks(final_text or "Error")
     }
 
-
-# ─── Async runner ─────────────────────────────────────────────────────────────
 
 def run_agent_sync(*args, **kwargs) -> dict[str, Any]:
     """Blocking wrapper around run_agent_async for synchronous contexts."""

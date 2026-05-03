@@ -9,17 +9,21 @@ Uses 5 universal patterns found across ALL API documentation platforms:
 5. Method badge + path detection in HTML structure
 """
 
-import logging
-import json
-import re
-import os
 import asyncio
+import json
+import logging
+import os
+import re
+from typing import Dict, List
+from urllib.parse import urlparse
+
 import httpx
 import litellm
+import yaml
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse
-from typing import List, Dict
+
 from config import get_settings
+from utils.security import validate_url_safe
 
 log = logging.getLogger(__name__)
 
@@ -49,7 +53,6 @@ async def smart_ingest_url(url: str) -> dict:
     Scrapes any documentation URL and extracts endpoints using universal patterns.
     Returns a valid OpenAPI 3.0.0 spec dict.
     """
-    from utils.security import validate_url_safe
     if url.startswith("http"):
         validate_url_safe(url)
 
@@ -61,16 +64,13 @@ async def smart_ingest_url(url: str) -> dict:
 
     if not url.startswith("http"):
         try:
-            import os
-            import yaml
-            import json
             for p in [url, os.path.join("backend", "templates", os.path.basename(url)), os.path.join(os.path.dirname(__file__), "..", "templates", os.path.basename(url))]:
                 if os.path.exists(p):
                     with open(p, 'r', encoding='utf-8') as f:
                         text = f.read()
                     try:
                         data = json.loads(text)
-                    except:
+                    except Exception:
                         data = yaml.safe_load(text)
                     if isinstance(data, dict):
                         return data
@@ -95,15 +95,14 @@ async def smart_ingest_url(url: str) -> dict:
                 if "openapi" in data or "swagger" in data or "paths" in data:
                     log.info("URL is already a spec file.")
                     return data
-            except:
+            except Exception:
                 pass
         if "yaml" in ct or url.endswith((".yaml", ".yml")):
             try:
-                import yaml
                 data = yaml.safe_load(r.text)
                 if "openapi" in data or "swagger" in data or "paths" in data:
                     return data
-            except:
+            except Exception:
                 pass
 
         html_content = r.text
@@ -127,26 +126,22 @@ async def smart_ingest_url(url: str) -> dict:
                         parsed_spec = None
                         # Try JSON
                         try:
-                            import json
                             parsed_spec = json.loads(test_r.text)
                             if isinstance(parsed_spec, dict) and ("openapi" in parsed_spec or "swagger" in parsed_spec or "paths" in parsed_spec):
                                 log.info(f"Spec Hunter matched JSON: {origin}{path}")
                                 return parsed_spec
                         except Exception as e:
                             log.info(f"Spec Hunter JSON parse error for {origin}{path}: {e}")
-                            pass
                             
                         # Try YAML
                         try:
-                            import yaml
                             parsed_spec = yaml.safe_load(test_r.text)
                             if isinstance(parsed_spec, dict) and ("openapi" in parsed_spec or "swagger" in parsed_spec or "paths" in parsed_spec):
                                 log.info(f"Spec Hunter matched YAML: {origin}{path}")
                                 return parsed_spec
                         except Exception as e:
                             log.info(f"Spec Hunter YAML parse error for {origin}{path}: {e}")
-                            pass
-            except:
+            except Exception:
                 pass
 
         # Check for spec URLs embedded in the HTML (SwaggerUI/Redoc)
@@ -159,7 +154,9 @@ async def smart_ingest_url(url: str) -> dict:
         for pat in embedded_patterns:
             m = re.search(pat, html_content)
             if m:
-                m.group(1)
+                # Potential spec URL found, could try fetching m.group(1)
+                pass
+
         # ── LEVEL 3: Hybrid AI Extraction ────────────────────────────────
         log.info("No spec file found. Starting Hybrid AI Extraction...")
         
@@ -179,7 +176,8 @@ async def smart_ingest_url(url: str) -> dict:
             try:
                 nd = json.loads(next_data.string)
                 _extract_routes_from_json(nd, doc_origin, links_to_crawl, seen_urls)
-            except: pass
+            except Exception:
+                pass
 
         # Sitemaps
         for sm_path in ["/sitemap.xml", "/sitemap-0.xml"]:
@@ -192,7 +190,8 @@ async def smart_ingest_url(url: str) -> dict:
                         if loc_url not in seen_urls and any(t in loc_url.lower() for t in ["api", "reference", "docs"]):
                             links_to_crawl.append(loc_url)
                             seen_urls.add(loc_url)
-            except: continue
+            except Exception:
+                continue
 
         # Parallel Crawl (Top 5 pages for speed)
         crawl_tasks = [client.get(u) for u in links_to_crawl[:5]]
@@ -388,9 +387,11 @@ def _build_openapi_spec(source_url: str, endpoints: dict) -> dict:
         host = "api.firecrawl.dev"
     if "notion.com" in host and not host.startswith("api."):
         host = "api.notion.com"
+    if "pinecone.io" in host and not host.startswith("api."):
+        host = "api.pinecone.io"
 
     paths = {}
-    for key, ep in endpoints.items():
+    for _, ep in endpoints.items():
         path = ep["path"]
         method = ep["method"].lower()
         if path not in paths:
@@ -449,7 +450,7 @@ def _clean_html(html: str) -> str:
     for tag in soup(["script", "style", "nav", "footer", "header", "noscript", "aside"]):
         tag.decompose()
     text = soup.get_text(separator="\n", strip=True)
-    return "\n".join([l.strip() for l in text.splitlines() if len(l.strip()) > 3])
+    return "\n".join([line.strip() for line in text.splitlines() if len(line.strip()) > 3])
 
 async def _extract_endpoints_with_ai(content: str, url: str) -> List[Dict]:
     """Parallel AI extraction using LiteLLM."""
@@ -464,7 +465,7 @@ async def _extract_endpoints_with_ai(content: str, url: str) -> List[Dict]:
     chunks = [content[i:i+8000] for i in range(0, len(content), 7500)]
     tasks = []
     
-    for i, chunk in enumerate(chunks):
+    for _, chunk in enumerate(chunks):
         prompt = f"""Extract ALL API endpoints from this documentation chunk.
 Return STRICT JSON array:
 [
@@ -487,12 +488,14 @@ Chunk:
     
     for res in results:
         try:
-            if isinstance(res, Exception): continue
+            if isinstance(res, Exception):
+                continue
             text = res.choices[0].message.content
             json_match = re.search(r'\[.*\]', text, re.DOTALL)
             if json_match:
                 all_endpoints.extend(json.loads(json_match.group(0)))
-        except: continue
+        except Exception:
+            continue
         
     return all_endpoints
 
@@ -514,7 +517,7 @@ def _consolidate_endpoints(ai_eps: List[Dict], regex_eps: List[tuple]) -> List[D
                 }
 
     # 2. Add Regex results (don't overwrite AI summaries)
-    for method, path, summary in regex_endpoints_formatted(regex_eps):
+    for method, path, summary in regex_eps:
         method = method.upper()
         path = _sanitize_path(path)
         if path:
@@ -523,8 +526,3 @@ def _consolidate_endpoints(ai_eps: List[Dict], regex_eps: List[tuple]) -> List[D
                 seen[key] = {"method": method, "path": path, "summary": summary}
                 
     return list(seen.values())
-
-def regex_endpoints_formatted(regex_eps):
-    # This is a helper for consolidation
-    return regex_eps
-
