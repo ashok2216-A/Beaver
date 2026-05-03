@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Sparkles, Loader2, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2, Terminal } from "lucide-react"
+import { Sparkles, Loader2, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2, Terminal, Activity } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
 import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
@@ -20,6 +20,7 @@ interface Message {
   content: string
   chunks?: MessageChunk[]
   latency_ms?: number
+  status_code?: number
   matched_endpoint?: {
     path: string
     method: string
@@ -242,6 +243,7 @@ export default function PlaygroundPage() {
           : String(data.answer || "No response text."),
         chunks: data.chunks || null,
         latency_ms: data.latency_ms,
+        status_code: data.status_code,
         matched_endpoint: data.endpoint,
         agent_name: data.agent_name
       }
@@ -534,6 +536,24 @@ export default function PlaygroundPage() {
                       <span className="bg-primary/5 text-primary border border-primary/20 px-2.5 py-0.5 rounded-md font-bold font-mono tracking-wide flex items-center gap-1">
                         <Terminal className="w-3 h-3" />
                         {message.matched_endpoint.method} {message.matched_endpoint.path}
+                      </span>
+                    )}
+
+                    {message.status_code !== undefined && (
+                      <div className={cn(
+                        "flex items-center gap-1 px-2 py-0.5 rounded-md border font-bold shadow-sm",
+                        message.status_code >= 200 && message.status_code < 300 
+                          ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" 
+                          : "bg-rose-500/10 border-rose-500/20 text-rose-500"
+                      )}>
+                        <Activity className="h-3 w-3" />
+                        {message.status_code}
+                      </div>
+                    )}
+
+                    {message.latency_ms !== undefined && (
+                      <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tighter">
+                        {message.latency_ms}ms
                       </span>
                     )}
                   </div>
