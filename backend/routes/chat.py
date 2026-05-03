@@ -156,7 +156,7 @@ async def chat_orchestrate(
         Endpoint.id, Endpoint.path, Endpoint.method, Endpoint.summary, Endpoint.agent_id
     ).filter(
         Endpoint.agent_id.in_(agent_ids),
-        Endpoint.is_locked == False
+        not Endpoint.is_locked
     ).all()
     
     if not all_metadata:
@@ -167,7 +167,7 @@ async def chat_orchestrate(
         try:
             import litellm
             from config import get_settings
-            settings = get_settings()
+            get_settings()
             
             agents_context = []
             for a in agents:
@@ -212,7 +212,7 @@ Conversation:
                 
                 endpoints = db.query(Endpoint).filter(
                     Endpoint.agent_id == best_agent_id,
-                    Endpoint.is_locked == False
+                    not Endpoint.is_locked
                 ).limit(15).all()
             else:
                 raise ValueError("Invalid ID received from LLM")
@@ -233,10 +233,14 @@ Conversation:
                 agent_desc = (agent_obj.description or "").lower() if agent_obj else ""
                 
                 for kw in keywords:
-                    if kw in path_lower: score += 10
-                    if kw in summary_lower: score += 5
-                    if kw in agent_name: score += 15
-                    if kw in agent_desc: score += 10
+                    if kw in path_lower:
+                        score += 10
+                    if kw in summary_lower:
+                        score += 5
+                    if kw in agent_name:
+                        score += 15
+                    if kw in agent_desc:
+                        score += 10
                     
                 score += max(0, 5 - (ep.path.count('/') * 0.5))
                 ranked_endpoints.append((score, ep.id, ep.agent_id))
@@ -343,7 +347,7 @@ async def chat(
         Endpoint.id, Endpoint.path, Endpoint.method, Endpoint.summary
     ).filter(
         Endpoint.agent_id == agent_id,
-        Endpoint.is_locked == False
+        not Endpoint.is_locked
     ).all()
 
     if not all_metadata:
@@ -361,8 +365,10 @@ async def chat(
             
             # Exact keyword matches in path or summary get high priority
             for kw in keywords:
-                if kw in path_lower: score += 10
-                if kw in summary_lower: score += 5
+                if kw in path_lower:
+                    score += 10
+                if kw in summary_lower:
+                    score += 5
                 
             # Bonus for shorter paths (usually more root-level/common)
             score += max(0, 5 - (ep.path.count('/') * 0.5))
@@ -498,10 +504,10 @@ def get_all_logs(
     
     # Map results to schema, including the agent_name from the join
     out_items = []
-    for l, agent_name in items:
+    for log_entry, agent_name in items:
         # Decrypt api_response for UI
-        l.api_response = decrypt_secret(l.api_response)
-        obj = LogOut.model_validate(l)
+        log_entry.api_response = decrypt_secret(log_entry.api_response)
+        obj = LogOut.model_validate(log_entry)
         obj.agent_name = agent_name
         out_items.append(obj)
 
@@ -536,14 +542,14 @@ def get_logs(
               .limit(per_page)
               .all()
     )
-    for l in items:
-        l.api_response = decrypt_secret(l.api_response)
+    for log_row in items:
+        log_row.api_response = decrypt_secret(log_row.api_response)
     
     return PaginatedLogs(
         total=total,
         page=page,
         per_page=per_page,
-        items=[LogOut.model_validate(l) for l in items],
+        items=[LogOut.model_validate(log_row) for log_row in items],
     )
 
 
@@ -583,8 +589,8 @@ def export_all_logs(
     )
 
     def _stream():
-        for l, agent_name in logs:
-            row = LogOut.model_validate(l)
+        for log_row, agent_name in logs:
+            row = LogOut.model_validate(log_row)
             row.agent_name = agent_name
             yield row.model_dump_json() + "\n"
 

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Sparkles, Loader2, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2, Terminal } from "lucide-react"
+import { Sparkles, Loader2, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2, Terminal, Activity } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
 import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
@@ -20,6 +20,7 @@ interface Message {
   content: string
   chunks?: MessageChunk[]
   latency_ms?: number
+  status_code?: number
   matched_endpoint?: {
     path: string
     method: string
@@ -242,6 +243,7 @@ export default function PlaygroundPage() {
           : String(data.answer || "No response text."),
         chunks: data.chunks || null,
         latency_ms: data.latency_ms,
+        status_code: data.status_code,
         matched_endpoint: data.endpoint,
         agent_name: data.agent_name
       }
@@ -536,6 +538,24 @@ export default function PlaygroundPage() {
                         {message.matched_endpoint.method} {message.matched_endpoint.path}
                       </span>
                     )}
+
+                    {message.status_code !== undefined && (
+                      <div className={cn(
+                        "flex items-center gap-1 px-2 py-0.5 rounded-md border font-bold shadow-sm",
+                        message.status_code >= 200 && message.status_code < 300 
+                          ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" 
+                          : "bg-rose-500/10 border-rose-500/20 text-rose-500"
+                      )}>
+                        <Activity className="h-3 w-3" />
+                        {message.status_code}
+                      </div>
+                    )}
+
+                    {message.latency_ms !== undefined && (
+                      <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tighter">
+                        {message.latency_ms}ms
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -551,7 +571,7 @@ export default function PlaygroundPage() {
             </div>
             <div className="rounded-2xl px-5 py-3.5 bg-muted/20 border border-white/5 flex items-center gap-3 animate-in fade-in duration-200">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-              <span className="text-xs text-muted-foreground italic">Consulting AI fleet models...</span>
+              <span className="text-xs text-muted-foreground italic">Thinking...</span>
             </div>
           </div>
         )}

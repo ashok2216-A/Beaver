@@ -74,7 +74,7 @@ def list_templates():
             data = json.load(f)
             log.info(f"Successfully loaded {len(data.get('templates', []))} templates from {manifest_path}")
             return data
-    except Exception as e:
+    except Exception:
         log.exception(f"Error loading manifest at {manifest_path}")
         return {"templates": []}
 
@@ -551,7 +551,7 @@ def get_health_stats(user: User = Depends(get_current_user), db: Session = Depen
     # Check both empty error strings and None
     no_error_logs = db.query(Log).join(Agent).filter(
         Agent.owner_id == user.id,
-        (Log.error == None) | (Log.error == "")
+        (Log.error is None) | (Log.error == "")
     ).count()
     
     latency_avg = db.query(func.avg(Log.latency_ms)).join(Agent).filter(Agent.owner_id == user.id).scalar() or 0

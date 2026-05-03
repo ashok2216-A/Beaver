@@ -2,10 +2,9 @@ import pytest
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from main import app
-from models import User, Agent
+from models import User
 from utils.auth import get_current_user
 from database import get_db
-from utils.security import decrypt_secret
 
 client = TestClient(app)
 
@@ -80,7 +79,7 @@ def test_free_user_limit_enforcement(mock_auth_free):
 
 def test_pro_user_unlimited(mock_auth_pro):
     """Test that a pro user can bypass the 1-agent limit."""
-    with patch("database.get_db") as mock_get_db:
+    with patch("database.get_db"):
         mock_db_session = MagicMock()
         app.dependency_overrides[get_db] = lambda: mock_db_session
         

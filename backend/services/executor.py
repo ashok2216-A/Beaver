@@ -122,7 +122,7 @@ async def call_api(
     if not url.startswith(("http://", "https://")):
         return {
             "error": "invalid_url",
-            "detail": f"The constructed URL is missing a protocol (http:// or https://). Please check the Agent's base_url setting."
+            "detail": "The constructed URL is missing a protocol (http:// or https://). Please check the Agent's base_url setting."
         }, 400, 0
 
     # SEC-13: Warn when credentials are sent over unencrypted HTTP

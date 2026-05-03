@@ -1,4 +1,4 @@
-# 🚀 Beaver
+# 🚀 Beaver.ai
 
 Turn any OpenAPI spec into a production-ready AI agent in seconds. `Beaver` parses your API documentation and spins up a Gemini-powered agent that can interact with your live endpoints via natural language.
 
