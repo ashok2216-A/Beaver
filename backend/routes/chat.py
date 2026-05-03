@@ -306,6 +306,7 @@ Conversation:
         "answer": result.get("answer"),
         "chunks": result.get("chunks"),
         "endpoint": matched,
+        "status_code": result.get("status_code", 0),
         "latency_ms": result.get("latency_ms"),
         "agent_name": agent.name,
         "conversation_id": session_id
@@ -471,6 +472,7 @@ async def chat(
         chunks=result.get("chunks"),
         endpoint=matched or None,
         api_response=result.get("api_response"),
+        status_code=result.get("status_code", 0),
         latency_ms=result.get("latency_ms", 0),
         log_id=log_entry.id,
         conversation_id=session_id

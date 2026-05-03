@@ -193,8 +193,9 @@ class ChatResponse(BaseModel):
     chunks: Optional[list[dict[str, Any]]] = None
     endpoint: Optional[dict[str, Any]] = None
     api_response: Optional[Any] = None
-    latency_ms: int
-    log_id: int
+    status_code: int = 0
+    latency_ms: int = 0
+    log_id: int = 0
     conversation_id: Optional[str] = None
 
 
