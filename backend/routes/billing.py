@@ -1,16 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Header
-from sqlalchemy.orm import Session
-import stripe
-import razorpay
-import logging
-import json
-import hmac
 import hashlib
+import hmac
+import json
+import logging
 
+import razorpay
+import stripe
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from sqlalchemy.orm import Session
+
+from config import get_settings
 from database import get_db
 from models import User
 from utils.auth import get_current_user
-from config import get_settings
 from utils.limiter import limiter
 
 log = logging.getLogger(__name__)
@@ -41,9 +42,12 @@ async def create_subscription(
         raise HTTPException(status_code=400, detail="Razorpay is disabled in this environment.")
         
     missing_keys = []
-    if not settings.razorpay_key_id: missing_keys.append("RAZORPAY_KEY_ID")
-    if not settings.razorpay_key_secret: missing_keys.append("RAZORPAY_KEY_SECRET")
-    if not settings.razorpay_plan_id: missing_keys.append("RAZORPAY_PLAN_ID")
+    if not settings.razorpay_key_id:
+        missing_keys.append("RAZORPAY_KEY_ID")
+    if not settings.razorpay_key_secret:
+        missing_keys.append("RAZORPAY_KEY_SECRET")
+    if not settings.razorpay_plan_id:
+        missing_keys.append("RAZORPAY_PLAN_ID")
     
     if missing_keys:
         msg = f"Razorpay is not fully configured. Missing: {', '.join(missing_keys)}"
@@ -77,8 +81,9 @@ async def razorpay_webhook(
     settings = get_settings()
     payload = await request.body()
     try:
+        webhook_secret = settings.razorpay_webhook_secret or ""
         expected_signature = hmac.new(
-            settings.razorpay_webhook_secret.encode(),
+            webhook_secret.encode(),
             payload,
             hashlib.sha256
         ).hexdigest()

@@ -191,7 +191,7 @@ def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
             plain = decrypt_secret(agent.auth_secret)
             if plain and len(plain.strip()) > 0 and plain.strip() not in ["string", "none"]:
                 has_secret = True
-        except:
+        except Exception:
             has_secret = False
 
     return AgentOut(
@@ -289,7 +289,7 @@ async def ingest_preview(request: Request, body: IngestPreviewRequest):
     try:
         try:
             spec = json.loads(raw_text)
-        except:
+        except Exception:
             spec = yaml.safe_load(raw_text)
     except Exception:
         raise HTTPException(status_code=422, detail="Could not parse spec format (must be JSON or YAML).")
@@ -350,7 +350,7 @@ async def ingest_url(
     try:
         try:
             spec = json.loads(raw_text)
-        except:
+        except Exception:
             spec = yaml.safe_load(raw_text)
     except Exception:
             raise HTTPException(status_code=422, detail="Could not parse fetched spec.")
@@ -507,7 +507,8 @@ def get_global_stats(user: User = Depends(get_current_user), db: Session = Depen
     latency_prev = stats.latency_avg_prev or 0
     
     def pct_change(curr, prev):
-        if prev == 0: return "+100%" if curr > 0 else "+0%"
+        if prev == 0:
+            return "+100%" if curr > 0 else "+0%"
         change = ((curr - prev) / prev) * 100
         return f"{'+' if change >= 0 else ''}{int(change)}%"
 
@@ -516,7 +517,8 @@ def get_global_stats(user: User = Depends(get_current_user), db: Session = Depen
     
     latency_diff = avg_latency - int(latency_prev)
     latency_trend = f"{'+' if latency_diff > 0 else ''}{latency_diff}ms"
-    if latency_prev == 0: latency_trend = "-0ms"
+    if latency_prev == 0:
+        latency_trend = "-0ms"
 
     return StatsOut(
         agent_count=agent_count,
@@ -633,7 +635,8 @@ def update_agent(agent_id: int, data: AgentUpdate, user: User = Depends(get_curr
         if field == "status":
             setattr(agent, field, AgentStatus(value))
         elif field == "auth_secret":
-            if value == "": continue
+            if value == "":
+                continue
             log.info(f"Updating auth_secret for agent {agent_id}, length={len(value)}")
             setattr(agent, field, encrypt_secret(value.strip()))
         elif field == "custom_headers":
