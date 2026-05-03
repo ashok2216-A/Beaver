@@ -190,6 +190,7 @@ class ConversationListOut(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str
+    chunks: Optional[list[dict[str, Any]]] = None
     endpoint: Optional[dict[str, Any]] = None
     api_response: Optional[Any] = None
     latency_ms: int

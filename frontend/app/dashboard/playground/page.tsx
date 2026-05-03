@@ -7,11 +7,18 @@ import { useAuth } from "@clerk/nextjs"
 import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { A2InputForm } from "@/components/a2ui/components"
+
+interface MessageChunk {
+  type: 'text' | 'a2ui'
+  content: string | Record<string, any>
+}
 
 interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
+  chunks?: MessageChunk[]
   latency_ms?: number
   matched_endpoint?: {
     path: string
@@ -182,11 +189,11 @@ export default function PlaygroundPage() {
     }
   }
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return
+  const handleSend = async (overrideMessage?: string) => {
+    const promptText = (overrideMessage ?? input).trim()
+    if (!promptText || isLoading) return
     if (!isOrchestratorMode && !selectedAgent) return
 
-    const promptText = input.trim()
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -233,6 +240,7 @@ export default function PlaygroundPage() {
         content: typeof data.answer === 'object' && data.answer !== null
           ? JSON.stringify(data.answer, null, 2)
           : String(data.answer || "No response text."),
+        chunks: data.chunks || null,
         latency_ms: data.latency_ms,
         matched_endpoint: data.endpoint,
         agent_name: data.agent_name
@@ -462,23 +470,57 @@ export default function PlaygroundPage() {
                     : "text-foreground bg-muted/40 dark:bg-muted/20 border border-black/5 dark:border-white/5 rounded-br-sm"
                 )}>
                   <div className="break-words text-sm">
-                    <ReactMarkdown 
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        h1: ({node, ...props}) => <h1 className="text-xl font-bold mt-4 mb-2 text-foreground" {...props} />,
-                        h2: ({node, ...props}) => <h2 className="text-lg font-bold mt-3 mb-2 text-foreground" {...props} />,
-                        h3: ({node, ...props}) => <h3 className="text-base font-bold mt-2.5 mb-1.5 text-foreground" {...props} />,
-                        h4: ({node, ...props}) => <h4 className="text-sm font-bold mt-2 mb-1.5 text-foreground/90" {...props} />,
-                        ul: ({node, ...props}) => <ul className="list-disc pl-5 space-y-0.5 mb-1" {...props} />,
-                        ol: ({node, ...props}) => <ol className="list-decimal pl-5 space-y-0.5 mb-1" {...props} />,
-                        table: ({node, ...props}) => <div className="overflow-x-auto my-2 w-full"><table className="min-w-full border-collapse border border-slate-200 dark:border-white/10" {...props} /></div>,
-                        th: ({node, ...props}) => <th className="border border-slate-200 dark:border-white/10 px-3 py-1 bg-muted/30 text-left font-semibold text-xs" {...props} />,
-                        td: ({node, ...props}) => <td className="border border-slate-200 dark:border-white/10 px-3 py-1 text-xs text-slate-700 dark:text-slate-300" {...props} />,
-                        code: ({node, ...props}) => <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono border border-black/5 dark:border-white/5" {...props} />,
-                      }}
-                    >
-                      {message.content}
-                    </ReactMarkdown>
+                    {/* Render chunked response with A2UI forms */}
+                    {isAI && message.chunks && message.chunks.length > 0 ? (
+                      <div className="space-y-3">
+                        {message.chunks.map((chunk, chunkIdx) => (
+                          <div key={chunkIdx}>
+                            {chunk.type === 'a2ui' ? (
+                              <A2InputForm
+                                data={chunk.content as any}
+                                onSubmit={(msg) => handleSend(msg)}
+                              />
+                            ) : (
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  h1: ({node, ...props}) => <h1 className="text-xl font-bold mt-4 mb-2 text-foreground" {...props} />,
+                                  h2: ({node, ...props}) => <h2 className="text-lg font-bold mt-3 mb-2 text-foreground" {...props} />,
+                                  h3: ({node, ...props}) => <h3 className="text-base font-bold mt-2.5 mb-1.5 text-foreground" {...props} />,
+                                  h4: ({node, ...props}) => <h4 className="text-sm font-bold mt-2 mb-1.5 text-foreground/90" {...props} />,
+                                  ul: ({node, ...props}) => <ul className="list-disc pl-5 space-y-0.5 mb-1" {...props} />,
+                                  ol: ({node, ...props}) => <ol className="list-decimal pl-5 space-y-0.5 mb-1" {...props} />,
+                                  table: ({node, ...props}) => <div className="overflow-x-auto my-2 w-full"><table className="min-w-full border-collapse border border-slate-200 dark:border-white/10" {...props} /></div>,
+                                  th: ({node, ...props}) => <th className="border border-slate-200 dark:border-white/10 px-3 py-1 bg-muted/30 text-left font-semibold text-xs" {...props} />,
+                                  td: ({node, ...props}) => <td className="border border-slate-200 dark:border-white/10 px-3 py-1 text-xs text-slate-700 dark:text-slate-300" {...props} />,
+                                  code: ({node, ...props}) => <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono border border-black/5 dark:border-white/5" {...props} />,
+                                }}
+                              >
+                                {String(chunk.content)}
+                              </ReactMarkdown>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          h1: ({node, ...props}) => <h1 className="text-xl font-bold mt-4 mb-2 text-foreground" {...props} />,
+                          h2: ({node, ...props}) => <h2 className="text-lg font-bold mt-3 mb-2 text-foreground" {...props} />,
+                          h3: ({node, ...props}) => <h3 className="text-base font-bold mt-2.5 mb-1.5 text-foreground" {...props} />,
+                          h4: ({node, ...props}) => <h4 className="text-sm font-bold mt-2 mb-1.5 text-foreground/90" {...props} />,
+                          ul: ({node, ...props}) => <ul className="list-disc pl-5 space-y-0.5 mb-1" {...props} />,
+                          ol: ({node, ...props}) => <ol className="list-decimal pl-5 space-y-0.5 mb-1" {...props} />,
+                          table: ({node, ...props}) => <div className="overflow-x-auto my-2 w-full"><table className="min-w-full border-collapse border border-slate-200 dark:border-white/10" {...props} /></div>,
+                          th: ({node, ...props}) => <th className="border border-slate-200 dark:border-white/10 px-3 py-1 bg-muted/30 text-left font-semibold text-xs" {...props} />,
+                          td: ({node, ...props}) => <td className="border border-slate-200 dark:border-white/10 px-3 py-1 text-xs text-slate-700 dark:text-slate-300" {...props} />,
+                          code: ({node, ...props}) => <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono border border-black/5 dark:border-white/5" {...props} />,
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    )}
                   </div>
                 </div>
 
