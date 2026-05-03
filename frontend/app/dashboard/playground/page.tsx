@@ -551,7 +551,7 @@ export default function PlaygroundPage() {
             </div>
             <div className="rounded-2xl px-5 py-3.5 bg-muted/20 border border-white/5 flex items-center gap-3 animate-in fade-in duration-200">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-              <span className="text-xs text-muted-foreground italic">Consulting AI fleet models...</span>
+              <span className="text-xs text-muted-foreground italic">Thinking...</span>
             </div>
           </div>
         )}
