@@ -5,7 +5,7 @@ Strict types keep the API contract clear and self-documenting.
 from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 # ─── Shared / tiny types ──────────────────────────────────────────────────────

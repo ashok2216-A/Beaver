@@ -1,6 +1,4 @@
-import pytest
 from utils.security import encrypt_secret, decrypt_secret
-import os
 
 def test_encryption_decryption():
     """Test that secrets are correctly encrypted and decrypted with AES-256."""

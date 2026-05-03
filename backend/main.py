@@ -155,7 +155,7 @@ app.include_router(
 
 
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 import os
 
 # ─── Health check ─────────────────────────────────────────────────────────────

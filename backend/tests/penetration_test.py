@@ -1,6 +1,4 @@
 import httpx
-import json
-import time
 
 BASE_URL = "http://localhost:8000/api/v1"
 

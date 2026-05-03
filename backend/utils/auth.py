@@ -7,7 +7,7 @@ import hashlib
 import time
 from datetime import datetime, timezone
 from typing import Optional, Any
-from fastapi import Header, HTTPException, status, Depends, Request
+from fastapi import HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from jose import jwt, JWTError
@@ -167,6 +167,6 @@ async def get_current_user(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         log.exception("Unexpected auth error")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication failed")

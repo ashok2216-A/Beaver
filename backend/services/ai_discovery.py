@@ -18,7 +18,7 @@ import httpx
 import litellm
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-from typing import List, Dict, Any
+from typing import List, Dict
 from config import get_settings
 
 log = logging.getLogger(__name__)
@@ -159,7 +159,7 @@ async def smart_ingest_url(url: str) -> dict:
         for pat in embedded_patterns:
             m = re.search(pat, html_content)
             if m:
-                spec_url = m.group(1)
+                m.group(1)
         # ── LEVEL 3: Hybrid AI Extraction ────────────────────────────────
         log.info("No spec file found. Starting Hybrid AI Extraction...")
         
@@ -332,7 +332,7 @@ def _slug_to_path(slug: str) -> str | None:
         if sub_resource in ("children", "query", "properties", "property", "item"):
             sub_path = f"/{{id}}/{sub_resource}"
         else:
-            sub_path = f"/{{id}}"
+            sub_path = "/{id}"
 
     # For retrieve/update/delete, add {id}
     if first in ("retrieve", "get", "update", "patch", "delete", "del", "remove") and not sub_path:

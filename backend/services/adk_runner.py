@@ -22,7 +22,6 @@ import asyncio
 import json
 import logging
 import re
-import time
 import uuid
 from typing import Any
 
@@ -496,7 +495,6 @@ async def run_agent_async(
 ) -> dict[str, Any]:
     """Non-streaming version for backward compatibility."""
     final_text = ""
-    last_call = None
     error_msg = ""
     
     async for chunk_str in run_agent_stream(
