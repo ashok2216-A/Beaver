@@ -192,9 +192,9 @@ export function DevelopersSection() {
 
   return (
     <section id="solutions" ref={sectionRef} className="relative py-24 lg:py-32 overflow-hidden">
-      {/* Background Image */}
+      {/* Background Image - Hidden on mobile, shown on desktop */}
       <div
-        className={`absolute bottom-0 right-0 w-[55%] h-[85%] pointer-events-none transition-all duration-1000 delay-300 ${
+        className={`hidden lg:block absolute bottom-0 right-0 w-[55%] h-[85%] pointer-events-none transition-all duration-1000 delay-300 ${
           isVisible ? "opacity-100" : "opacity-0"
         }`}
       >

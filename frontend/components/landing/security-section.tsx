@@ -52,7 +52,7 @@ export function SecuritySection() {
             <span className="w-12 h-px bg-foreground/20" />
           </span>
           
-          <h2 className={`text-5xl md:text-6xl lg:text-7xl font-display tracking-tight leading-[0.9] mb-8 transition-all duration-1000 ${
+          <h2 className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display tracking-tight leading-[0.9] mb-8 transition-all duration-1000 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}>
             Answers for the

@@ -7,8 +7,8 @@ import { FileJson, Wrench, Shield, Settings, Layers, Timer, Database, ShieldChec
 
 function ArchitectureDiagramVisual() {
   return (
-    <div className="w-full h-full min-h-[400px] flex items-center justify-center p-4 font-mono text-[10px]">
-      <div className="w-full max-w-[900px] flex flex-col md:flex-row gap-12 items-stretch relative">
+    <div className="w-full h-full min-h-[300px] md:min-h-[400px] flex items-center justify-center p-2 md:p-4 font-mono text-[9px] md:text-[10px]">
+      <div className="w-full max-w-[900px] flex flex-col md:flex-row gap-6 md:gap-12 items-stretch relative">
         
         {/* Left Side: Your Environment */}
         <div className="relative flex-1 rounded-xl border border-dashed border-[#10b981]/50 p-6 flex flex-col gap-4">
@@ -161,9 +161,9 @@ export function InfrastructureSection() {
             Internal Architecture
           </span>
           
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h2 className={`text-5xl md:text-6xl lg:text-7xl font-display tracking-tight leading-[0.9] transition-all duration-1000 ${
+          <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
+            <div className="relative z-10">
+              <h2 className={`text-4xl md:text-6xl lg:text-7xl font-display tracking-tight leading-[0.9] transition-all duration-1000 ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
               }`}>
                 Under the
@@ -171,7 +171,7 @@ export function InfrastructureSection() {
                 <span className="text-muted-foreground">Hood.</span>
               </h2>
 
-              <p className={`mt-8 text-xl text-muted-foreground leading-relaxed max-w-lg transition-all duration-1000 delay-100 ${
+              <p className={`mt-6 md:mt-8 text-lg md:text-xl text-muted-foreground leading-relaxed max-w-lg transition-all duration-1000 delay-100 ${
                 isVisible ? "opacity-100" : "opacity-0"
               }`}>
                 We turn static REST APIs into dynamic reasoning engines using a high-fidelity execution pipeline.
@@ -179,7 +179,7 @@ export function InfrastructureSection() {
             </div>
 
             {/* Architecture Visual */}
-            <div className={`relative h-[320px] lg:h-[400px] transition-all duration-1000 delay-200 ${
+            <div className={`relative min-h-[400px] lg:h-[400px] transition-all duration-1000 delay-200 ${
               isVisible ? "opacity-100" : "opacity-0"
             }`}>
               <ArchitectureDiagramVisual />

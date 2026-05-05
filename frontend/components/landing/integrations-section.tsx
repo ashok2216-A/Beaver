@@ -129,7 +129,7 @@ export function IntegrationsSection() {
           <span className="w-12 h-px bg-foreground/20" />
         </span>
 
-        <h2 className={`text-5xl md:text-6xl lg:text-7xl font-display tracking-tight leading-[0.9] transition-all duration-1000 ${
+        <h2 className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display tracking-tight leading-[1.1] md:leading-[0.9] transition-all duration-1000 ${
           isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
         }`}>
           World-Class
@@ -137,7 +137,7 @@ export function IntegrationsSection() {
           <span className="text-muted-foreground">Ecosystem.</span>
         </h2>
 
-        <p className={`mt-8 text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto transition-all duration-1000 delay-100 ${
+        <p className={`mt-6 md:mt-8 text-lg md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto transition-all duration-1000 delay-100 ${
           isVisible ? "opacity-100" : "opacity-0"
         }`}>
           Beaver natively bridges your existing tech stack with any LLM, turning standard docs into actionable intelligence.
@@ -145,7 +145,7 @@ export function IntegrationsSection() {
       </div>
 
       {/* Canvas signal wave */}
-      <div className={`relative left-1/2 -translate-x-1/2 w-screen h-[220px] -mt-8 transition-all duration-1000 delay-200 ${
+      <div className={`relative left-1/2 -translate-x-1/2 w-screen h-[180px] md:h-[240px] mt-8 lg:mt-12 transition-all duration-1000 delay-200 ${
         isVisible ? "opacity-100" : "opacity-0"
       }`}>
         <SignalWaveCanvas />
@@ -154,7 +154,7 @@ export function IntegrationsSection() {
       </div>
 
       {/* Integration grid */}
-      <div className="relative z-10 mt-0 lg:-mt-16 max-w-[1400px] mx-auto px-6 lg:px-12">
+      <div className="relative z-10 mt-12 lg:mt-20 max-w-[1400px] mx-auto px-6 lg:px-12">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-20">
           {integrations.map((integration, index) => (
             <div
