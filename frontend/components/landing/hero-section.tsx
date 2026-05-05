@@ -256,23 +256,22 @@ export function HeroSection() {
         ))}
       </div>
 
-      <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 lg:px-12 py-32 lg:py-40 text-center">
+      <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 lg:px-12 py-20 md:py-32 lg:py-40 text-center">
         {/* Eyebrow */}
         <div
-          className={`mb-8 transition-all duration-700 ${
+          className={`mb-6 md:mb-8 transition-all duration-700 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
             >
-              <span className="inline-flex items-center gap-3 text-sm font-mono text-white/60 px-4 py-2 border border-white/20 rounded-full backdrop-blur-sm">
-                <span className="w-2 h-2 rounded-full bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9] animate-pulse" />
+              <span className="inline-flex items-center gap-3 text-xs md:text-sm font-mono text-white/60 px-3 md:px-4 py-1.5 md:py-2 border border-white/20 rounded-full backdrop-blur-sm">
+                <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9] animate-pulse" />
                 The Future of API Tooling
               </span>
             </div>
-
-            {/* Main headline */}
-            <div className="mb-8">
+ 
+            <div className="mb-6 md:mb-8">
               <h1
-                className={`text-center text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-display leading-[0.95] tracking-tight text-white transition-all duration-1000 ${
+                className={`text-center text-5xl sm:text-6xl md:text-7xl lg:text-7xl xl:text-8xl font-display leading-[0.95] tracking-tight text-white transition-all duration-1000 ${
                   isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
                 }`}
               >
@@ -283,10 +282,10 @@ export function HeroSection() {
                 </span>
               </h1>
             </div>
-
+ 
             {/* Subtitle */}
             <p
-              className={`text-xl md:text-2xl text-white/70 max-w-2xl mx-auto mb-12 leading-relaxed transition-all duration-1000 delay-100 ${
+              className={`text-base md:text-xl lg:text-2xl text-white/70 max-w-2xl mx-auto mb-10 md:mb-12 leading-relaxed transition-all duration-1000 delay-100 ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
             >

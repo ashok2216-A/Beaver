@@ -48,7 +48,7 @@ export function CtaSection() {
           />
           
           <div className="relative z-10 px-8 lg:px-16 py-16 lg:py-24 text-center">
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-display tracking-tight mb-8 leading-[0.95]">
+            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display tracking-tight mb-8 leading-[0.95]">
               Join the developer
               <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]">

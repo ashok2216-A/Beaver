@@ -175,9 +175,9 @@ export function FeaturesSection() {
               </p>
               
               {/* Animated Steps */}
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-y-6 gap-x-4 md:gap-x-6">
                 {features[0].steps?.map((step, index) => (
-                  <div key={step} className="flex items-center gap-4">
+                  <div key={step} className="flex items-center gap-3 md:gap-4">
                     <div className={`flex items-center gap-2 transition-all duration-300 ${
                       activeStep === index ? "text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]" : "text-muted-foreground"
                     }`}>
@@ -191,7 +191,7 @@ export function FeaturesSection() {
                       <span className="text-sm font-medium">{step}</span>
                     </div>
                     {index < 3 && (
-                      <div className={`w-8 h-px transition-colors duration-300 ${
+                      <div className={`hidden sm:block w-6 md:w-8 h-px transition-colors duration-300 ${
                         activeStep > index ? "bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]" : "bg-foreground/20"
                       }`} />
                     )}

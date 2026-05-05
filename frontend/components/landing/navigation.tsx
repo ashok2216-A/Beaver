@@ -114,15 +114,15 @@ export function Navigation() {
         }`}
         style={{ top: 0 }}
       >
-        <div className="flex flex-col h-full px-8 pt-28 pb-8">
+        <div className="flex flex-col h-full px-6 pt-24 pb-8">
           {/* Navigation Links */}
-          <div className="flex-1 flex flex-col justify-center gap-8">
+          <div className="flex-1 flex flex-col justify-center gap-6">
             {navLinks.map((link, i) => (
               <a
                 key={link.name}
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`text-5xl font-display text-foreground hover:text-muted-foreground transition-all duration-500 ${
+                className={`text-3xl sm:text-4xl font-display text-foreground hover:text-muted-foreground transition-all duration-500 ${
                   isMobileMenuOpen 
                     ? "opacity-100 translate-y-0" 
                     : "opacity-0 translate-y-4"
@@ -135,7 +135,7 @@ export function Navigation() {
           </div>
           
           {/* Bottom CTAs */}
-          <div className={`flex gap-4 pt-8 border-t border-foreground/10 transition-all duration-500 ${
+          <div className={`flex flex-col sm:flex-row gap-4 pt-8 border-t border-foreground/10 transition-all duration-500 ${
             isMobileMenuOpen 
               ? "opacity-100 translate-y-0" 
               : "opacity-0 translate-y-4"
@@ -144,14 +144,14 @@ export function Navigation() {
           >
             <Button 
               variant="outline" 
-              className="flex-1 rounded-full h-14 text-base"
+              className="w-full sm:flex-1 rounded-full h-12 sm:h-14 text-base"
               onClick={() => setIsMobileMenuOpen(false)}
               asChild
             >
               <Link href="/sign-in">Sign in</Link>
             </Button>
             <Button 
-              className="flex-1 bg-foreground text-background rounded-full h-14 text-base"
+              className="w-full sm:flex-1 bg-foreground text-background rounded-full h-12 sm:h-14 text-base"
               onClick={() => setIsMobileMenuOpen(false)}
               asChild
             >
