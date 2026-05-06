@@ -51,31 +51,32 @@ export default function AnalyticsPage() {
     async function fetchStats() {
       try {
         const token = await getToken()
-        if (!token) return
-
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/stats`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        if (response.ok) {
-          setStats(await response.json())
+        if (!token) {
+          setLoading(false)
+          return
         }
 
-        const healthRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/stats/health`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        if (healthRes.ok) {
-          setHealthStats(await healthRes.json())
-        }
+        const headers = { Authorization: `Bearer ${token}` }
 
-        const velocityRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/stats/velocity`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        if (velocityRes.ok) {
-          const data = await velocityRes.json()
-          setVelocityData(data.items || [])
-        }
+        await Promise.allSettled([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/stats`, { headers })
+            .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
+            .then(data => setStats(data))
+            .catch(err => console.warn("Stats fetch failed:", err.message || err)),
+            
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/stats/health`, { headers })
+            .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
+            .then(data => setHealthStats(data))
+            .catch(err => console.warn("Health stats fetch failed:", err.message || err)),
+
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/stats/velocity`, { headers })
+            .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
+            .then(data => setVelocityData(data?.items || []))
+            .catch(err => console.warn("Velocity fetch failed:", err.message || err))
+        ])
+
       } catch (error) {
-        console.error("Failed to fetch analytics stats:", error)
+        console.error("Critical error in fetchStats:", error)
       } finally {
         setLoading(false)
       }
@@ -166,8 +167,17 @@ export default function AnalyticsPage() {
             <CardDescription className="text-xs">Volume of AI agent tool calls over the last 30 days.</CardDescription>
           </CardHeader>
           <CardContent className="p-6 pt-0">
-              <div className="h-[250px] w-full mt-4 animate-in fade-in duration-500">
-                <ResponsiveContainer width="100%" height="100%">
+            {loading ? (
+              <div className="h-[250px] w-full mt-4 flex items-center justify-center bg-muted/20 rounded-xl border border-white/5">
+                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin opacity-50"></div>
+              </div>
+            ) : velocityData.length === 0 ? (
+              <div className="h-[250px] w-full mt-4 flex items-center justify-center text-xs text-muted-foreground bg-muted/20 rounded-xl border border-white/5">
+                No velocity data available
+              </div>
+            ) : (
+              <div className="h-[250px] min-h-[250px] w-full mt-4 animate-in fade-in duration-500">
+                <ResponsiveContainer width="100%" height={250} minHeight={250}>
                   <AreaChart data={velocityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="velocityGrad" x1="0" y1="0" x2="0" y2="1">
@@ -189,6 +199,8 @@ export default function AnalyticsPage() {
                       tickLine={false} 
                       axisLine={false} 
                       tickFormatter={(value) => `${value}`}
+                      allowDecimals={false}
+                      domain={[0, 'dataMax + 5']}
                     />
                     <Tooltip 
                       contentStyle={{ 
@@ -210,6 +222,7 @@ export default function AnalyticsPage() {
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
+            )}
           </CardContent>
         </Card>
 
