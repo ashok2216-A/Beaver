@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Plus, Bot, Zap, Clock, ArrowUpRight, Search, MessageSquare } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@clerk/nextjs"
+import { useAuth, useUser } from "@clerk/nextjs"
 import { cn } from "@/lib/utils"
 import { AgentAvatar } from "@/components/dashboard/agent-avatar"
 import { toast } from "sonner"
@@ -31,6 +31,7 @@ interface Agent {
 
 export default function DashboardPage() {
   const { getToken } = useAuth()
+  const { user } = useUser()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [agents, setAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
@@ -123,7 +124,7 @@ export default function DashboardPage() {
         <div className="flex items-end justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-              Welcome back, Ashok <span className="animate-bounce-subtle">👋</span>
+              Welcome back{user?.firstName ? `, ${user.firstName}` : ''} <span className="animate-bounce-subtle">👋</span>
             </h1>
             <p className="text-muted-foreground mt-1">
               Here&apos;s what&apos;s happening across your agents today.

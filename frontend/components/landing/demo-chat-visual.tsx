@@ -11,12 +11,6 @@ const CHAT_STEPS = [
   },
   {
     type: "agent",
-    text: "Fetching customer records from stripe.com...",
-    isProcessing: true,
-    delay: 2000,
-  },
-  {
-    type: "agent",
     text: "Here are your 3 most recent customers:",
     hasCard: true,
     delay: 800,
@@ -25,12 +19,6 @@ const CHAT_STEPS = [
     type: "user",
     text: "Refund the last charge for the first one",
     delay: 1500,
-  },
-  {
-    type: "agent",
-    text: "POST /v1/refunds - Processing...",
-    isProcessing: true,
-    delay: 1800,
   },
   {
     type: "agent",
