@@ -45,9 +45,16 @@ class UserOut(BaseModel):
     email: Optional[str] = None
     plan_type: str = "free"
     subscription_status: str = "incomplete"
+    email_notifications: bool = True
+    weekly_reports: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}
+    
+
+class UserUpdate(BaseModel):
+    email_notifications: Optional[bool] = None
+    weekly_reports: Optional[bool] = None
 
 
 class ApiKeyCreate(BaseModel):

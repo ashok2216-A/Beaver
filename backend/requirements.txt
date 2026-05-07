@@ -37,3 +37,4 @@ pytest-asyncio>=0.23.6
 # HTML Parsing
 beautifulsoup4>=4.12.0
 ruff==0.15.12
+resend==2.4.0
