@@ -21,6 +21,16 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     mistral_api_key: str = ""
     gemini_model: str = "mistral/mistral-small-latest"
+    
+    # ── Discovery ──────────────────────────────────────────────────
+    firecrawl_api_key: str = ""
+    rapidapi_key: str = ""
+
+    # ── Email (SMTP) ───────────────────────────────────────────────
+    email_host: str = "smtp.gmail.com"
+    email_port: int = 587
+    email_user: str = ""
+    email_password: str = "" # Use Gmail App Password
 
     # ── Auth ──────────────────────────────────────────────────────
     clerk_publishable_key: str = ""

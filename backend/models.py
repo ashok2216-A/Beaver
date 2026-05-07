@@ -41,10 +41,15 @@ class User(Base):
     plan_type           = Column(String(32), default="free", nullable=False) # free | pro
     subscription_status = Column(String(32), default="incomplete", nullable=False) # active | past_due | etc
     
+    # User Preferences
+    email_notifications = Column(Boolean, default=True, nullable=False)
+    weekly_reports      = Column(Boolean, default=False, nullable=False)
+    
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    agents   = relationship("Agent", back_populates="owner", cascade="all, delete-orphan")
-    api_keys = relationship("ApiKey", back_populates="owner", cascade="all, delete-orphan")
+    agents        = relationship("Agent", back_populates="owner", cascade="all, delete-orphan")
+    api_keys      = relationship("ApiKey", back_populates="owner", cascade="all, delete-orphan")
+    conversations = relationship("Conversation", back_populates="owner", cascade="all, delete-orphan")
 
 
 class ApiKey(Base):
@@ -129,6 +134,7 @@ class Conversation(Base):
     title      = Column(String(255), default="New Chat")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
+    owner    = relationship("User", back_populates="conversations")
     messages = relationship("ChatMessage", back_populates="conversation", cascade="all, delete-orphan")
 
 
