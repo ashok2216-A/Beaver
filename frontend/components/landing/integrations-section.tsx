@@ -167,6 +167,7 @@ export function IntegrationsSection() {
               style={{ transitionDelay: `${index * 30 + 300}ms` }}
               onMouseEnter={() => setHoveredIndex(index)}
               onMouseLeave={() => setHoveredIndex(null)}
+              onTouchStart={() => setHoveredIndex(index)}
             >
               <div className="flex items-center gap-3 mb-4">
                 <img
@@ -174,8 +175,8 @@ export function IntegrationsSection() {
                   alt={integration.name}
                   className={`w-6 h-6 transition-all duration-300 ${
                     integration.name === "GitHub" || integration.name === "Zendesk"
-                      ? "brightness-0 invert opacity-60 group-hover:opacity-100"
-                      : "brightness-0 invert opacity-60 group-hover:filter-none group-hover:opacity-100"
+                      ? `brightness-0 invert ${hoveredIndex === index ? "opacity-100" : "opacity-60"}`
+                      : `brightness-0 invert opacity-60 ${hoveredIndex === index ? "!filter-none !opacity-100" : "group-hover:filter-none group-hover:opacity-100"}`
                   }`}
                 />
                 <h3 className="font-medium text-sm">{integration.name}</h3>
