@@ -120,6 +120,13 @@ export function FooterSection() {
           </div>
         </div>
       </div>
+
+      {/* Large Brand Text */}
+      <div className="overflow-hidden pointer-events-none select-none -mt-4">
+        <h2 className="text-[22vw] font-bold leading-none tracking-tighter text-[#1C1C1C] text-center translate-y-[20%] transition-transform hover:translate-y-[15%] duration-700">
+          Beaver
+        </h2>
+      </div>
     </footer>
   );
 }
