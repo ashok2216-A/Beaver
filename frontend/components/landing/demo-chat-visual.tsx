@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Search, Key, Sparkles } from "lucide-react";
+import { Search, Send, Sparkles } from "lucide-react";
 
 const CHAT_STEPS = [
   {
@@ -77,7 +77,7 @@ export function DemoChatAnimation() {
       <div className="relative group w-full">
         <div className="absolute -inset-1 bg-gradient-to-r from-[#eca8d6]/10 via-[#a78bfa]/10 to-[#67e8f9]/10 rounded-[20px] blur-xl opacity-50" />
         
-        <div className="relative bg-black border border-white/10 rounded-[16px] overflow-hidden shadow-2xl flex flex-col h-[400px] md:h-[480px]">
+        <div className="relative bg-black border border-white/10 rounded-[16px] overflow-hidden shadow-2xl flex flex-col h-[500px] md:h-[600px]">
           
           {/* Header */}
           <div className="px-5 py-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
@@ -176,7 +176,7 @@ export function DemoChatAnimation() {
                 readOnly
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20">
-                <Key className="w-4 h-4" />
+                <Send className="w-4 h-4" />
               </div>
             </div>
           </div>
