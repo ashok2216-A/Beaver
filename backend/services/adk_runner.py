@@ -150,6 +150,10 @@ def _build_agent(
             JSON string containing keys "data" (API response) and
             "status_code" (HTTP status).
         """
+        if len(tool_log) >= 2:
+            log.warning("Agent exceeded max API calls limit for a single turn.")
+            raise RuntimeError("Agent exceeded maximum allowed tool calls (Limit 2 per turn).")
+
         try:
             params_dict: dict = json.loads(params) if params else {}
         except json.JSONDecodeError:
@@ -180,15 +184,15 @@ def _build_agent(
             })
 
         data, status, latency = await call_api(
-            base_url=base_url,
+            base_url=ep_def.get("base_url") or base_url,
             path=path,
             method=method,
             endpoint_params=ep_def.get("parameters", []),
             extracted_params=params_dict,
-            auth_type=auth_type,
-            auth_secret=auth_secret,
-            auth_header=auth_header,
-            custom_headers=decrypt_dict(custom_headers),
+            auth_type=ep_def.get("auth_type") or auth_type,
+            auth_secret=decrypt_secret(ep_def.get("auth_secret")) if ep_def.get("auth_secret") is not None else auth_secret,
+            auth_header=ep_def.get("auth_header") or auth_header,
+            custom_headers=decrypt_dict(ep_def.get("custom_headers")) if ep_def.get("custom_headers") is not None else decrypt_dict(custom_headers),
         )
 
         # ─── Ephemeral RAG Pipeline ───
@@ -287,6 +291,8 @@ def _build_agent(
         '  {"component": "datetime", "key": "<key>", "label": "<Label>", "type": "date"}\n\n'
         "Rules:\n"
         "- Use field keys that match the API parameter names EXACTLY.\n"
+        "- If the API requires nested JSON objects (like Pinecone's 'spec' parameter), use flat keys in the form (e.g., 'cloud', 'region') and construct the properly nested JSON payload yourself before calling the API.\n"
+        "- DO NOT repeatedly ask for the same configuration. If an endpoint call fails due to missing or invalid parameters, explicitly explain what went wrong instead of just showing the form again.\n"
         "- After the A2UI block, you MAY add a short explanatory text, but keep it brief.\n"
         "- NEVER output raw JSON without the ```a2ui ... ``` markers.\n"
         "- Only use A2UI when you genuinely need input from the user."
@@ -457,6 +463,8 @@ async def run_agent_stream(
             friendly_error = "⏳ **Service Timeout**. The request took too long to complete."
         elif "not found" in raw_error:
             friendly_error = "🔍 **Resource Not Found**. Check your agent configuration."
+        elif "maximum allowed tool calls" in raw_error:
+            friendly_error = "\n\n🛑 **Execution Halted**: The agent made too many consecutive failed API calls and was stopped to prevent an infinite loop. Check the logs for the exact payload it attempted to send."
         else:
             friendly_error = "❌ **Service Error**. Please try again."
 

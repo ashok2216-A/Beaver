@@ -167,7 +167,7 @@ interface A2TextFieldProps extends FieldProps {
   value?: string
   multiline?: boolean
   fieldKey: string
-  onChange: (key: string, value: string) => void
+  onChange: (key: string, value: any) => void
 }
 
 export function A2TextField({ label, required, placeholder = 'Type here…', value = '', multiline = false, fieldKey, onChange }: A2TextFieldProps) {
@@ -206,7 +206,7 @@ interface A2NumberFieldProps extends FieldProps {
   min?: number
   max?: number
   fieldKey: string
-  onChange: (key: string, value: string) => void
+  onChange: (key: string, value: any) => void
 }
 
 export function A2NumberField({ label, required, placeholder = '0', value = '', min, max, fieldKey, onChange }: A2NumberFieldProps) {
@@ -225,7 +225,7 @@ export function A2NumberField({ label, required, placeholder = '0', value = '', 
         defaultValue={value as number}
         min={min}
         max={max}
-        onChange={e => onChange(fieldKey, e.target.value)}
+        onChange={e => onChange(fieldKey, Number(e.target.value))}
       />
     </div>
   )
@@ -236,7 +236,7 @@ interface A2ChoicePickerProps extends FieldProps {
   options?: string[]
   multi?: boolean
   fieldKey: string
-  onChange: (key: string, value: string) => void
+  onChange: (key: string, value: any) => void
 }
 
 export function A2ChoicePicker({ label, required, options = [], multi = false, fieldKey, onChange }: A2ChoicePickerProps) {
@@ -247,7 +247,7 @@ export function A2ChoicePicker({ label, required, options = [], multi = false, f
       ? selected.includes(opt) ? selected.filter(x => x !== opt) : [...selected, opt]
       : [opt]
     setSelected(next)
-    onChange(fieldKey, next.join(', '))
+    onChange(fieldKey, next.length === 1 && !multi ? next[0] : next)
   }
 
   return (
@@ -278,7 +278,7 @@ export function A2ChoicePicker({ label, required, options = [], multi = false, f
 interface A2CheckBoxProps extends FieldProps {
   checked?: boolean
   fieldKey: string
-  onChange: (key: string, value: string) => void
+  onChange: (key: string, value: any) => void
 }
 
 export function A2CheckBox({ label, required, checked: initial = false, fieldKey, onChange }: A2CheckBoxProps) {
@@ -287,7 +287,7 @@ export function A2CheckBox({ label, required, checked: initial = false, fieldKey
   const toggle = () => {
     const next = !checked
     setChecked(next)
-    onChange(fieldKey, next ? 'true' : 'false')
+    onChange(fieldKey, next)
   }
 
   return (
@@ -310,7 +310,7 @@ interface A2SliderProps extends FieldProps {
   value?: number
   step?: number
   fieldKey: string
-  onChange: (key: string, value: string) => void
+  onChange: (key: string, value: any) => void
 }
 
 export function A2Slider({ label, required, min = 0, max = 100, value: initial = 50, step = 1, fieldKey, onChange }: A2SliderProps) {
@@ -319,7 +319,7 @@ export function A2Slider({ label, required, min = 0, max = 100, value: initial =
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = Number(e.target.value)
     setValue(v)
-    onChange(fieldKey, String(v))
+    onChange(fieldKey, v)
   }
 
   return (
@@ -350,7 +350,7 @@ export function A2Slider({ label, required, min = 0, max = 100, value: initial =
 interface A2DateTimeInputProps extends FieldProps {
   type?: 'date' | 'datetime-local' | 'time'
   fieldKey: string
-  onChange: (key: string, value: string) => void
+  onChange: (key: string, value: any) => void
 }
 
 export function A2DateTimeInput({ label, required, type = 'date', fieldKey, onChange }: A2DateTimeInputProps) {
@@ -418,19 +418,16 @@ interface A2InputFormProps {
 
 export function A2InputForm({ data, onSubmit }: A2InputFormProps) {
   const root = data.a2ui
-  const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
+  const [fieldValues, setFieldValues] = useState<Record<string, any>>({})
   const [submitted, setSubmitted] = useState(false)
 
-  const handleFieldChange = (key: string, value: string) => {
+  const handleFieldChange = (key: string, value: any) => {
     setFieldValues(prev => ({ ...prev, [key]: value }))
   }
 
   const buildMessage = () => {
-    // Build a natural-language message from the collected field values
-    const parts = Object.entries(fieldValues)
-      .filter(([, v]) => v !== '' && v !== undefined)
-      .map(([k, v]) => `${k}: ${v}`)
-    return parts.join('\n')
+    const payload = JSON.stringify(fieldValues, null, 2)
+    return `Form submission:\n\`\`\`json\n${payload}\n\`\`\``
   }
 
   const handleSubmit = () => {

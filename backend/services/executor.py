@@ -163,6 +163,8 @@ async def call_api(
     # Debug: Log final headers (masked)
     safe_headers = {k: (v if k.lower() != "authorization" else f"{v[:12]}...") for k, v in headers.items()}
     log.info(f"EXECUTOR: Request Headers: {json.dumps(safe_headers)}")
+    log.info(f"EXECUTOR: Query Params: {json.dumps(query_params)}")
+    log.info(f"EXECUTOR: Body Params: {json.dumps(body_params)}")
 
     start = time.monotonic()
     try:

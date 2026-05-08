@@ -156,7 +156,7 @@ async def chat_orchestrate(
         Endpoint.id, Endpoint.path, Endpoint.method, Endpoint.summary, Endpoint.agent_id
     ).filter(
         Endpoint.agent_id.in_(agent_ids),
-        not Endpoint.is_locked
+        Endpoint.is_locked == False
     ).all()
     
     if not all_metadata:
@@ -187,7 +187,7 @@ async def chat_orchestrate(
             else:
                 history_str = f"USER: {req.message}"
             
-            prompt = f"""Select the best Agent ID for the last request. Respond ONLY with the integer ID.
+            prompt = f"""Select the best Agent IDs for the last request (you can select multiple if coordination is needed). Respond ONLY with a comma-separated list of integer IDs.
             
 Agents:
 {context_str}
@@ -199,23 +199,23 @@ Conversation:
                 model="mistral/mistral-small-latest",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
-                max_tokens=10
+                max_tokens=20,
+                timeout=5.0
             )
             
-            raw_id = response.choices[0].message.content.strip()
-            cleaned_id = "".join([c for c in raw_id if c.isdigit()])
+            raw_ids = response.choices[0].message.content.strip()
+            cleaned_ids = [int("".join([c for c in token if c.isdigit()])) for token in raw_ids.split(",") if any(c.isdigit() for c in token)]
+            valid_ids = [i for i in cleaned_ids if i in agent_map]
             
-            if cleaned_id and int(cleaned_id) in agent_map:
-                best_agent_id = int(cleaned_id)
-                agent = agent_map[best_agent_id]
-                log.info(f"LLM ROUTER successfully selected Agent ID: {best_agent_id}")
-                
+            if valid_ids:
+                log.info(f"LLM ROUTER successfully selected Agent IDs: {valid_ids}")
+                agent = agent_map[valid_ids[0]]  # Primary agent context
                 endpoints = db.query(Endpoint).filter(
-                    Endpoint.agent_id == best_agent_id,
-                    not Endpoint.is_locked
+                    Endpoint.agent_id.in_(valid_ids),
+                    Endpoint.is_locked == False
                 ).limit(15).all()
             else:
-                raise ValueError("Invalid ID received from LLM")
+                raise ValueError("Invalid IDs received from LLM")
                 
         except Exception as e:
             log.warning(f"LLM Router failed or timed out: {e}. Falling back to Keyword matching.")
@@ -247,23 +247,27 @@ Conversation:
 
             ranked_endpoints.sort(key=lambda x: x[0], reverse=True)
             best_match = ranked_endpoints[0]
-            best_agent_id = best_match[2]
-            agent = agent_map[best_agent_id]
+            agent = agent_map[best_match[2]]
             
-            top_ids = [item[1] for item in ranked_endpoints if item[2] == best_agent_id][:15]
+            top_ids = [item[1] for item in ranked_endpoints][:15]
             endpoints = db.query(Endpoint).filter(Endpoint.id.in_(top_ids)).all()
 
-        endpoint_list = [
-            {
+        endpoint_list = []
+        for ep in endpoints:
+            ep_agent = agent_map[ep.agent_id]
+            endpoint_list.append({
                 "path":         ep.path,
                 "method":       ep.method.value if hasattr(ep.method, "value") else ep.method,
-                "summary":      ep.summary,
+                "summary":      f"[{ep_agent.name}] {ep.summary}",
                 "description":  ep.description,
                 "parameters":   ep.parameters or [],
                 "request_body": ep.request_body or {},
-            }
-            for ep in endpoints
-        ]
+                "base_url":     ep_agent.base_url,
+                "auth_type":    ep_agent.auth_type,
+                "auth_header":  ep_agent.auth_header,
+                "auth_secret":  ep_agent.auth_secret,
+                "custom_headers": ep_agent.custom_headers,
+            })
 
     params = {
         "user_input": _sanitize_input(req.message),
@@ -348,7 +352,7 @@ async def chat(
         Endpoint.id, Endpoint.path, Endpoint.method, Endpoint.summary
     ).filter(
         Endpoint.agent_id == agent_id,
-        not Endpoint.is_locked
+        Endpoint.is_locked == False
     ).all()
 
     if not all_metadata:
