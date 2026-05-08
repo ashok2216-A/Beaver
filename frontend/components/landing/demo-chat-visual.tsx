@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Search, Key, Sparkles } from "lucide-react";
+import { Search, Send, Sparkles } from "lucide-react";
 
 const CHAT_STEPS = [
   {
@@ -176,7 +176,7 @@ export function DemoChatAnimation() {
                 readOnly
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20">
-                <Key className="w-4 h-4" />
+                <Send className="w-4 h-4" />
               </div>
             </div>
           </div>
