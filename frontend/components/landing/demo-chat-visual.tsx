@@ -77,7 +77,7 @@ export function DemoChatAnimation() {
       <div className="relative group w-full">
         <div className="absolute -inset-1 bg-gradient-to-r from-[#eca8d6]/10 via-[#a78bfa]/10 to-[#67e8f9]/10 rounded-[20px] blur-xl opacity-50" />
         
-        <div className="relative bg-black border border-white/10 rounded-[16px] overflow-hidden shadow-2xl flex flex-col h-[400px] md:h-[480px]">
+        <div className="relative bg-black border border-white/10 rounded-[16px] overflow-hidden shadow-2xl flex flex-col h-[500px] md:h-[600px]">
           
           {/* Header */}
           <div className="px-5 py-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
