@@ -75,6 +75,76 @@ const Callout = ({ icon: Icon, type, title, children }: { icon: any; type: "tip"
   )
 }
 
+const MultiLangCodeBlock = () => {
+  const [activeTab, setActiveTab] = useState<"curl" | "python" | "react" | "node">("curl")
+
+  const snippets = {
+    curl: `curl -X POST https://api.beaver.ai/v1/agents/{id}/chat \\
+  -H "Authorization: Bearer <your-token>" \\
+  -H "Content-Type: application/json" \\
+  -d '{"message": "List all active subscriptions"}'`,
+    python: `import requests
+
+url = "https://api.beaver.ai/v1/agents/{id}/chat"
+headers = {
+    "Authorization": "Bearer <your-token>",
+    "Content-Type": "application/json"
+}
+data = {"message": "List all active subscriptions"}
+
+response = requests.post(url, headers=headers, json=data)
+print(response.json())`,
+    react: `const chat = async () => {
+  const response = await fetch('https://api.beaver.ai/v1/agents/{id}/chat', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer <your-token>',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ message: 'List all active subscriptions' })
+  });
+  return await response.json();
+};`,
+    node: `const fetch = require('node-fetch');
+
+async function chat() {
+  const response = await fetch('https://api.beaver.ai/v1/agents/{id}/chat', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer <your-token>',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ message: 'List all active subscriptions' })
+  });
+  console.log(await response.json());
+}
+chat();`
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        {(["curl", "python", "react", "node"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all",
+              activeTab === tab ? "bg-primary text-primary-foreground shadow-glow-sm" : "bg-white/5 text-muted-foreground hover:bg-white/10"
+            )}
+          >
+            {tab === 'curl' ? 'cURL' : tab === 'python' ? 'Python' : tab === 'react' ? 'React' : 'Node.js'}
+          </button>
+        ))}
+      </div>
+      {activeTab === "curl" && <CodeBlock language="bash" code={snippets.curl} />}
+      {activeTab === "python" && <CodeBlock language="python" code={snippets.python} />}
+      {activeTab === "react" && <CodeBlock language="typescript" code={snippets.react} />}
+      {activeTab === "node" && <CodeBlock language="javascript" code={snippets.node} />}
+    </div>
+  )
+}
+
 const sections = [
   {
     id: "getting-started",
@@ -114,10 +184,7 @@ const sections = [
 
         <h3 className="text-2xl font-bold text-foreground mt-12 mb-4">Your First API Call</h3>
         <p className="text-muted-foreground mb-4">Once deployed, chat with your agent via the REST API:</p>
-        <CodeBlock language="bash" code={`curl -X POST https://api.beaver.ai/v1/agents/{id}/chat \\
-  -H "Authorization: Bearer <your-token>" \\
-  -H "Content-Type: application/json" \\
-  -d '{"message": "List all active subscriptions"}'`} />
+        <MultiLangCodeBlock />
       </div>
     ),
   },
