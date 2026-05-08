@@ -76,13 +76,65 @@ const endpoints = [
     "auth_type": "bearer",
     "token": "sk_live_..."
   }'`,
-    body: `{
-  "name": "Stripe Agent",
-  "spec_url": "https://stripe.com/openapi.yaml",
-  "base_url": "https://api.stripe.com",
-  "auth_type": "bearer",
-  "token": "sk_live_..."
-}`,
+    python: `import requests
+
+url = "https://api.beaver.ai/api/v1/agents"
+headers = {
+    "Authorization": "Bearer <your-token>",
+    "Content-Type": "application/json"
+}
+data = {
+    "name": "Stripe Agent",
+    "spec_url": "https://stripe.com/openapi.yaml",
+    "base_url": "https://api.stripe.com",
+    "auth_type": "bearer",
+    "token": "sk_live_..."
+}
+
+response = requests.post(url, headers=headers, json=data)
+print(response.json())`,
+    react: `const createAgent = async () => {
+  const response = await fetch('https://api.beaver.ai/api/v1/agents', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer <your-token>',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: 'Stripe Agent',
+      spec_url: 'https://stripe.com/openapi.yaml',
+      base_url: 'https://api.stripe.com',
+      auth_type: 'bearer',
+      token: 'sk_live_...'
+    })
+  });
+  
+  const data = await response.json();
+  return data;
+};`,
+    node: `const fetch = require('node-fetch');
+
+async function createAgent() {
+  const response = await fetch('https://api.beaver.ai/api/v1/agents', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer <your-token>',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: 'Stripe Agent',
+      spec_url: 'https://stripe.com/openapi.yaml',
+      base_url: 'https://api.stripe.com',
+      auth_type: 'bearer',
+      token: 'sk_live_...'
+    })
+  });
+  
+  const data = await response.json();
+  console.log(data);
+}
+
+createAgent();`,
     response: `{
   "id": "agt_01HZXK...",
   "name": "Stripe Agent",
@@ -102,7 +154,33 @@ const endpoints = [
     ],
     curl: `curl https://api.beaver.ai/api/v1/agents \\
   -H "Authorization: Bearer <your-token>"`,
-    body: null,
+    python: `import requests
+
+url = "https://api.beaver.ai/api/v1/agents"
+headers = {"Authorization": "Bearer <your-token>"}
+
+response = requests.get(url, headers=headers)
+print(response.json())`,
+    react: `const listAgents = async () => {
+  const response = await fetch('https://api.beaver.ai/api/v1/agents', {
+    headers: { 'Authorization': 'Bearer <your-token>' }
+  });
+  
+  const data = await response.json();
+  return data;
+};`,
+    node: `const fetch = require('node-fetch');
+
+async function listAgents() {
+  const response = await fetch('https://api.beaver.ai/api/v1/agents', {
+    headers: { 'Authorization': 'Bearer <your-token>' }
+  });
+  
+  const data = await response.json();
+  console.log(data);
+}
+
+listAgents();`,
     response: `{
   "agents": [
     {
@@ -133,10 +211,56 @@ const endpoints = [
     "message": "List failed payments from last week",
     "stream": false
   }'`,
-    body: `{
-  "message": "List failed payments from last week",
-  "stream": false
-}`,
+    python: `import requests
+
+url = "https://api.beaver.ai/api/v1/agents/agt_01HZXK/chat"
+headers = {
+    "Authorization": "Bearer <your-token>",
+    "Content-Type": "application/json"
+}
+data = {
+    "message": "List failed payments from last week",
+    "stream": False
+}
+
+response = requests.post(url, headers=headers, json=data)
+print(response.json())`,
+    react: `const chatWithAgent = async () => {
+  const response = await fetch('https://api.beaver.ai/api/v1/agents/agt_01HZXK/chat', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer <your-token>',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      message: 'List failed payments from last week',
+      stream: false
+    })
+  });
+  
+  const data = await response.json();
+  return data;
+};`,
+    node: `const fetch = require('node-fetch');
+
+async function chatWithAgent() {
+  const response = await fetch('https://api.beaver.ai/api/v1/agents/agt_01HZXK/chat', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer <your-token>',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      message: 'List failed payments from last week',
+      stream: false
+    })
+  });
+  
+  const data = await response.json();
+  console.log(data);
+}
+
+chatWithAgent();`,
     response: `{
   "reply": "I found 3 failed payments from last week totalling $1,240.",
   "tool_calls": [
@@ -159,7 +283,7 @@ const errorCodes = [
 
 export default function ApiReferencePage() {
   const [active, setActive] = useState(0)
-  const [activeTab, setActiveTab] = useState<"curl" | "body" | "response">("curl")
+  const [activeTab, setActiveTab] = useState<"curl" | "python" | "react" | "node" | "response">("curl")
   const ep = endpoints[active]
 
   return (
@@ -261,24 +385,27 @@ export default function ApiReferencePage() {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="flex gap-2">
-                    {(["curl", "body", "response"] as const).map((tab) => (
-                      (tab !== 'body' || ep.body) && (
-                        <button
-                          key={tab}
-                          onClick={() => setActiveTab(tab)}
-                          className={cn(
-                            "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all",
-                            activeTab === tab ? "bg-primary text-primary-foreground shadow-glow-sm" : "bg-white/5 text-muted-foreground hover:bg-white/10"
-                          )}
-                        >
-                          {tab === 'curl' ? 'cURL' : tab === 'body' ? 'Request Body' : 'Response'}
-                        </button>
-                      )
+                  <div className="flex flex-wrap gap-2">
+                    {(["curl", "python", "react", "node", "response"] as const).map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={cn(
+                          "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all",
+                          activeTab === tab ? "bg-primary text-primary-foreground shadow-glow-sm" : "bg-white/5 text-muted-foreground hover:bg-white/10"
+                        )}
+                      >
+                        {tab === 'curl' ? 'cURL' : 
+                         tab === 'python' ? 'Python' :
+                         tab === 'react' ? 'React' :
+                         tab === 'node' ? 'Node.js' : 'Response'}
+                      </button>
                     ))}
                   </div>
                   {activeTab === "curl" && <CodeBlock language="bash" code={ep.curl} />}
-                  {activeTab === "body" && ep.body && <CodeBlock language="json" code={ep.body} />}
+                  {activeTab === "python" && <CodeBlock language="python" code={ep.python!} />}
+                  {activeTab === "react" && <CodeBlock language="typescript" code={ep.react!} />}
+                  {activeTab === "node" && <CodeBlock language="javascript" code={ep.node!} />}
                   {activeTab === "response" && <CodeBlock language="json" code={ep.response} />}
                 </div>
               </div>

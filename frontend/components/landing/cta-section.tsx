@@ -10,6 +10,8 @@ export function CtaSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
+  const [isAiEnabled, setIsAiEnabled] = useState(false);
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -34,7 +36,7 @@ export function CtaSection() {
     <section ref={sectionRef} className="relative py-24 lg:py-32 overflow-hidden">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
         <div
-          className={`relative border border-foreground transition-all duration-1000 ${
+          className={`relative border border-foreground/10 transition-all duration-1000 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
           onMouseMove={handleMouseMove}
@@ -48,13 +50,39 @@ export function CtaSection() {
           />
           
           <div className="relative z-10 px-8 lg:px-16 py-16 lg:py-24 text-center">
-            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display tracking-tight mb-8 leading-[0.95]">
-              Join the developer
+            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display tracking-tight mb-4 leading-[1.1] md:leading-[0.95]">
+              Ship web apps with the
               <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]">
-                Super-Agent era
-              </span>
+              AI-<span className="relative inline-flex align-middle overflow-hidden transition-all duration-700">
+                <span key={isAiEnabled ? "enabled" : "ready"} className="transition-all duration-1000 ease-in-out opacity-100 translate-x-0 blur-0">
+                  {isAiEnabled ? "enabled" : "ready"}
+                </span>
+                {/* Outgoing word (placeholder for animation) */}
+                <span className={`absolute inset-0 transition-all duration-1000 ease-in-out pointer-events-none ${
+                  isAiEnabled ? "opacity-0 translate-x-8 blur-lg" : "opacity-0 -translate-x-8 blur-lg"
+                }`}>
+                  {isAiEnabled ? "ready" : "enabled"}
+                </span>
+              </span><button
+                onClick={() => setIsAiEnabled(!isAiEnabled)}
+                className={`inline-flex items-center h-[0.7em] w-[1.4em] rounded-full transition-all duration-500 relative align-middle mx-[0.1em] ${
+                  isAiEnabled 
+                    ? "bg-[#7c3aed] shadow-[0_0_30px_rgba(124,58,237,0.6)]" 
+                    : "bg-white/20"
+                }`}
+              >
+                <div
+                  className={`h-[0.55em] w-[0.55em] rounded-full bg-white shadow-xl transition-all duration-500 transform ${
+                    isAiEnabled ? "translate-x-[0.75em]" : "translate-x-[0.1em]"
+                  }`}
+                />
+              </button>
+              {" "}framework
             </h2>
+            
+            <p className="text-sm text-muted-foreground mb-8 font-medium">
+              We're ready when you're ready
+            </p>
 
             <p className="text-xl text-muted-foreground mb-12 leading-relaxed max-w-xl mx-auto">
               Start building for free during our public launch phase. Zero setup time, infinite possibilities.

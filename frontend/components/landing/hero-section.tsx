@@ -269,19 +269,19 @@ export function HeroSection() {
               </span>
             </div>
  
-            <div className="mb-6 md:mb-8">
-              <h1
-                className={`text-center text-5xl sm:text-6xl md:text-7xl lg:text-7xl xl:text-8xl font-display leading-[0.95] tracking-tight text-white transition-all duration-1000 ${
-                  isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-                }`}
-              >
-                Ship any API as a
-                <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]">
-                  Super-Agent
-                </span>
-              </h1>
-            </div>
+        <div className="mb-6 md:mb-8">
+          <h1
+            className={`text-center text-5xl sm:text-6xl md:text-7xl lg:text-7xl xl:text-8xl font-display leading-[0.95] tracking-tight text-white transition-all duration-1000 ${
+              isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+            }`}
+          >
+            Ship any API as a
+            <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]">
+              Super-Agent
+            </span>
+          </h1>
+        </div>
  
             {/* Subtitle */}
             <p
