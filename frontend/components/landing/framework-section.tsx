@@ -138,10 +138,10 @@ export function FrameworkSection() {
           </div>
 
           {/* Right Column: Code Editor */}
-          <div className="relative">
+          <div className="relative min-w-0 w-full">
             {/* Top Navigation Pills */}
-            <div className="flex flex-wrap gap-2 mb-8 justify-center lg:justify-end">
-              <div className="inline-flex items-center p-1 rounded-full border border-white/10 bg-[#0a0a0a]">
+            <div className="flex mb-8 justify-start lg:justify-end overflow-x-auto pb-2 -mx-6 px-6 lg:mx-0 lg:px-0 lg:pb-0 scrollbar-none">
+              <div className="inline-flex items-center p-1 rounded-full border border-white/10 bg-[#0a0a0a] min-w-max">
                 {tabs.map((tab) => {
                   return (
                     <button
