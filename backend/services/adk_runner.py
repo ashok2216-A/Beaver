@@ -165,9 +165,11 @@ def _build_agent(
             # Normalize: remove leading/trailing slashes
             t = template.strip("/")
             a = actual.strip("/")
-            # Convert {placeholder} to a regex capture group matching anything except a slash
-            pattern = re.sub(r'\{[^{}]+\}', r'[^/]+', t)
-            # Ensure exact match from start to end
+            # Escape regex special characters in the template
+            pattern = re.escape(t)
+            # Replace escaped placeholders like \{index_name\} with a regex pattern
+            # re.escape turned '{' into '\{' and '}' into '\}'
+            pattern = re.sub(r'\\\{[^{}]+\\\}', r'[^/]+', pattern)
             return bool(re.match(f"^{pattern}$", a))
 
         ep_def = next(
@@ -177,7 +179,7 @@ def _build_agent(
         )
 
         if not ep_def:
-            log.warning(f"SECURITY: Agent attempted to call unauthorized endpoint: {method} {path}")
+            log.warning(f"SECURITY: Agent attempted to call unauthorized endpoint: {method} {path} (Authorized endpoints count: {len(endpoints)})")
             return json.dumps({
                 "status_code": 403,
                 "error": "unauthorized_endpoint",
