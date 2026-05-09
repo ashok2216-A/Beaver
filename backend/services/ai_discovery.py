@@ -95,15 +95,15 @@ async def smart_ingest_url(url: str) -> dict:
                 if "openapi" in data or "swagger" in data or "paths" in data:
                     log.info("URL is already a spec file.")
                     return data
-            except Exception:
-                pass
+            except Exception as e:
+                log.debug(f"JSON spec parse failed: {e}")
         if "yaml" in ct or url.endswith((".yaml", ".yml")):
             try:
                 data = yaml.safe_load(r.text)
                 if "openapi" in data or "swagger" in data or "paths" in data:
                     return data
-            except Exception:
-                pass
+            except Exception as e:
+                log.debug(f"YAML spec parse failed: {e}")
 
         html_content = r.text
         soup = BeautifulSoup(html_content, "html.parser")
@@ -141,8 +141,8 @@ async def smart_ingest_url(url: str) -> dict:
                                 return parsed_spec
                         except Exception as e:
                             log.info(f"Spec Hunter YAML parse error for {origin}{path}: {e}")
-            except Exception:
-                pass
+            except Exception as e:
+                log.debug(f"Spec hunter file check failed: {e}")
 
         # Check for spec URLs embedded in the HTML (SwaggerUI/Redoc)
         embedded_patterns = [
@@ -176,8 +176,8 @@ async def smart_ingest_url(url: str) -> dict:
             try:
                 nd = json.loads(next_data.string)
                 _extract_routes_from_json(nd, doc_origin, links_to_crawl, seen_urls)
-            except Exception:
-                pass
+            except Exception as e:
+                log.debug(f"Next.js route extraction failed: {e}")
 
         # Sitemaps
         for sm_path in ["/sitemap.xml", "/sitemap-0.xml"]:
@@ -190,7 +190,8 @@ async def smart_ingest_url(url: str) -> dict:
                         if loc_url not in seen_urls and any(t in loc_url.lower() for t in ["api", "reference", "docs"]):
                             links_to_crawl.append(loc_url)
                             seen_urls.add(loc_url)
-            except Exception:
+            except Exception as e:
+                log.debug(f"Sitemap loc parse failed: {e}")
                 continue
 
         # Parallel Crawl (Top 5 pages for speed)
@@ -494,7 +495,8 @@ Chunk:
             json_match = re.search(r'\[.*\]', text, re.DOTALL)
             if json_match:
                 all_endpoints.extend(json.loads(json_match.group(0)))
-        except Exception:
+        except Exception as e:
+            log.debug(f"AI chunk extraction failed: {e}")
             continue
         
     return all_endpoints

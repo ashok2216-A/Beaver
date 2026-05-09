@@ -98,8 +98,8 @@ def get_template(template_id: str):
             template = next((t for t in manifest.get("templates", []) if t["id"] == template_id), None)
             if template:
                 return template
-    except Exception:
-        pass
+    except Exception as e:
+        log.debug(f"Template fallback failed: {e}")
         
     raise HTTPException(status_code=404, detail="Template not found")
 
