@@ -31,6 +31,15 @@ class EndpointCreate(BaseModel):
     request_body: Optional[dict[str, Any]] = {}
 
 
+class EndpointUpdate(BaseModel):
+    path: Optional[str] = None
+    method: Optional[str] = None
+    summary: Optional[str] = None
+    description: Optional[str] = None
+    parameters: Optional[list[dict[str, Any]]] = None
+    request_body: Optional[dict[str, Any]] = None
+
+
 class PaginatedEndpoints(BaseModel):
     total: int
     page: int
@@ -75,10 +84,10 @@ class ApiKeyOut(BaseModel):
 
 class AgentCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
-    description: str = ""
+    description: str = Field("", max_length=150)
     base_url: str = ""
     api_spec: Any           # parsed OpenAPI JSON/YAML or raw string
-    system_prompt: str = ""
+    system_prompt: str = Field("", max_length=500)
     auth_type: str = "bearer"          # bearer | apikey | none
     auth_header: Optional[str] = None
     auth_secret: str = ""
@@ -93,9 +102,9 @@ class AgentCreate(BaseModel):
 
 class AgentUpdate(BaseModel):
     name: Optional[str] = None
-    description: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=150)
     base_url: Optional[str] = None
-    system_prompt: Optional[str] = None
+    system_prompt: Optional[str] = Field(None, max_length=500)
     auth_type: Optional[str] = None
     auth_header: Optional[str] = None
     auth_secret: Optional[str] = None

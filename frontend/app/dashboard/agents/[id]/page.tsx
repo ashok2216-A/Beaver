@@ -19,7 +19,8 @@ import {
   Trash2,
   Plus,
   Terminal,
-  Activity
+  Activity,
+  Edit2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AgentAvatar } from "@/components/dashboard/agent-avatar"
@@ -88,6 +89,10 @@ export default function AgentBuilderPage() {
   const [customHeaders, setCustomHeaders] = useState<[string, string][]>([])
   
   const [isAddEndpointOpen, setIsAddEndpointOpen] = useState(false)
+  const [isEditEndpointOpen, setIsEditEndpointOpen] = useState(false)
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [endpointToDelete, setEndpointToDelete] = useState<number | null>(null)
+  const [editingEndpoint, setEditingEndpoint] = useState<Endpoint | null>(null)
   const [newMethod, setNewMethod] = useState("GET")
   const [newPath, setNewPath] = useState("")
   const [newSummary, setNewSummary] = useState("")
@@ -219,6 +224,69 @@ export default function AgentBuilderPage() {
       toast.error(err.message || "Failed to save endpoint")
     } finally {
       setIsSavingEndpoint(false)
+    }
+  }
+
+  const handleUpdateEndpoint = async () => {
+    if (!editingEndpoint || !newPath.trim()) {
+      toast.error("Path is required")
+      return
+    }
+    setIsSavingEndpoint(true)
+    try {
+      const token = await getToken()
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${id}/endpoints/${editingEndpoint.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          method: newMethod,
+          path: newPath,
+          summary: newSummary
+        })
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || "Failed to update endpoint")
+      }
+
+      const data = await res.json()
+      setEndpoints(prev => prev.map(e => e.id === data.id ? data : e))
+      setIsEditEndpointOpen(false)
+      setEditingEndpoint(null)
+      toast.success("Endpoint updated successfully")
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update endpoint")
+    } finally {
+      setIsSavingEndpoint(false)
+    }
+  }
+
+  const handleDeleteEndpoint = (endpointId: number) => {
+    setEndpointToDelete(endpointId)
+    setIsDeleteConfirmOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (endpointToDelete === null) return
+    try {
+      const token = await getToken()
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${id}/endpoints/${endpointToDelete}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        setEndpoints(prev => prev.filter(e => e.id !== endpointToDelete))
+        toast.success("Endpoint deleted")
+      }
+    } catch (err) {
+      toast.error("Failed to delete endpoint")
+    } finally {
+      setIsDeleteConfirmOpen(false)
+      setEndpointToDelete(null)
     }
   }
 
@@ -440,13 +508,14 @@ export default function AgentBuilderPage() {
           <Button 
             variant="outline" 
             size="sm" 
-            className="rounded-xl font-bold h-10 px-6"
+            className="rounded-xl font-bold h-10 px-6 bg-white text-slate-900 border-white hover:bg-slate-50 hover:text-slate-900 shadow-lg shadow-white/5"
             onClick={() => {
               setMessages([{ role: 'assistant', content: `Hi! I'm ${agent.name}. How can I help you with the API today?` }])
               toast.success("Chat playground reset")
             }}
           >
-            Test
+            <Plus className="mr-2 h-4 w-4" />
+            New Chat
           </Button>
           <Button variant="hero" size="sm" className="rounded-xl h-10 px-6 shadow-glow" onClick={() => router.push(`/dashboard/agents/${id}/deploy`)}>
             <Rocket className="mr-2 h-4 w-4" />
@@ -473,7 +542,12 @@ export default function AgentBuilderPage() {
                 variant="outline" 
                 size="sm" 
                 className="h-8 rounded-xl border-border/50 bg-background/50 text-xs font-bold text-muted-foreground hover:text-primary hover:border-primary/40 shadow-sm px-3 flex items-center gap-1.5"
-                onClick={() => setIsAddEndpointOpen(true)}
+                onClick={() => {
+                  setNewMethod("GET")
+                  setNewPath("")
+                  setNewSummary("")
+                  setIsAddEndpointOpen(true)
+                }}
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add Endpoint
@@ -550,7 +624,14 @@ export default function AgentBuilderPage() {
               {filteredEndpoints.map(ep => (
                 <div
                   key={ep.id}
-                  onClick={() => {}} // Root div for styling
+                  onClick={() => {
+                    if (ep.is_locked) return
+                    setEditingEndpoint(ep)
+                    setNewMethod(ep.method)
+                    setNewPath(ep.path)
+                    setNewSummary(ep.summary)
+                    setIsEditEndpointOpen(true)
+                  }}
                   className={cn(
                     "w-full text-left p-3 rounded-xl border transition-all relative group cursor-pointer",
                     ep.is_locked ? "bg-muted/30 border-transparent opacity-60" : "bg-card border-border/50 hover:border-primary/40 shadow-sm"
@@ -563,15 +644,40 @@ export default function AgentBuilderPage() {
                     )}>
                       {ep.method}
                     </span>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleToggleLock(ep.id); }}
-                      className={cn(
-                        "h-6 w-6 flex items-center justify-center rounded-lg border transition-all",
-                        ep.is_locked ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-background border-border text-muted-foreground hover:text-primary"
+                    <div className="flex items-center gap-1">
+                      {!ep.is_locked && (
+                        <>
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation()
+                              setEditingEndpoint(ep)
+                              setNewMethod(ep.method)
+                              setNewPath(ep.path)
+                              setNewSummary(ep.summary)
+                              setIsEditEndpointOpen(true)
+                            }}
+                            className="h-6 w-6 flex items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:text-primary hover:border-primary/40 transition-all md:opacity-0 md:group-hover:opacity-100"
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleDeleteEndpoint(ep.id); }}
+                            className="h-6 w-6 flex items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-all md:opacity-0 md:group-hover:opacity-100"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </>
                       )}
-                    >
-                      {ep.is_locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                    </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleToggleLock(ep.id); }}
+                        className={cn(
+                          "h-6 w-6 flex items-center justify-center rounded-lg border transition-all",
+                          ep.is_locked ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-background border-border text-muted-foreground hover:text-primary"
+                        )}
+                      >
+                        {ep.is_locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                      </button>
+                    </div>
                   </div>
                   <p className="font-mono text-[11px] truncate text-foreground/80">{ep.path}</p>
                   {ep.summary && <p className="text-[10px] text-muted-foreground mt-1 line-clamp-1">{ep.summary}</p>}
@@ -676,8 +782,8 @@ export default function AgentBuilderPage() {
                               <div className={cn(
                                 "flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold shadow-sm",
                                 m.status_code >= 200 && m.status_code < 300 
-                                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" 
-                                  : "bg-rose-500/10 border-rose-500/20 text-rose-500"
+                                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500 dark:text-emerald-400" 
+                                  : "bg-rose-400/10 border-rose-400/20 text-rose-500 dark:text-rose-400"
                               )}>
                                 <Activity className="h-3 w-3" />
                                 {m.status_code}
@@ -770,20 +876,30 @@ export default function AgentBuilderPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Description</label>
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Description</label>
+                    <span className="text-[9px] font-bold text-muted-foreground/50">{(agent?.description?.length || 0)}/150</span>
+                  </div>
                   <Textarea 
                     name="description" 
                     defaultValue={agent.description} 
+                    maxLength={150}
+                    onChange={(e) => setAgent(prev => prev ? {...prev, description: e.target.value} : null)}
                     className="min-h-[80px] rounded-xl bg-background/50 border-border/50 text-xs leading-relaxed resize-none"
                     placeholder="Short description of the agent's capabilities..."
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">System Prompt</label>
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">System Prompt</label>
+                    <span className="text-[9px] font-bold text-muted-foreground/50">{(agent?.system_prompt?.length || 0)}/500</span>
+                  </div>
                   <Textarea 
                     name="system_prompt" 
                     defaultValue={agent.system_prompt} 
+                    maxLength={500}
+                    onChange={(e) => setAgent(prev => prev ? {...prev, system_prompt: e.target.value} : null)}
                     className="min-h-[160px] rounded-xl bg-background/50 border-border/50 text-xs leading-relaxed resize-none"
                     placeholder="Defines the agent's behavior..."
                   />
@@ -986,6 +1102,141 @@ export default function AgentBuilderPage() {
                 className="w-1/2 h-11 rounded-xl shadow-glow font-bold"
               >
                 {isSavingEndpoint ? "Saving..." : "Add Endpoint"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Endpoint Modal */}
+      {isEditEndpointOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-card border border-border/50 rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-border/50 flex justify-between items-center">
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                <Edit2 className="h-4 w-4 text-primary animate-pulse" />
+                Edit Endpoint
+              </h3>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="rounded-xl h-8 w-8 text-muted-foreground hover:bg-muted text-lg"
+                onClick={() => {
+                  setIsEditEndpointOpen(false)
+                  setEditingEndpoint(null)
+                }}
+              >
+                &times;
+              </Button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">HTTP Method</label>
+                <div className="grid grid-cols-5 gap-1.5 p-1 rounded-xl bg-muted/30 border border-border/50">
+                  {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => {
+                    const isSel = newMethod === m
+                    const activeColor = {
+                      GET: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+                      POST: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+                      PUT: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+                      PATCH: "bg-violet-500/20 text-violet-400 border-violet-500/30",
+                      DELETE: "bg-rose-500/20 text-rose-400 border-rose-500/30",
+                    }[m as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE']
+
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setNewMethod(m)}
+                        className={cn(
+                          "py-1.5 rounded-lg text-[10px] font-bold border transition-all text-center",
+                          isSel 
+                            ? `${activeColor} shadow-sm font-black` 
+                            : "border-transparent text-muted-foreground hover:text-foreground hover:bg-card"
+                        )}
+                      >
+                        {m}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Path</label>
+                <Input 
+                  placeholder="/v1/users/{id}" 
+                  value={newPath}
+                  onChange={(e) => setNewPath(e.target.value)}
+                  className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Summary / Action Name</label>
+                <Input 
+                  placeholder="Get single user payload" 
+                  value={newSummary}
+                  onChange={(e) => setNewSummary(e.target.value)}
+                  className="h-11 rounded-xl bg-background/50 border-border/50 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-border/50 flex gap-3 bg-muted/20">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setIsEditEndpointOpen(false)
+                  setEditingEndpoint(null)
+                }}
+                className="w-1/2 h-11 rounded-xl border-border/50 bg-background/50"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="hero" 
+                onClick={handleUpdateEndpoint}
+                disabled={isSavingEndpoint || !newPath.trim()}
+                className="w-1/2 h-11 rounded-xl shadow-glow font-bold"
+              >
+                {isSavingEndpoint ? "Updating..." : "Update Endpoint"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteConfirmOpen && (
+        <div className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-card border border-border/50 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 text-center space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-rose-500/10 flex items-center justify-center mx-auto text-rose-500">
+                <Trash2 className="h-8 w-8" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Delete Endpoint?</h3>
+                <p className="text-sm text-muted-foreground mt-1">This action cannot be undone. This endpoint will be permanently removed from your agent.</p>
+              </div>
+            </div>
+            <div className="p-6 border-t border-border/50 flex gap-3 bg-muted/20">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setIsDeleteConfirmOpen(false)
+                  setEndpointToDelete(null)
+                }}
+                className="w-1/2 h-11 rounded-xl border-border/50 bg-background/50 font-bold"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={confirmDelete}
+                className="w-1/2 h-11 rounded-xl font-bold shadow-lg shadow-rose-500/20"
+              >
+                Delete
               </Button>
             </div>
           </div>
