@@ -230,11 +230,16 @@ Conversation:
                         if kw in path_lower: score += 10
                         if kw in summary_lower: score += 5
                     score += max(0, 5 - (ep.path.count('/') * 0.5))
-                    ranked.append((score, ep.id))
+                # If a specific agent was selected, we should prioritize its endpoints
+                # while still allowing some global context if needed.
+                # For now, let's give the selected agent its FULL toolkit.
+                endpoints = db.query(Endpoint).filter(
+                    Endpoint.agent_id == agent.id,
+                    Endpoint.is_locked.is_(False)
+                ).all()
                 
-                ranked.sort(key=lambda x: x[0], reverse=True)
-                top_ids = [item[1] for item in ranked[:15]]
-                endpoints = db.query(Endpoint).filter(Endpoint.id.in_(top_ids)).all()
+                # If we need even more context (e.g. multi-agent coordination), we could add more.
+                log.info(f"Passed {len(endpoints)} tools to agent {agent.name}")
             else:
                 raise ValueError("Invalid IDs received from LLM")
                 
