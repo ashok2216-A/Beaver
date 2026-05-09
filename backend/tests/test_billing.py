@@ -38,10 +38,17 @@ def mock_auth_pro():
     yield
     app.dependency_overrides.pop(get_current_user)
 
+@patch("routes.billing.get_settings")
 @patch("stripe.checkout.Session.create")
 @patch("stripe.Price.retrieve")
-def test_create_checkout_session(mock_price, mock_session, mock_auth):
+def test_create_checkout_session(mock_price, mock_session, mock_settings, mock_auth):
     """Test that a checkout session is created correctly for a free user."""
+    mock_settings.return_value = MagicMock(
+        payment_provider="stripe",
+        stripe_secret_key="sk_test_mock",
+        stripe_pro_plan_id="price_mock",
+        frontend_url="http://localhost:3000"
+    )
     mock_price.return_value = MagicMock(currency="usd")
     mock_session.return_value = MagicMock(url="https://checkout.stripe.com/test")
     
