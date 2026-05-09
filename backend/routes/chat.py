@@ -210,17 +210,43 @@ Conversation:
             if valid_ids:
                 log.info(f"LLM ROUTER successfully selected Agent IDs: {valid_ids}")
                 agent = agent_map[valid_ids[0]]  # Primary agent context
-                endpoints = db.query(Endpoint).filter(
-                    Endpoint.agent_id.in_(valid_ids),
-                    not Endpoint.is_locked
-                ).limit(15).all()
+                
+                # Context-aware endpoint ranking
+                user_input = _sanitize_input(req.message).lower()
+                context_text = user_input
+                if session_id:
+                    for m in history_msgs:
+                        if m.content:
+                            context_text += " " + m.content.lower()
+                keywords = [w for w in re.findall(r'\w+', context_text) if len(w) > 2]
+                
+                valid_metadata = [ep for ep in all_metadata if ep.agent_id in valid_ids]
+                ranked = []
+                for ep in valid_metadata:
+                    score = 0
+                    path_lower = ep.path.lower()
+                    summary_lower = (ep.summary or "").lower()
+                    for kw in keywords:
+                        if kw in path_lower: score += 10
+                        if kw in summary_lower: score += 5
+                    score += max(0, 5 - (ep.path.count('/') * 0.5))
+                    ranked.append((score, ep.id))
+                
+                ranked.sort(key=lambda x: x[0], reverse=True)
+                top_ids = [item[1] for item in ranked[:15]]
+                endpoints = db.query(Endpoint).filter(Endpoint.id.in_(top_ids)).all()
             else:
                 raise ValueError("Invalid IDs received from LLM")
                 
         except Exception as e:
             log.warning(f"LLM Router failed or timed out: {e}. Falling back to Keyword matching.")
             user_input = _sanitize_input(req.message).lower()
-            keywords = [w for w in re.findall(r'\w+', user_input) if len(w) > 2]
+            context_text = user_input
+            if session_id:
+                for m in history_msgs:
+                    if m.content:
+                        context_text += " " + m.content.lower()
+            keywords = [w for w in re.findall(r'\w+', context_text) if len(w) > 2]
             
             ranked_endpoints = []
             for ep in all_metadata:
@@ -358,9 +384,19 @@ async def chat(
     if not all_metadata:
         endpoint_list = []
     else:
-        # Step 2: Rank endpoints by relevance to user input
+        # Step 2: Rank endpoints by relevance to user input and recent history
         user_input = _sanitize_input(req.message).lower()
-        keywords = [w for w in re.findall(r'\w+', user_input) if len(w) > 2]
+        context_text = user_input
+        
+        if session_id:
+            recent_msgs = db.query(ChatMessage).filter(
+                ChatMessage.conversation_id == session_id
+            ).order_by(ChatMessage.created_at.desc()).limit(3).all()
+            for m in recent_msgs:
+                if m.content:
+                    context_text += " " + m.content.lower()
+                    
+        keywords = [w for w in re.findall(r'\w+', context_text) if len(w) > 2]
         
         ranked_endpoints = []
         for ep in all_metadata:
