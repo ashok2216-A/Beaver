@@ -161,10 +161,18 @@ def _build_agent(
 
         # SEC-1: Find the matching endpoint definition so executor can route params.
         # CRITICAL: If no definition is found, or if it is locked, the agent MUST NOT call the executor.
-        clean_path = path.strip("/")
+        def path_matches(template: str, actual: str) -> bool:
+            # Normalize: remove leading/trailing slashes
+            t = template.strip("/")
+            a = actual.strip("/")
+            # Convert {placeholder} to a regex capture group matching anything except a slash
+            pattern = re.sub(r'\{[^{}]+\}', r'[^/]+', t)
+            # Ensure exact match from start to end
+            return bool(re.match(f"^{pattern}$", a))
+
         ep_def = next(
             (e for e in endpoints
-             if e["path"].strip("/") == clean_path and e["method"].upper() == method.upper()),
+             if path_matches(e["path"], path) and e["method"].upper() == method.upper()),
             None,
         )
 
