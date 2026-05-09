@@ -161,9 +161,10 @@ def _build_agent(
 
         # SEC-1: Find the matching endpoint definition so executor can route params.
         # CRITICAL: If no definition is found, or if it is locked, the agent MUST NOT call the executor.
+        clean_path = path.strip("/")
         ep_def = next(
             (e for e in endpoints
-             if e["path"] == path and e["method"].upper() == method.upper()),
+             if e["path"].strip("/") == clean_path and e["method"].upper() == method.upper()),
             None,
         )
 
