@@ -82,7 +82,6 @@ To run the automated security scan against your local instance:
 cd backend
 python tests/penetration_test.py
 ```
-
 ### CI/CD Pipeline
 Every push to `main` triggers a GitHub Action that performs:
 - 🔍 Change Detection
