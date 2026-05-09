@@ -51,16 +51,15 @@ def _build_auth_headers(auth_type: str, auth_secret: str, url: str, auth_header:
     elif token.lower().startswith("token "):
         token = token[6:].strip()
 
-    # If we are using the standard 'Authorization' header (either by choice or default)
+    # If we are using the standard 'Authorization' header
     if header_name.lower() == "authorization":
-        # GitHub specifically prefers "token <token>" for classic PATs
-        if "github.com" in url.lower():
-            return {"Authorization": f"token {token}"}
+        if a_type == "apikey":
+            return {"Authorization": token}
         return {"Authorization": f"Bearer {token}"}
 
     # If it's a truly custom header (e.g. x-api-key)
     if a_type == "apikey" or auth_header:
-        return {header_name: auth_secret} # use original secret for non-Authorization headers
+        return {header_name: token}
 
     return {}
 

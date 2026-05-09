@@ -213,13 +213,13 @@ export function IntegrationsSection() {
                   "sentry", "datadog", "posthog", "vercel"
                 ].map((icon) => (
                   icon === "pipedrive" ? (
-                    <PipedriveIcon key={icon} className="h-3.5 md:h-4 text-white opacity-40 hover:opacity-100 hover:scale-110 transition-all duration-300 cursor-pointer" />
+                    <PipedriveIcon key={icon} className="h-3.5 md:h-4 text-white opacity-40 active:opacity-100 hover:opacity-100 hover:scale-110 transition-all duration-300 cursor-pointer" />
                   ) : (
                     <img
                       key={icon}
                       src={`https://cdn.simpleicons.org/${icon}/white`}
                       alt={icon}
-                      className="h-3.5 md:h-4 opacity-40 hover:opacity-100 hover:scale-110 transition-all duration-300 cursor-pointer"
+                      className="h-3.5 md:h-4 opacity-40 active:opacity-100 hover:opacity-100 hover:scale-110 transition-all duration-300 cursor-pointer"
                     />
                   )
                 ))}
