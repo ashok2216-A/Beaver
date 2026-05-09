@@ -24,6 +24,14 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AgentAvatar } from "@/components/dashboard/agent-avatar"
+import {  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -81,8 +89,26 @@ export default function AgentBuilderPage() {
     endpoint?: { path: string, method: string },
     status_code?: number,
     latency_ms?: number,
+    api_response?: any,
+    request_payload?: any,
     chunks?: { type: 'text' | 'a2ui', content: string | Record<string, any> }[] | null
   }[]>([])
+
+  const getStatusBadge = (status?: number) => {
+    if (!status) return null
+    const isError = status >= 400
+    return (
+      <div className={cn(
+        "flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold shadow-sm transition-colors",
+        isError
+          ? "bg-rose-400/10 border-rose-400/20 text-rose-500 dark:text-rose-400"
+          : "bg-emerald-500/10 border-emerald-500/20 text-emerald-500 dark:text-emerald-400"
+      )}>
+        <Activity className="h-3 w-3" />
+        {status}
+      </div>
+    )
+  }
   const [input, setInput] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -347,6 +373,8 @@ export default function AgentBuilderPage() {
                     last.status_code = data.data.status_code
                     last.latency_ms = data.data.latency_ms
                     last.chunks = data.data.chunks
+                    last.api_response = data.data.api_response
+                    last.request_payload = data.data.request_payload
                   }
                   return updated
                 })
@@ -772,23 +800,33 @@ export default function AgentBuilderPage() {
                         {/* Live Trace Badge */}
                         {m.role === 'assistant' && m.endpoint && (
                           <div className="mt-3 pt-3 border-t border-border/30 flex flex-wrap items-center gap-2">
-                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted border border-border/50 text-[10px] font-bold text-muted-foreground">
-                              <Terminal className="h-3 w-3" />
-                              <span className="font-mono uppercase">{m.endpoint.method}</span>
-                              <span className="font-mono opacity-60 truncate max-w-[150px]">{m.endpoint.path}</span>
-                            </div>
-                            
-                            {m.status_code && (
-                              <div className={cn(
-                                "flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold shadow-sm",
-                                m.status_code >= 200 && m.status_code < 300 
-                                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500 dark:text-emerald-400" 
-                                  : "bg-rose-400/10 border-rose-400/20 text-rose-500 dark:text-rose-400"
-                              )}>
-                                <Activity className="h-3 w-3" />
-                                {m.status_code}
-                              </div>
-                            )}
+                            <HoverCard openDelay={100}>
+                              <HoverCardTrigger asChild>
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted border border-border/50 text-[10px] font-bold text-muted-foreground cursor-help hover:bg-muted/80 transition-colors">
+                                  <Terminal className="h-3 w-3" />
+                                  <span className="font-mono uppercase">{m.endpoint.method}</span>
+                                  <span className="font-mono opacity-60 truncate max-w-[150px]">{m.endpoint.path}</span>
+                                </div>
+                              </HoverCardTrigger>
+                              <HoverCardContent side="top" align="start" className="w-[400px] p-0 bg-background/80 backdrop-blur-xl border-border/50 shadow-2xl rounded-2xl overflow-hidden z-50">
+                                <div className="p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div className="flex items-center gap-1.5">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">API Response</p>
+                                      </div>
+                                      <span className="text-[9px] font-mono text-muted-foreground/60">JSON</span>
+                                    </div>
+                                    <pre className="p-3 rounded-xl bg-muted/30 text-[11px] font-mono text-foreground/90 overflow-x-auto border border-border/30 whitespace-pre-wrap leading-relaxed">
+                                      {JSON.stringify(m.api_response || { message: "No response body captured" }, null, 2)}
+                                    </pre>
+                                  </div>
+                                </div>
+                              </HoverCardContent>
+                            </HoverCard>
+
+                            {getStatusBadge(m.status_code)}
 
                             {m.latency_ms && (
                               <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tighter">
