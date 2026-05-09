@@ -211,8 +211,8 @@ def _build_agent(
                 for tag in soup(["script", "style", "noscript", "iframe", "header", "footer", "nav"]):
                     tag.decompose()
                 processed_data = soup.get_text(separator="\n", strip=True)
-            except Exception:
-                pass
+            except Exception as e:
+                log.debug(f"HTML clean failed: {e}")
         
         # 2. CHUNK & RANK: If still too large, perform Ephemeral RAG
         resp_str = json.dumps(processed_data, default=str) if not isinstance(processed_data, str) else processed_data
@@ -395,8 +395,8 @@ async def run_agent_stream(
         await _session_service.create_session(app_name=APP_NAME, user_id="user", session_id=session_id)
     except AlreadyExistsError:
         pass
-    except Exception:
-        pass
+    except Exception as e:
+        log.debug(f"Session creation issue: {e}")
 
     message = genai_types.Content(role="user", parts=[genai_types.Part(text=user_input)])
     
@@ -452,8 +452,8 @@ async def run_agent_stream(
                                     final_text += part.text
                                     yield json.dumps({"type": "token", "text": part.text}) + "\n"
                 return
-            except Exception:
-                pass
+            except Exception as e:
+                log.debug(f"Retry session creation failed: {e}")
 
         if "credentials" in raw_error or "auth" in raw_error or "api key" in raw_error:
             friendly_error = "⚠️ **Model Authentication Failed**. Please check your API key settings."
