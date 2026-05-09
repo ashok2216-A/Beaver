@@ -61,7 +61,7 @@ async def send_agent_alert(user: User, agent_name: str, error_message: str):
 
     # Fallback to Mock
     print("\n" + "="*50)
-    print(f"📧 [MOCK EMAIL SENT]")
+    print("📧 [MOCK EMAIL SENT]")
     print(f"TO:      {user.email}")
     print(f"SUBJECT: {subject}")
     print(f"BODY:    {error_message}")
