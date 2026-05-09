@@ -150,9 +150,9 @@ def _build_agent(
             JSON string containing keys "data" (API response) and
             "status_code" (HTTP status).
         """
-        if len(tool_log) >= 2:
+        if len(tool_log) >= 10:
             log.warning("Agent exceeded max API calls limit for a single turn.")
-            raise RuntimeError("Agent exceeded maximum allowed tool calls (Limit 2 per turn).")
+            raise RuntimeError("Agent exceeded maximum allowed tool calls (Limit 10 per turn).")
 
         try:
             params_dict: dict = json.loads(params) if params else {}
@@ -481,6 +481,22 @@ async def run_agent_stream(
         "latency_ms":   last_call.get("latency_ms", 0),
         "error":        error_msg,
     }
+
+    # Persist the assistant's response to the session for multi-turn continuity
+    if final_text and session_id:
+        try:
+            assistant_message = genai_types.Content(role="assistant", parts=[genai_types.Part(text=final_text)])
+            # We use the low-level session service to ensure the message is stored
+            # Note: The Runner usually handles the user message, but streaming responses 
+            # often need manual persistence of the final consolidated text.
+            await _session_service.add_message(
+                app_name=APP_NAME, 
+                user_id="user", 
+                session_id=session_id, 
+                message=assistant_message
+            )
+        except Exception as e:
+            log.debug(f"Failed to persist assistant message to session: {e}")
     # Parse A2UI chunks for streaming final response
     final_data["chunks"] = _extract_a2ui_chunks(final_text)
     
