@@ -156,7 +156,7 @@ async def chat_orchestrate(
         Endpoint.id, Endpoint.path, Endpoint.method, Endpoint.summary, Endpoint.agent_id
     ).filter(
         Endpoint.agent_id.in_(agent_ids),
-        Endpoint.is_locked == False
+        not Endpoint.is_locked
     ).all()
     
     if not all_metadata:
@@ -212,7 +212,7 @@ Conversation:
                 agent = agent_map[valid_ids[0]]  # Primary agent context
                 endpoints = db.query(Endpoint).filter(
                     Endpoint.agent_id.in_(valid_ids),
-                    Endpoint.is_locked == False
+                    not Endpoint.is_locked
                 ).limit(15).all()
             else:
                 raise ValueError("Invalid IDs received from LLM")
@@ -352,7 +352,7 @@ async def chat(
         Endpoint.id, Endpoint.path, Endpoint.method, Endpoint.summary
     ).filter(
         Endpoint.agent_id == agent_id,
-        Endpoint.is_locked == False
+        not Endpoint.is_locked
     ).all()
 
     if not all_metadata:
