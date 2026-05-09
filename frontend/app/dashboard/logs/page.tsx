@@ -168,10 +168,10 @@ export default function LogsPage() {
 
   const getStatusBadge = (code: number) => {
     if (code >= 200 && code < 300) {
-      return <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20">Success {code}</Badge>
+      return <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/20">Success {code}</Badge>
     }
     if (code >= 400) {
-      return <Badge variant="destructive" className="bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border-rose-500/20">Error {code}</Badge>
+      return <Badge variant="outline" className="bg-rose-400/10 text-rose-500 dark:text-rose-400 border-rose-400/20">Error {code}</Badge>
     }
     return <Badge variant="outline" className="text-muted-foreground">{code || 'N/A'}</Badge>
   }

@@ -203,12 +203,18 @@ export default function AnalyticsPage() {
                       domain={[0, 'dataMax + 5']}
                     />
                     <Tooltip 
-                      contentStyle={{ 
-                        background: "rgba(10, 10, 10, 0.8)", 
-                        border: "1px solid rgba(255,255,255,0.1)", 
-                        borderRadius: "12px",
-                        fontSize: "12px",
-                        color: "#fff"
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-card/90 backdrop-blur-md border border-border shadow-2xl rounded-2xl p-3 animate-in fade-in zoom-in-95 duration-200">
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{label}</p>
+                              <p className="text-sm font-bold text-foreground">
+                                requests : <span className="text-indigo-500">{payload[0].value}</span>
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
                       }}
                     />
                     <Area 

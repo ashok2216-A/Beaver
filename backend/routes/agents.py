@@ -15,7 +15,7 @@ from database import get_db
 from models import Agent, Endpoint, AgentStatus, User, Log
 from schemas import (
     AgentCreate, AgentOut, AgentDetail, AgentUpdate,
-    EndpointOut, EndpointCreate, IngestUrlRequest, MessageOut,
+    EndpointOut, EndpointCreate, EndpointUpdate, IngestUrlRequest, MessageOut,
     IngestPreviewRequest, IngestPreviewOut, StatsOut,
     PaginatedEndpoints, HealthStatsOut, VelocityOut,
     BulkDeleteRequest
@@ -794,3 +794,44 @@ def unlock_all_endpoints(
     query.update({"is_locked": False}, synchronize_session=False)
     db.commit()
     return MessageOut(message="Endpoints unlocked")
+
+
+@router.patch("/{agent_id}/endpoints/{endpoint_id}", response_model=EndpointOut)
+def update_endpoint(
+    agent_id: int,
+    endpoint_id: int,
+    body: EndpointUpdate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update an existing endpoint."""
+    _get_agent_or_404(agent_id, user, db)
+    endpoint = db.query(Endpoint).filter(Endpoint.id == endpoint_id, Endpoint.agent_id == agent_id).first()
+    if not endpoint:
+        raise HTTPException(status_code=404, detail="Endpoint not found")
+
+    update_data = body.model_dump(exclude_none=True)
+    for field, value in update_data.items():
+        setattr(endpoint, field, value)
+
+    db.commit()
+    db.refresh(endpoint)
+    return EndpointOut.model_validate(endpoint)
+
+
+@router.delete("/{agent_id}/endpoints/{endpoint_id}", response_model=MessageOut)
+def delete_endpoint(
+    agent_id: int,
+    endpoint_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete an endpoint."""
+    _get_agent_or_404(agent_id, user, db)
+    endpoint = db.query(Endpoint).filter(Endpoint.id == endpoint_id, Endpoint.agent_id == agent_id).first()
+    if not endpoint:
+        raise HTTPException(status_code=404, detail="Endpoint not found")
+
+    db.delete(endpoint)
+    db.commit()
+    return MessageOut(message=f"Endpoint {endpoint_id} deleted.")

@@ -391,10 +391,14 @@ export default function NewAgentPage() {
 
               {/* Middle Row: Description */}
               <div className="space-y-2">
-                <label className="text-sm font-bold">Description (Optional)</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-bold">Description (Optional)</label>
+                  <span className="text-[10px] font-bold text-muted-foreground/50">{description.length}/150</span>
+                </div>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  maxLength={150}
                   placeholder="What does this agent do?"
                   className="w-full rounded-xl border border-border bg-background p-4 text-sm outline-none focus:border-primary/50 transition-all min-h-[80px]"
                 />

@@ -279,7 +279,7 @@ export default function PlaygroundPage() {
               }
             ])
           }}
-          className="mb-4 w-full flex items-center justify-center gap-2 text-xs py-2 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-white/10 text-slate-800 dark:text-slate-100 font-bold hover:shadow-[0_6px_16px_rgba(0,0,0,0.12)] shadow-[0_4px_12px_rgba(0,0,0,0.08)] active:translate-y-0.5 active:shadow-[0_2px_4px_rgba(0,0,0,0.06)] transition-all duration-200"
+          className="mb-4 w-full flex items-center justify-center gap-2 text-xs py-2.5 px-3 rounded-xl bg-white text-slate-900 border border-white font-bold hover:bg-slate-50 hover:shadow-[0_6px_20px_rgba(255,255,255,0.15)] shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:translate-y-0.5 transition-all duration-200"
         >
           <Plus className="w-3.5 h-3.5" />
           New Chat
