@@ -156,7 +156,7 @@ async def chat_orchestrate(
         Endpoint.id, Endpoint.path, Endpoint.method, Endpoint.summary, Endpoint.agent_id
     ).filter(
         Endpoint.agent_id.in_(agent_ids),
-        not Endpoint.is_locked
+        Endpoint.is_locked.is_(False)
     ).all()
     
     if not all_metadata:
@@ -378,7 +378,7 @@ async def chat(
         Endpoint.id, Endpoint.path, Endpoint.method, Endpoint.summary
     ).filter(
         Endpoint.agent_id == agent_id,
-        not Endpoint.is_locked
+        Endpoint.is_locked.is_(False)
     ).all()
 
     if not all_metadata:
