@@ -161,15 +161,25 @@ def _build_agent(
 
         # SEC-1: Find the matching endpoint definition so executor can route params.
         # CRITICAL: If no definition is found, or if it is locked, the agent MUST NOT call the executor.
-        clean_path = path.strip("/")
+        def path_matches(template: str, actual: str) -> bool:
+            # Normalize: remove leading/trailing slashes
+            t = template.strip("/")
+            a = actual.strip("/")
+            # Escape regex special characters in the template
+            pattern = re.escape(t)
+            # Replace escaped placeholders like \{index_name\} with a regex pattern
+            # re.escape turned '{' into '\{' and '}' into '\}'
+            pattern = re.sub(r'\\\{[^{}]+\\\}', r'[^/]+', pattern)
+            return bool(re.match(f"^{pattern}$", a))
+
         ep_def = next(
             (e for e in endpoints
-             if e["path"].strip("/") == clean_path and e["method"].upper() == method.upper()),
+             if path_matches(e["path"], path) and e["method"].upper() == method.upper()),
             None,
         )
 
         if not ep_def:
-            log.warning(f"SECURITY: Agent attempted to call unauthorized endpoint: {method} {path}")
+            log.warning(f"SECURITY: Agent attempted to call unauthorized endpoint: {method} {path} (Authorized endpoints count: {len(endpoints)})")
             return json.dumps({
                 "status_code": 403,
                 "error": "unauthorized_endpoint",
