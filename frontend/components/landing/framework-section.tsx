@@ -129,8 +129,8 @@ export function FrameworkSection() {
             </ul>
 
             <Link 
-              href="/api-reference"
-              className="inline-flex items-center justify-center h-11 px-6 rounded-lg border border-white/10 text-white font-medium hover:bg-white hover:text-black transition-all bg-transparent group"
+              href="/docs"
+              className="inline-flex items-center justify-center h-11 px-6 rounded-lg border border-white/10 text-white font-medium hover:bg-primary/10 hover:border-primary/40 hover:text-white transition-all bg-transparent group"
             >
               Explore the API
               <ArrowUpRight className="w-4 h-4 ml-2 text-[#7c3aed] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={2.5} />
