@@ -20,7 +20,8 @@ import {
   Plus,
   Terminal,
   Activity,
-  Edit2
+  Edit2,
+  Check
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AgentAvatar } from "@/components/dashboard/agent-avatar"
@@ -753,10 +754,19 @@ export default function AgentBuilderPage() {
                     "max-w-[85%] rounded-3xl px-4 py-3 text-sm leading-relaxed shadow-sm border",
                     m.role === 'user' 
                       ? "bg-primary text-primary-foreground border-transparent rounded-tr-sm" 
-                      : "bg-card text-foreground border-border rounded-tl-sm"
+                      : "bg-muted/50 text-foreground border-border/50 rounded-tl-sm"
                   )}>
                     {m.role === 'user' ? (
-                      <p className="whitespace-pre-wrap">{m.content}</p>
+                      m.content.startsWith('Form submission:') ? (
+                        <div className="flex items-center gap-2 py-1 px-1">
+                          <div className="bg-white/20 p-1 rounded-lg">
+                            <Check className="h-3.5 w-3.5 text-white" />
+                          </div>
+                          <span className="text-xs font-bold tracking-tight">Sent!</span>
+                        </div>
+                      ) : (
+                        <p className="whitespace-pre-wrap">{m.content}</p>
+                      )
                     ) : (
                       <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-muted/50 prose-pre:border prose-pre:border-border/50">
                         {m.role === 'assistant' && m.chunks && m.chunks.length > 0 ? (
