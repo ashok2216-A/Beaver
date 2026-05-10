@@ -274,39 +274,102 @@ def _build_agent(
     # ── Endpoint catalogue for the instruction ───────────────────────
     # We avoid { } because ADK 1.31.0 aggressively tries to resolve them as context variables.
     # We use :placeholder style which Gemini understands natively.
-    ep_catalogue = "\n".join(
-        f"  [{ep['method']}] {ep['path'].replace('{', ':').replace('}', '')}  —  {ep.get('summary') or ep.get('description', '')}"
-        for ep in endpoints
-    )
+    # CRITICAL: We now include the full parameter list for each endpoint so the agent knows exactly what to ask for.
+    def flatten_parameters(ep: dict) -> list[dict]:
+        all_params = list(ep.get("parameters", []))
+        
+        def process_schema(schema: dict, required_list: list[str] = None):
+            if not isinstance(schema, dict): return
+            s_type = schema.get("type", "object")
+            if s_type == "object":
+                props = schema.get("properties", {})
+                reqs = schema.get("required", [])
+                for p_name, p_schema in props.items():
+                    if p_schema.get("type") == "object":
+                        process_schema(p_schema, reqs)
+                    else:
+                        # Avoid duplicates from 'parameters' list
+                        if not any(p.get("name") == p_name for p in all_params):
+                            all_params.append({
+                                "name": p_name,
+                                "type": p_schema.get("type", "string"),
+                                "required": p_name in reqs,
+                                "description": p_schema.get("description", ""),
+                                "enum": p_schema.get("enum"),
+                                "default": p_schema.get("default")
+                            })
+            elif s_type == "array":
+                # For arrays, we just note the field exists
+                pass
+
+        rb = ep.get("request_body")
+        if rb:
+            process_schema(rb)
+        return all_params
+
+    cat_items = []
+    for ep in endpoints:
+        params = flatten_parameters(ep)
+        param_str = ""
+        if params:
+            param_details = []
+            for p in params:
+                if not isinstance(p, dict) or "name" not in p:
+                    continue
+                p_name = p["name"]
+                p_type = p.get("type", "string")
+                p_req = "REQUIRED" if p.get("required") else "optional"
+                p_desc = f" ({p['description']})" if p.get("description") else ""
+                
+                # Include Enums if available
+                p_enum = f", options: {p['enum']}" if p.get("enum") else ""
+                # Include Default if available
+                p_default = f", default: {p['default']}" if p.get("default") is not None else ""
+                
+                param_details.append(f"{p_name} [{p_type}, {p_req}{p_enum}{p_default}]{p_desc}")
+            
+            param_str = "\n      Parameters: " + " | ".join(param_details)
+        
+        item = f"  [{ep['method']}] {ep['path'].replace('{', ':').replace('}', '')}  —  {ep.get('summary') or ep.get('description', '')}{param_str}"
+        cat_items.append(item)
+    
+    ep_catalogue = "\n".join(cat_items)
 
     # ── A2UI Input Form Protocol ─────────────────────────────────────────
     # When the agent needs inputs from the user, it should embed an A2UI
     # JSON block in its response so the frontend can render an interactive form.
     a2ui_instruction = (
         "\n\nA2UI INPUT FORM PROTOCOL:\n"
-        "When you need specific inputs from the user to complete a request "
-        "(e.g. missing required parameters, confirmation details, search criteria), "
-        "you MUST respond with an interactive input form using the A2UI format.\n\n"
-        "CRITICAL: Always wrap the A2UI JSON in a fenced code block with the 'a2ui' language identifier. "
-        "Failure to do this will result in the user seeing raw JSON text instead of a form.\n\n"
-        "Example:\n"
+        "When you need specific inputs from the user (e.g. missing required parameters), "
+        "you MUST respond with an interactive input form.\n\n"
+        "CRITICAL: YOUR RESPONSE MUST CONTAIN A FENCED CODE BLOCK WITH THE 'a2ui' LANGUAGE IDENTIFIER.\n"
+        "CRITICAL: THE JSON MUST START WITH THE 'a2ui' WRAPPER KEY.\n\n"
+        "FORM TEMPLATE (You MUST convert this YAML structure into standard JSON with { } and \" \" in your response):\n"
         "```a2ui\n"
-        '{"a2ui": {"component": "form", "title": "Index Details", "children": [{"component": "textfield", "key": "dim", "label": "Dimension"}]}}\n'
+        "a2ui:\n"
+        "  component: form\n"
+        "  title: [Title of the form]\n"
+        "  children:\n"
+        "    - component: [type]\n"
+        "      key: [parameter_name]\n"
+        "      label: [Label]\n"
+        "      required: true\n"
         "```\n\n"
-        "Field component types you can use:\n"
-        '  {"component": "textfield", "key": "<unique_key>", "label": "<Label>", "placeholder": "<hint>", "required": true}\n'
-        '  {"component": "number", "key": "<key>", "label": "<Label>", "min": 0, "max": 1000}\n'
-        '  {"component": "choicepicker", "key": "<key>", "label": "<Label>", "options": ["A", "B", "C"], "multi": false}\n'
-        '  {"component": "checkbox", "key": "<key>", "label": "<Label>"}\n'
-        '  {"component": "slider", "key": "<key>", "label": "<Label>", "min": 0, "max": 100, "value": 50}\n'
-        '  {"component": "datetime", "key": "<key>", "label": "<Label>", "type": "date"}\n\n'
+        "Available Field Components:\n"
+        "- textfield: key, label, placeholder, required\n"
+        "- number: key, label, min, max, value\n"
+        "- choicepicker: key, label, options (list), multi (boolean)\n"
+        "- checkbox: key, label\n"
+        "- slider: key, label, min, max, value\n"
+        "- datetime: key, label, type (date/datetime)\n\n"
         "Rules:\n"
-        "- Use field keys that match the API parameter names EXACTLY.\n"
-        "- If the API requires nested JSON objects (like Pinecone's 'spec' parameter), use flat keys in the form (e.g., 'cloud', 'region') and construct the properly nested JSON payload yourself before calling the API.\n"
-        "- DO NOT repeatedly ask for the same configuration. If an endpoint call fails due to missing or invalid parameters, explicitly explain what went wrong instead of just showing the form again.\n"
-        "- After the A2UI block, you MAY add a short explanatory text, but keep it brief.\n"
-        "- NEVER output raw JSON without the ```a2ui ... ``` markers.\n"
-        "- Only use A2UI when you genuinely need input from the user."
+        "- WRAPPER: Your JSON must be wrapped in an 'a2ui' key: {\"a2ui\": {\"component\": \"form\", ...}}\n"
+        "- CODE BLOCK: You MUST use ```a2ui [JSON] ``` markers. Failure to do this will result in rendering failure.\n"
+        "- COMPLETENESS (CRITICAL): Include ALL required parameters from the API spec (e.g., 'dimension', 'name'). Missing required fields is unacceptable.\n"
+        "- EXHAUSTIVENESS: Include relevant optional parameters (e.g., 'pod_type', 'replicas', 'cloud', 'region') for full control.\n"
+        "- NO AD-HOC FIELDS: NEVER invent fields that are not in the tool metadata. DO NOT add UI-only toggles like 'Wait for Index to be Ready'.\n"
+        "- NESTING: For nested API objects (like Pinecone's 'spec'), use flat keys in the form and construct the nested JSON yourself for the tool call.\n"
+        "- After the A2UI block, you may add a very brief explanatory sentence."
     )
 
     base_instruction = (
@@ -336,8 +399,9 @@ def _build_agent(
     )
 
     # ADK's regex {+[^{}]*}+ resolves ANY braces as context variables.
-    # Doubling braces does NOT help. Convert all {var} → :var instead.
-    instruction = re.sub(r'\{([^{}]*)\}', r':\1', instruction)
+    # Doubling braces does NOT help. Since we have removed braces from our instructions,
+    # we no longer need the destructive replacement logic.
+    pass
 
     safe_name = "".join(
         c if c.isalnum() or c == "_" else "_"

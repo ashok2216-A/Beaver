@@ -27,68 +27,79 @@ const STYLES = {
   form: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: '14px',
-    padding: '16px 18px',
-    borderRadius: '14px',
-    background: 'hsl(var(--muted) / 0.4)',
-    border: '1px solid hsl(var(--border))',
+    gap: '16px',
+    padding: '20px',
+    borderRadius: '20px',
+    background: 'white',
+    border: '1px solid #e2e8f0',
     width: '100%',
+    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)',
+    fontFamily: 'system-ui, -apple-system, sans-serif',
   },
   formTitle: {
-    fontSize: '13px',
-    fontWeight: 700,
-    color: 'hsl(var(--foreground))',
+    fontSize: '15px',
+    fontWeight: 800,
+    color: '#0f172a',
     marginBottom: '2px',
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
+    gap: '10px',
+    letterSpacing: '-0.025em',
   },
   formSubtitle: {
-    fontSize: '11px',
-    color: 'hsl(var(--muted-foreground))',
+    fontSize: '12px',
+    color: '#64748b',
     marginBottom: '4px',
+    fontWeight: 500,
   },
   fieldGroup: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: '5px',
+    gap: '8px',
+    padding: '12px',
+    background: '#f8fafc',
+    borderRadius: '16px',
+    border: '1px solid #f1f5f9',
   },
   label: {
-    fontSize: '11px',
-    fontWeight: 600,
-    color: 'hsl(var(--muted-foreground))',
+    fontSize: '10px',
+    fontWeight: 700,
+    color: '#475569',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.05em',
   },
   requiredStar: {
-    color: 'hsl(var(--destructive))',
-    marginLeft: '2px',
+    color: '#ef4444',
+    marginLeft: '3px',
   },
   input: {
     width: '100%',
-    padding: '8px 12px',
+    padding: '10px 14px',
     borderRadius: '10px',
-    border: '1px solid hsl(var(--border))',
-    background: 'hsl(var(--background) / 0.6)',
-    color: 'hsl(var(--foreground))',
+    border: '1.5px solid #cbd5e1',
+    background: 'white',
+    color: '#1e293b',
     fontSize: '13px',
+    fontWeight: 500,
     outline: 'none',
     boxSizing: 'border-box' as const,
-    transition: 'border-color 0.15s, box-shadow 0.15s',
+    transition: 'all 0.2s ease',
   },
   textarea: {
     width: '100%',
-    padding: '8px 12px',
+    padding: '10px 14px',
     borderRadius: '10px',
-    border: '1px solid hsl(var(--border))',
-    background: 'hsl(var(--background) / 0.6)',
-    color: 'hsl(var(--foreground))',
+    border: '1.5px solid #cbd5e1',
+    background: 'white',
+    color: '#1e293b',
     fontSize: '13px',
+    fontWeight: 500,
     outline: 'none',
     resize: 'vertical' as const,
     minHeight: '80px',
     boxSizing: 'border-box' as const,
     fontFamily: 'inherit',
+    transition: 'all 0.2s ease',
   },
   choiceOptions: {
     display: 'flex',
@@ -96,60 +107,72 @@ const STYLES = {
     gap: '6px',
   },
   choiceBtn: (selected: boolean) => ({
-    padding: '5px 14px',
-    borderRadius: '20px',
-    border: `1px solid ${selected ? 'hsl(var(--primary))' : 'hsl(var(--border))'}`,
-    background: selected ? 'hsl(var(--primary) / 0.15)' : 'hsl(var(--background) / 0.5)',
-    color: selected ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
-    fontSize: '12px',
-    fontWeight: selected ? 700 : 400,
+    padding: '6px 14px',
+    borderRadius: '8px',
+    border: `2px solid ${selected ? '#0f172a' : '#e2e8f0'}`,
+    background: selected ? '#0f172a' : 'white',
+    color: selected ? 'white' : '#475569',
+    fontSize: '11px',
+    fontWeight: 700,
     cursor: 'pointer',
-    transition: 'all 0.15s',
+    transition: 'all 0.2s ease',
   }),
   submitBtn: {
-    padding: '9px 20px',
-    borderRadius: '10px',
+    padding: '12px 24px',
+    borderRadius: '12px',
     border: 'none',
-    background: 'hsl(var(--primary))',
-    color: 'hsl(var(--primary-foreground))',
-    fontSize: '12px',
+    background: '#0f172a',
+    color: 'white',
+    fontSize: '13px',
     fontWeight: 700,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
-    alignSelf: 'flex-start' as const,
-    transition: 'opacity 0.15s, transform 0.1s',
+    justifyContent: 'center',
+    gap: '10px',
+    alignSelf: 'stretch' as const,
+    transition: 'all 0.2s ease',
+    boxShadow: '0 4px 6px -1px rgba(15, 23, 42, 0.2)',
+    marginTop: '4px',
   },
   checkboxRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '10px',
     cursor: 'pointer',
+    padding: '12px',
+    borderRadius: '16px',
+    background: '#f8fafc',
+    border: '1px solid #f1f5f9',
+    transition: 'all 0.2s ease',
   },
   checkboxBox: (checked: boolean) => ({
-    width: '18px',
-    height: '18px',
-    borderRadius: '5px',
-    border: `2px solid ${checked ? 'hsl(var(--primary))' : 'hsl(var(--border))'}`,
-    background: checked ? 'hsl(var(--primary))' : 'transparent',
+    width: '20px',
+    height: '20px',
+    borderRadius: '6px',
+    border: `2px solid ${checked ? '#0f172a' : '#cbd5e1'}`,
+    background: checked ? '#0f172a' : 'white',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-    transition: 'all 0.15s',
-    color: 'hsl(var(--primary-foreground))',
+    transition: 'all 0.2s ease',
+    color: 'white',
   }),
   sliderRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
+    gap: '12px',
+    padding: '12px',
+    background: '#f8fafc',
+    borderRadius: '16px',
+    border: '1px solid #f1f5f9',
   },
   sliderVal: {
-    fontSize: '12px',
-    fontWeight: 700,
-    color: 'hsl(var(--primary))',
-    minWidth: '30px',
+    fontSize: '13px',
+    fontWeight: 800,
+    color: '#0f172a',
+    minWidth: '35px',
     textAlign: 'center' as const,
   },
 }
@@ -453,29 +476,29 @@ export function A2InputForm({ data, onSubmit }: A2InputFormProps) {
   const renderField = (field: A2UIField, idx: number) => {
     const key = field.key || `field_${idx}`
     const comp = (field.component || '').toLowerCase()
-    const commonProps = { key, label: field.label, required: field.required, fieldKey: key, onChange: handleFieldChange }
+    const commonProps = { label: field.label, required: field.required, fieldKey: key, onChange: handleFieldChange }
 
     switch (comp) {
       case 'textfield':
       case 'input':
       case 'text':
-        return <A2TextField {...commonProps} placeholder={field.placeholder} multiline={field.multiline} value={String(field.value ?? '')} />
+        return <A2TextField key={key} {...commonProps} placeholder={field.placeholder} multiline={field.multiline} value={String(field.value ?? '')} />
       case 'number':
       case 'numberfield':
-        return <A2NumberField {...commonProps} placeholder={field.placeholder} value={field.value as number} min={field.min} max={field.max} />
+        return <A2NumberField key={key} {...commonProps} placeholder={field.placeholder} value={field.value as number} min={field.min} max={field.max} />
       case 'choicepicker':
       case 'select':
       case 'choice':
-        return <A2ChoicePicker {...commonProps} options={field.options} multi={field.multi} />
+        return <A2ChoicePicker key={key} {...commonProps} options={field.options} multi={field.multi} />
       case 'checkbox':
       case 'check':
-        return <A2CheckBox {...commonProps} checked={Boolean(field.value)} />
+        return <A2CheckBox key={key} {...commonProps} checked={Boolean(field.value)} />
       case 'slider':
-        return <A2Slider {...commonProps} min={field.min} max={field.max} value={field.value as number} step={field.step} />
+        return <A2Slider key={key} {...commonProps} min={field.min} max={field.max} value={field.value as number} step={field.step} />
       case 'datetime':
       case 'datetimeinput':
       case 'date':
-        return <A2DateTimeInput {...commonProps} type={(field.type as 'date' | 'datetime-local' | 'time') || 'date'} />
+        return <A2DateTimeInput key={key} {...commonProps} type={(field.type as 'date' | 'datetime-local' | 'time') || 'date'} />
       default:
         return null
     }
