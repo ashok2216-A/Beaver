@@ -135,7 +135,7 @@ export default function AnalyticsPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {statItems.map((item, i) => (
-          <Card key={i} className="rounded-2xl bg-card shadow-sm border-white/5 overflow-hidden">
+          <Card key={i} className="rounded-2xl bg-white/40 backdrop-blur-xl shadow-sm border border-white/50 overflow-hidden group transition-all duration-300">
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-4">
                 <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", item.bg)}>
@@ -161,7 +161,7 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2 rounded-3xl bg-card border-white/5 overflow-hidden shadow-2xl">
+        <Card className="lg:col-span-2 rounded-3xl bg-white/40 backdrop-blur-xl border border-white/50 overflow-hidden shadow-2xl">
           <CardHeader className="p-6 pb-2">
             <CardTitle className="text-lg font-bold">Request Velocity</CardTitle>
             <CardDescription className="text-xs">Volume of AI agent tool calls over the last 30 days.</CardDescription>
@@ -232,7 +232,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl bg-card border-white/5 overflow-hidden shadow-2xl">
+        <Card className="rounded-3xl bg-white/40 backdrop-blur-xl border border-white/50 overflow-hidden shadow-2xl">
           <CardHeader className="p-6 pb-2">
             <CardTitle className="text-lg font-bold">Health Snapshot</CardTitle>
             <CardDescription className="text-xs">System status and reliability.</CardDescription>
@@ -244,7 +244,7 @@ export default function AnalyticsPage() {
                   { label: "LLM Success", value: healthStats?.llm_success ?? "100%", status: "success" },
                   { label: "Latency", value: healthStats?.latency_ms ?? "0ms", status: "warning" },
                 ].map((metric, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-white/5">
+                  <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/20 border border-white/30 transition-colors">
                     <span className="text-xs font-medium text-muted-foreground">{metric.label}</span>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-xs">{metric.value}</span>

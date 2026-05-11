@@ -119,7 +119,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <Card>
+      <Card className="rounded-3xl bg-white/40 backdrop-blur-xl border border-white/50 shadow-sm overflow-hidden">
         <CardHeader>
           <CardTitle>Profile</CardTitle>
           <CardDescription>
@@ -133,7 +133,7 @@ export default function SettingsPage() {
               value={user?.primaryEmailAddress?.emailAddress || ''} 
               readOnly
               disabled 
-              className="bg-muted/50"
+              className="bg-white/40 border-white/50"
             />
           </div>
           <div className="space-y-2">
@@ -142,13 +142,13 @@ export default function SettingsPage() {
               value={user?.fullName || ''} 
               readOnly
               placeholder="Your name"
-              className="bg-muted/50"
+              className="bg-white/40 border-white/50"
             />
           </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-3xl bg-white/40 backdrop-blur-xl border border-white/50 shadow-sm overflow-hidden">
         <CardHeader>
           <CardTitle>Notifications</CardTitle>
           <CardDescription>
@@ -156,7 +156,7 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-white/20 border border-white/30 transition-all">
             <div className="space-y-0.5">
               <Label>Email notifications</Label>
               <p className="text-sm text-muted-foreground">
@@ -169,7 +169,7 @@ export default function SettingsPage() {
               disabled={loading}
             />
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-white/20 border border-white/30 transition-all">
             <div className="space-y-0.5">
               <Label>Weekly reports</Label>
               <p className="text-sm text-muted-foreground">
@@ -185,9 +185,9 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-destructive/50">
+      <Card className="rounded-3xl bg-rose-500/5 backdrop-blur-xl border-rose-500/20 shadow-sm overflow-hidden">
         <CardHeader>
-          <CardTitle className="text-destructive">Danger Zone</CardTitle>
+          <CardTitle className="text-rose-600">Danger Zone</CardTitle>
           <CardDescription>
             Irreversible actions. All your data will be permanently wiped.
           </CardDescription>
@@ -195,31 +195,31 @@ export default function SettingsPage() {
         <CardContent>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive">Delete Account</Button>
+              <Button variant="destructive" className="rounded-xl shadow-lg shadow-rose-500/20">Delete Account</Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="rounded-3xl bg-white/60 backdrop-blur-2xl border-white/50 shadow-2xl">
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
+                <AlertDialogTitle className="text-2xl font-bold text-rose-600">Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription className="text-sm">
                   This action cannot be undone. This will permanently delete your
                   account and remove all your data from our servers.
                 </AlertDialogDescription>
-                <div className="mt-4 space-y-2">
-                  <Label className="text-foreground">Type <b>DELETE</b> to confirm:</Label>
+                <div className="mt-6 space-y-3">
+                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Type <b className="text-foreground">DELETE</b> to confirm:</Label>
                   <Input 
                     placeholder="DELETE" 
                     value={deleteConfirmation}
                     onChange={(e) => setDeleteConfirmation(e.target.value)}
-                    className="border-destructive/50 focus-visible:ring-destructive"
+                    className="h-12 rounded-xl bg-white/40 border-rose-500/20 focus-visible:ring-rose-500"
                   />
                 </div>
               </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setDeleteConfirmation("")}>Cancel</AlertDialogCancel>
+              <AlertDialogFooter className="mt-4">
+                <AlertDialogCancel onClick={() => setDeleteConfirmation("")} className="rounded-xl border-white/50">Cancel</AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={handleDeleteAccount}
                   disabled={deleteConfirmation !== "DELETE" || isDeleting}
-                  className="bg-destructive hover:bg-destructive/90"
+                  className="rounded-xl bg-rose-500 hover:bg-rose-600 font-bold shadow-lg shadow-rose-500/20"
                 >
                   {isDeleting ? "Deleting..." : "Delete Account"}
                 </AlertDialogAction>

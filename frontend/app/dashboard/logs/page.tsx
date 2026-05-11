@@ -189,32 +189,42 @@ export default function LogsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading}>
+          <Button 
+            className="rounded-xl bg-slate-950 text-white hover:bg-slate-900 font-bold px-4 shadow-lg transition-all" 
+            size="sm" 
+            onClick={fetchLogs} 
+            disabled={loading}
+          >
             <RefreshCcw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || filteredLogs.length === 0}>
+          <Button 
+            className="rounded-xl bg-slate-950 text-white hover:bg-slate-900 font-bold px-4 shadow-lg transition-all" 
+            size="sm" 
+            onClick={handleExport} 
+            disabled={loading || filteredLogs.length === 0}
+          >
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
         </div>
       </div>
 
-      <Card className="border-border/50 bg-card shadow-sm">
+      <Card className="border-white/50 bg-white/40 backdrop-blur-xl shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search by input, path, or agent name..."
-                className="pl-9 bg-background border-border/50 focus:ring-primary/20"
+                className="pl-9 bg-white/20 backdrop-blur-sm border-white/50 focus:ring-primary/20 focus:bg-white/40 transition-all"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <div className="flex items-center gap-2">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px] bg-background border-border/50">
+                <SelectTrigger className="w-[150px] bg-white/20 backdrop-blur-sm border-white/50 focus:ring-primary/20 focus:bg-white/40 transition-all">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>

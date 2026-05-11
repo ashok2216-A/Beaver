@@ -76,7 +76,7 @@ export default function BillingPage() {
       <div className="space-y-12">
         <section>
           <div className="mb-8 text-center">
-            <span className="px-3 py-1 rounded-full bg-accent/50 border border-border text-xs font-medium text-muted-foreground inline-flex items-center gap-2 mb-4">
+            <span className="px-3 py-1 rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-xs font-medium text-muted-foreground inline-flex items-center gap-2 mb-4">
               <ShieldCheck className="w-3 h-3 text-emerald-500" />
               Secure payments powered by Stripe
             </span>
@@ -86,7 +86,7 @@ export default function BillingPage() {
         </section>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          <div className="p-6 rounded-xl border border-border bg-card shadow-sm">
+          <div className="p-6 rounded-2xl border border-white/50 bg-white/40 backdrop-blur-xl shadow-sm">
             <History className="w-5 h-5 text-muted-foreground mb-4" />
             <h4 className="text-foreground font-medium mb-2">Billing History</h4>
             <p className="text-muted-foreground text-sm mb-4">Access all your past invoices and payment receipts.</p>
@@ -99,7 +99,7 @@ export default function BillingPage() {
             </Button>
           </div>
           
-          <div className="p-6 rounded-xl border border-border bg-card shadow-sm">
+          <div className="p-6 rounded-2xl border border-white/50 bg-white/40 backdrop-blur-xl shadow-sm">
             <CreditCard className="w-5 h-5 text-muted-foreground mb-4" />
             <h4 className="text-foreground font-medium mb-2">Payment Methods</h4>
             <p className="text-muted-foreground text-sm mb-4">Update your card details or add a new payment method.</p>
@@ -111,8 +111,8 @@ export default function BillingPage() {
               Update Payment <ExternalLink className="w-3 h-3" />
             </Button>
           </div>
-
-          <div className="p-6 rounded-xl border border-border bg-card shadow-sm">
+ 
+          <div className="p-6 rounded-2xl border border-white/50 bg-white/40 backdrop-blur-xl shadow-sm">
             <ShieldCheck className="w-5 h-5 text-muted-foreground mb-4" />
             <h4 className="text-foreground font-medium mb-2">Secure Billing</h4>
             <p className="text-muted-foreground text-sm mb-4">Your data is secured with AES-256 and SSL encryption.</p>
