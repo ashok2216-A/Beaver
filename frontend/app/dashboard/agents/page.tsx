@@ -239,7 +239,7 @@ function AgentsContent() {
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl">
+                    <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-2xl bg-white/60 backdrop-blur-2xl border-white/50 p-1.5 animate-in fade-in zoom-in-95 duration-200">
                       <DropdownMenuLabel>Agent Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 

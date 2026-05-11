@@ -190,8 +190,8 @@ axios.post(url, data, { headers })
 
       {/* Status Banner */}
       <Card className={cn(
-        "rounded-[2.5rem] border-none p-6 shadow-sm overflow-hidden relative group transition-all duration-500",
-        agent.status === 'live' ? "bg-emerald-500/5" : "bg-primary/5"
+        "rounded-[2.5rem] border border-white/50 p-6 shadow-2xl overflow-hidden relative group transition-all duration-500 backdrop-blur-xl",
+        agent.status === 'live' ? "bg-emerald-500/10" : "bg-white/40"
       )}>
         <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
           <Rocket className={cn("w-24 h-24", agent.status === 'live' ? "text-emerald-500" : "text-primary")} />
@@ -246,7 +246,7 @@ axios.post(url, data, { headers })
 
       <div className="grid md:grid-cols-2 gap-8">
         {/* API Endpoint */}
-        <Card className="rounded-3xl border-none bg-card shadow-sm overflow-hidden">
+        <Card className="rounded-3xl border border-white/50 bg-white/40 backdrop-blur-xl shadow-xl overflow-hidden">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2 text-primary mb-2">
               <Globe className="w-5 h-5" />
@@ -305,9 +305,9 @@ axios.post(url, data, { headers })
         </Card>
 
         {/* Chat Widget */}
-        <Card className="rounded-3xl border-none bg-card shadow-sm overflow-hidden relative group/widget">
+        <Card className="rounded-3xl border border-white/50 bg-white/40 backdrop-blur-xl shadow-xl overflow-hidden relative group/widget">
           {/* Coming Soon Overlay */}
-          <div className="absolute inset-0 bg-background/60 backdrop-blur-[4px] z-20 flex flex-col items-center justify-center transition-all duration-500">
+          <div className="absolute inset-0 bg-white/40 backdrop-blur-[6px] z-20 flex flex-col items-center justify-center transition-all duration-500">
             <div className="bg-card border border-border shadow-2xl rounded-3xl p-6 flex flex-col items-center gap-3 animate-in fade-in zoom-in-95 duration-500">
               <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center shadow-inner">
                 <Lock className="w-6 h-6 text-muted-foreground" />
@@ -366,7 +366,7 @@ axios.post(url, data, { headers })
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
-        <Card className="rounded-3xl border border-border bg-transparent p-6 hover:bg-card transition-colors group">
+        <Card className="rounded-3xl border border-white/50 bg-white/20 backdrop-blur-md p-6 hover:bg-white/40 transition-all group shadow-sm">
           <h4 className="font-bold mb-2">Documentation</h4>
           <p className="text-sm text-muted-foreground mb-4">Learn how to customize the chat widget theme and behavior.</p>
           <Button variant="link" className="p-0 h-auto font-bold text-primary" asChild>
@@ -375,7 +375,7 @@ axios.post(url, data, { headers })
             </Link>
           </Button>
         </Card>
-        <Card className="rounded-3xl border border-border bg-transparent p-6 hover:bg-card transition-colors group">
+        <Card className="rounded-3xl border border-white/50 bg-white/20 backdrop-blur-md p-6 hover:bg-white/40 transition-all group shadow-sm">
           <h4 className="font-bold mb-2">API Reference</h4>
           <p className="text-sm text-muted-foreground mb-4">Full documentation for our REST API and SDKs.</p>
           <Button variant="link" className="p-0 h-auto font-bold text-primary" asChild>
@@ -384,7 +384,7 @@ axios.post(url, data, { headers })
             </Link>
           </Button>
         </Card>
-        <Card className="rounded-3xl border border-border bg-transparent p-6 hover:bg-card transition-colors group">
+        <Card className="rounded-3xl border border-white/50 bg-white/20 backdrop-blur-md p-6 hover:bg-white/40 transition-all group shadow-sm">
           <h4 className="font-bold mb-2">Support</h4>
           <p className="text-sm text-muted-foreground mb-4">Need help scaling your agents? Reach out to our team.</p>
           <Button variant="link" className="p-0 h-auto font-bold text-primary" asChild>

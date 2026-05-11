@@ -135,13 +135,13 @@ export default function ApiKeysPage() {
                   value={newKeyName} 
                   onChange={e => setNewKeyName(e.target.value)} 
                   placeholder="e.g. Production Backend" 
-                  className="h-12 rounded-xl bg-muted/30 border-border focus:bg-background transition-all px-5"
+                  className="h-14 rounded-2xl border-white/50 bg-white/40 px-6 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]"
                 />
               </div>
               <Button 
                 type="submit" 
                 disabled={isCreating || !newKeyName.trim()}
-                className="h-12 px-8 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-bold transition-all shadow-sm"
+                className="h-14 px-8 rounded-2xl bg-foreground text-background hover:bg-foreground/90 font-bold transition-all shadow-sm"
               >
                 {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                 Generate Key

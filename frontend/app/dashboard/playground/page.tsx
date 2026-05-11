@@ -579,26 +579,26 @@ export default function PlaygroundPage() {
     </div>
 
       {/* Floating ChatGPT Action Pill bar */}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-10 animate-in slide-in-from-bottom-4 duration-300">
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-10 animate-in slide-in-from-bottom-4 duration-300">
         <form
           onSubmit={(e) => {
             e.preventDefault()
             handleSend()
           }}
-          className="relative flex items-center bg-white/40 backdrop-blur-2xl rounded-2xl border border-white/50 p-2 pr-3 focus-within:border-primary/40 focus-within:shadow-[0_0_20px_rgba(var(--primary),0.1)] transition-all duration-300 shadow-2xl"
+          className="relative flex items-center p-2 pr-3 transition-all duration-300"
         >
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={isOrchestratorMode ? "Message Orchestrator Engine..." : (selectedAgent ? `Message ${selectedAgent.name}...` : "Select an agent context.")}
             disabled={isLoading || (!isOrchestratorMode && !selectedAgent)}
-            className="w-full h-11 bg-transparent px-4 text-sm outline-none placeholder-muted-foreground/60 focus:outline-none"
+            className="w-full h-12 bg-white/40 backdrop-blur-xl border border-white/50 rounded-2xl px-4 text-sm outline-none placeholder-muted-foreground/60 focus:outline-none shadow-sm"
           />
           <Button 
             type="submit" 
             disabled={!input.trim() || isLoading || (!isOrchestratorMode && !selectedAgent)}
             size="icon"
-            className="h-9 w-9 rounded-xl shadow-glow bg-primary hover:bg-primary/90 transition-all ml-2"
+            className="h-10 w-10 rounded-xl shadow-glow bg-primary hover:bg-primary/90 transition-all ml-2 absolute right-5"
           >
             <ArrowRight className="h-4 w-4 text-primary-foreground" />
           </Button>
