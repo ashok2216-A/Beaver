@@ -287,15 +287,15 @@ export default function NewAgentPage() {
 
       {/* Tab Switcher */}
       <div className="flex flex-col items-center">
-        <div className="inline-flex rounded-2xl border border-border bg-card p-1.5 shadow-sm">
+        <div className="inline-flex rounded-2xl border border-white/50 bg-white/40 backdrop-blur-xl p-1.5 shadow-xl">
           <TabButton active={tab === "templates"} onClick={() => setTab("templates")} icon={<Sparkles className="h-4 w-4 text-primary" />} label="Templates" />
           <TabButton active={tab === "url"} onClick={() => setTab("url")} icon={<Search className="h-4 w-4 text-primary" />} label="Discover Spec" />
           <TabButton active={tab === "manual"} onClick={() => setTab("manual")} icon={<Globe className="h-4 w-4 text-emerald-500" />} label="Manual / Upload" />
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card shadow-xl overflow-hidden">
-        <div className="p-8">
+      <div className="rounded-3xl border border-white/50 bg-white/40 backdrop-blur-xl shadow-2xl overflow-hidden">
+        <div className="p-10">
           {tab === "templates" ? (
             <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 max-h-[60vh] overflow-y-auto pr-4 custom-scrollbar">
               {isLoadingTemplates ? (
@@ -324,16 +324,16 @@ export default function NewAgentPage() {
                         <button
                           key={t.id}
                           onClick={() => handleTemplateClick(t)}
-                          className="group relative flex flex-col items-center gap-3 rounded-2xl border border-border bg-background p-4 text-center transition-all hover:border-primary/40 hover:shadow-glow-sm hover:-translate-y-1"
+                          className="group relative flex flex-col items-center gap-3 rounded-2xl border border-white/40 bg-white/20 p-4 text-center transition-all hover:bg-white/40 hover:border-primary/40 hover:shadow-glow-sm hover:-translate-y-1 backdrop-blur-sm"
                         >
-                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/50 p-2 transition-colors group-hover:bg-primary/10 overflow-hidden">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/40 p-2 shadow-inner transition-colors group-hover:bg-primary/10 overflow-hidden">
                             <img 
                               src={`https://www.google.com/s2/favicons?sz=128&domain=${t.domain}`} 
                               alt={t.name}
                               className="h-full w-full object-contain transition-all duration-300 scale-90 group-hover:scale-110"
                             />
                           </div>
-                          <p className="text-xs font-bold leading-tight truncate w-full">{t.name}</p>
+                          <p className="text-xs font-bold leading-tight truncate w-full text-foreground/80">{t.name}</p>
                         </button>
                       ))}
                     </div>
@@ -352,7 +352,7 @@ export default function NewAgentPage() {
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="Paste documentation link (e.g. developers.notion.com)"
-                    className="h-14 w-full rounded-2xl border border-border bg-background px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all"
+                    className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]"
                   />
                   {isPreviewing && (
                     <div className="absolute right-4 top-4">
@@ -375,7 +375,7 @@ export default function NewAgentPage() {
                     value={agentName}
                     onChange={(e) => setAgentName(e.target.value)}
                     placeholder="e.g. My Custom API"
-                    className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary/50 transition-all"
+                    className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
                   />
                 </div>
                 <div className="space-y-2">
@@ -384,7 +384,7 @@ export default function NewAgentPage() {
                     value={baseUrl}
                     onChange={(e) => setBaseUrl(e.target.value)}
                     placeholder="https://api.example.com"
-                    className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary/50 transition-all"
+                    className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
                   />
                 </div>
               </div>
@@ -400,7 +400,7 @@ export default function NewAgentPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   maxLength={150}
                   placeholder="What does this agent do?"
-                  className="w-full rounded-xl border border-border bg-background p-4 text-sm outline-none focus:border-primary/50 transition-all min-h-[80px]"
+                  className="w-full rounded-2xl border border-white/50 bg-white/40 p-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner min-h-[100px]"
                 />
               </div>
 
@@ -413,8 +413,8 @@ export default function NewAgentPage() {
                     onDragLeave={() => setDragOver(false)}
                     onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
                     className={cn(
-                      "relative flex-1 min-h-[200px] rounded-2xl border-2 border-dashed p-6 text-center transition-all flex flex-col items-center justify-center",
-                      dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-primary/5"
+                      "relative flex-1 min-h-[220px] rounded-[2rem] border-2 border-dashed p-6 text-center transition-all flex flex-col items-center justify-center",
+                      dragOver ? "border-primary bg-primary/10 shadow-glow-sm" : "border-white/40 bg-white/20 hover:bg-white/40 hover:border-primary/40"
                     )}
                   >
                     <div className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-glow mb-3">
@@ -451,7 +451,7 @@ export default function NewAgentPage() {
                     value={apiSpec}
                     onChange={(e) => setApiSpec(e.target.value)}
                     placeholder='{"openapi": "3.0.0", ...}'
-                    className="flex-1 w-full rounded-2xl border border-border bg-background p-4 text-xs outline-none focus:border-primary/50 transition-all font-mono min-h-[200px]"
+                    className="flex-1 w-full rounded-[2rem] border border-white/50 bg-white/40 p-6 text-xs outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-mono min-h-[220px] shadow-inner"
                   />
                 </div>
               </div>
@@ -467,7 +467,7 @@ export default function NewAgentPage() {
                   <input
                     value={agentName}
                     onChange={(e) => setAgentName(e.target.value)}
-                    className="h-11 w-full rounded-xl border border-border bg-muted/30 px-4 text-sm outline-none focus:border-primary/50"
+                    className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
                   />
                 </div>
                 <div className="space-y-2">
@@ -476,9 +476,9 @@ export default function NewAgentPage() {
                     <input
                       value={baseUrl}
                       onChange={(e) => setBaseUrl(e.target.value)}
-                      className="h-11 w-full rounded-xl border border-border bg-muted/30 pl-10 pr-4 text-sm outline-none focus:border-primary/50"
+                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 pl-12 pr-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
                     />
-                    <Globe className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground" />
+                    <Globe className="absolute left-4 top-4.5 h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
               </div>
@@ -492,7 +492,7 @@ export default function NewAgentPage() {
                     <select 
                       value={authType}
                       onChange={(e) => setAuthType(e.target.value)}
-                      className="h-11 w-full rounded-xl border border-border bg-muted/30 px-4 text-sm outline-none focus:border-primary/50 appearance-none"
+                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 appearance-none shadow-inner transition-all"
                     >
                       <option value="none">No Auth</option>
                       <option value="bearer">Bearer Token</option>
@@ -505,7 +505,7 @@ export default function NewAgentPage() {
                       value={authHeader}
                       onChange={(e) => setAuthHeader(e.target.value)}
                       placeholder="Authorization"
-                      className="h-11 w-full rounded-xl border border-border bg-muted/30 px-4 text-sm outline-none focus:border-primary/50 font-mono"
+                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-mono shadow-inner"
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
@@ -515,7 +515,7 @@ export default function NewAgentPage() {
                       value={authSecret}
                       onChange={(e) => setAuthSecret(e.target.value)}
                       placeholder="sk-••••••••••••••••••••••••••••"
-                      className="h-11 w-full rounded-xl border border-border bg-muted/30 px-4 text-sm outline-none focus:border-primary/50 font-mono"
+                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-mono shadow-inner"
                     />
                   </div>
                 </div>
@@ -524,16 +524,16 @@ export default function NewAgentPage() {
           )}
 
           {generating && (
-            <div className="mt-10 transition-all animate-in fade-in zoom-in-95 bg-primary/5 rounded-3xl p-8 border border-primary/10">
+            <div className="mt-10 transition-all animate-in fade-in zoom-in-95 bg-slate-500/5 rounded-3xl p-8 border border-slate-200/50 backdrop-blur-sm">
               <div className="flex items-center justify-between text-sm mb-4">
-                <span className="font-bold flex items-center gap-3">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="font-bold flex items-center gap-3 text-slate-700">
+                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
                   Generating your agent engine…
                 </span>
-                <span className="font-mono text-primary font-bold">{progress}%</span>
+                <span className="font-mono text-slate-900 font-bold">{progress}%</span>
               </div>
-              <div className="h-2 w-full rounded-full bg-primary/10 overflow-hidden mb-6">
-                <div className="h-full bg-primary transition-all duration-300 shadow-[0_0_10px_rgba(var(--primary),0.5)]" style={{ width: `${progress}%` }} />
+              <div className="h-1.5 w-full rounded-full bg-slate-200/50 overflow-hidden mb-6">
+                <div className="h-full bg-slate-900 transition-all duration-300" style={{ width: `${progress}%` }} />
               </div>
               <ul className="grid grid-cols-2 gap-4">
                 <Step done={progress > 20} label="Parsing schema" />
@@ -598,8 +598,8 @@ const TabButton = ({ active, onClick, icon, label }: { active: boolean, onClick:
     className={cn(
       "inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-all whitespace-nowrap",
       active 
-        ? "bg-background shadow-md text-foreground scale-105" 
-        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+        ? "bg-white/60 shadow-xl text-primary scale-105 border border-white/50" 
+        : "text-muted-foreground hover:text-foreground hover:bg-white/20"
     )}
   >
     {icon} {label}

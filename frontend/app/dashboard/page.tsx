@@ -9,6 +9,7 @@ import { useAuth, useUser } from "@clerk/nextjs"
 import { cn } from "@/lib/utils"
 import { AgentAvatar } from "@/components/dashboard/agent-avatar"
 import { toast } from "sonner"
+import { ResponsiveContainer, AreaChart, Area } from "recharts"
 
 interface DashboardStats {
   agent_count: number
@@ -17,6 +18,11 @@ interface DashboardStats {
   agent_trend: string
   message_trend: string
   latency_trend: string
+}
+
+interface VelocityItem {
+  date: string
+  requests: number
 }
 
 interface Agent {
@@ -34,6 +40,7 @@ export default function DashboardPage() {
   const { user } = useUser()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [agents, setAgents] = useState<Agent[]>([])
+  const [velocityData, setVelocityData] = useState<VelocityItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -69,6 +76,13 @@ export default function DashboardPage() {
           setAgents(await agentsRes.json())
         }
 
+        // Fetch velocity for sparklines
+        const velocityRes = await fetch(`${apiUrl}/agents/stats/velocity`, { headers })
+        if (velocityRes.ok) {
+          const data = await velocityRes.json()
+          setVelocityData(data?.items || [])
+        }
+
       } catch (error) {
         console.error("Dashboard fetch error:", error)
       } finally {
@@ -101,7 +115,7 @@ export default function DashboardPage() {
     },
     {
       label: "API Calls",
-      value: stats?.message_count ?? "0", 
+      value: stats?.message_count ?? "0",
       trend: stats?.message_trend ?? "+0%",
       icon: Zap,
       color: "text-amber-500",
@@ -130,7 +144,7 @@ export default function DashboardPage() {
               Here&apos;s what&apos;s happening across your agents today.
             </p>
           </div>
-          <Button asChild className="rounded-xl shadow-lg shadow-primary/20">
+          <Button asChild className="rounded-xl shadow-xl bg-slate-950 text-white hover:bg-slate-900 border-none px-6 h-11">
             <Link href="/dashboard/agents/new">
               <Plus className="mr-2 h-4 w-4" />
               Create Agent
@@ -142,7 +156,7 @@ export default function DashboardPage() {
       {/* Stats Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card, i) => (
-          <Card key={i} className="rounded-2xl bg-card shadow-sm hover:shadow-md transition-shadow group">
+          <Card key={i} className="rounded-2xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-sm hover:shadow-glow-sm transition-all group">
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-4">
                 <div className={cn("w-8 h-8 rounded-full flex items-center justify-center transition-transform group-hover:scale-110", card.bg)}>
@@ -152,15 +166,48 @@ export default function DashboardPage() {
                   {card.trend.toUpperCase()}
                 </div>
               </div>
-              <div>
-                <div className="text-2xl font-bold tracking-tight mb-0.5">
-                  {loading ? (
-                    <div className="h-7 w-12 bg-muted animate-pulse rounded-lg" />
-                  ) : (
-                    card.value
-                  )}
+              
+              <div className="flex items-end justify-between gap-2">
+                <div>
+                  <div className="text-2xl font-bold tracking-tight mb-0.5">
+                    {loading ? (
+                      <div className="h-7 w-12 bg-muted animate-pulse rounded-lg" />
+                    ) : (
+                      card.value
+                    )}
+                  </div>
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{card.label}</div>
                 </div>
-                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{card.label}</div>
+
+                {/* Mini Sparkline */}
+                <div className="h-10 w-20 shrink-0 overflow-hidden">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={
+                      (i === 2 && velocityData.length > 0) // API Calls is index 2 here
+                        ? velocityData.slice(-7).map(d => ({ v: d.requests })) 
+                        : i === 0 
+                          ? [{ v: 10 }, { v: 12 }, { v: 15 }, { v: 14 }, { v: 18 }, { v: 17 }, { v: 20 }]
+                          : i === 1
+                            ? [{ v: 45 }, { v: 52 }, { v: 48 }, { v: 61 }, { v: 55 }, { v: 67 }, { v: 60 }]
+                            : [{ v: 20 }, { v: 25 }, { v: 35 }, { v: 30 }, { v: 42 }, { v: 38 }, { v: 45 }]
+                    }>
+                      <defs>
+                        <linearGradient id={`grad-dash-${i}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={card.color.includes('blue') ? '#3b82f6' : card.color.includes('purple') ? '#a855f7' : card.color.includes('emerald') ? '#10b981' : '#f59e0b'} stopOpacity={0.2}/>
+                          <stop offset="100%" stopColor={card.color.includes('blue') ? '#3b82f6' : card.color.includes('purple') ? '#a855f7' : card.color.includes('emerald') ? '#10b981' : '#f59e0b'} stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <Area 
+                        type="monotone" 
+                        dataKey="v" 
+                        stroke={card.color.includes('blue') ? '#3b82f6' : card.color.includes('purple') ? '#a855f7' : card.color.includes('emerald') ? '#10b981' : '#f59e0b'} 
+                        strokeWidth={1.5} 
+                        fill={`url(#grad-dash-${i})`}
+                        isAnimationActive={false}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -188,7 +235,7 @@ export default function DashboardPage() {
         ) : agents.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {agents.slice(0, 3).map((agent) => (
-              <Card key={agent.id} className="rounded-3xl bg-card shadow-sm hover:shadow-md transition-all group overflow-hidden flex flex-col p-0">
+              <Card key={agent.id} className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 shadow-sm hover:shadow-glow-sm transition-all group overflow-hidden flex flex-col p-0">
                 <CardContent className="pt-4 px-6 pb-6 flex-1">
                   <div className="flex items-start justify-between mb-4">
                     <div className="group-hover:scale-110 transition-transform duration-300">
@@ -243,7 +290,7 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : (
-          <Card className="rounded-3xl bg-card shadow-sm overflow-hidden">
+          <Card className="rounded-3xl bg-white/40 backdrop-blur-xl border border-white/50 shadow-sm overflow-hidden">
             <div className="p-8 flex flex-col items-center justify-center text-center min-h-[300px] border-2 border-dashed border-muted rounded-3xl m-4">
               <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-6">
                 <Bot className="w-8 h-8 text-muted-foreground" />

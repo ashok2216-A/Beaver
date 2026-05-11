@@ -559,7 +559,7 @@ export default function AgentBuilderPage() {
         {/* Left Panel: Endpoints List */}
         <aside 
           style={{ width: `${sidebarWidth}px` }} 
-          className="flex flex-col bg-card/30 shrink-0 h-full overflow-hidden select-none border-r border-border/50"
+          className="flex flex-col bg-card/30 backdrop-blur-xl shrink-0 h-full overflow-hidden select-none border-r border-border/30 relative z-10"
         >
           <div className="p-5 space-y-4 border-b border-border/50">
             <div className="flex justify-between items-center">
@@ -731,8 +731,8 @@ export default function AgentBuilderPage() {
         </div>
 
         {/* Center Panel: Chat Playground */}
-        <main className="flex-1 flex flex-col bg-muted/20 relative">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(var(--primary),0.03)_0,transparent_100%)] pointer-events-none" />
+        <main className="flex-1 flex flex-col bg-transparent relative z-0">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(var(--primary),0.02)_0,transparent_100%)] pointer-events-none" />
           
           <div className="flex-1 p-6 md:p-10 overflow-y-auto custom-scrollbar" ref={scrollRef}>
             <div className="max-w-3xl mx-auto space-y-8">
@@ -905,7 +905,7 @@ export default function AgentBuilderPage() {
         {/* Right Panel: Settings & Configuration */}
         <aside 
           style={{ width: `${settingsWidth}px` }} 
-          className="flex flex-col bg-card/30 shrink-0 h-full overflow-hidden select-none border-l border-border/50"
+          className="flex flex-col bg-card/30 backdrop-blur-xl shrink-0 h-full overflow-hidden select-none border-l border-border/30 relative z-10"
         >
           <div className="p-5 flex items-center justify-between border-b border-border/50">
             <div className="flex items-center gap-2">

@@ -85,7 +85,7 @@ export function DashboardHeader() {
   }, [])
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-border bg-card px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-border/20 bg-card/20 backdrop-blur-xl px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
       {/* Mobile menu */}
       <Sheet>
         <SheetTrigger asChild>
@@ -157,7 +157,7 @@ export function DashboardHeader() {
             value={globalSearch}
             onChange={(e) => setGlobalSearch(e.target.value)}
             placeholder="Search agents, logs..." 
-            className="pl-10 bg-muted/40 border-none rounded-xl h-10 focus-visible:ring-1 focus-visible:ring-primary/30"
+            className="pl-10 bg-white/40 border border-white/20 rounded-xl h-10 focus-visible:ring-1 focus-visible:ring-primary/30"
           />
         </form>
       </div>

@@ -169,7 +169,7 @@ function AgentsContent() {
         <Button className="rounded-xl font-bold shadow-glow" asChild>
           <Link href="/dashboard/agents/new">
             <Plus className="mr-2 h-4 w-4" />
-            Create New Agent
+            Create Agent
           </Link>
         </Button>
       </div>
@@ -179,7 +179,7 @@ function AgentsContent() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input 
             placeholder="Search agents..." 
-            className="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            className="w-full bg-white/40 backdrop-blur-xl border border-white/50 rounded-xl pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -202,7 +202,7 @@ function AgentsContent() {
       {loading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map(i => (
-            <Card key={i} className="rounded-3xl bg-card animate-pulse h-[240px]" />
+            <Card key={i} className="rounded-3xl bg-white/40 animate-pulse h-[240px] border-none" />
           ))}
         </div>
       ) : filteredAgents.length > 0 ? (
@@ -211,8 +211,8 @@ function AgentsContent() {
             <Card 
               key={agent.id} 
               className={cn(
-                "rounded-3xl bg-card shadow-sm hover:shadow-glow-sm transition-all duration-300 overflow-hidden group p-0 relative",
-                selectedIds.includes(agent.id) && "shadow-glow-sm bg-primary/5"
+                "rounded-3xl bg-white/40 backdrop-blur-xl border border-white/50 shadow-sm hover:shadow-glow-sm transition-all duration-300 overflow-hidden group p-0 relative",
+                selectedIds.includes(agent.id) && "shadow-glow-sm bg-primary/10 border-primary/30"
               )}
             >
               <button 
@@ -239,7 +239,7 @@ function AgentsContent() {
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl">
+                    <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-2xl bg-white/60 backdrop-blur-2xl border-white/50 p-1.5 animate-in fade-in zoom-in-95 duration-200">
                       <DropdownMenuLabel>Agent Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
@@ -334,7 +334,7 @@ function AgentsContent() {
           ))}
         </div>
       ) : (
-        <Card className="rounded-3xl bg-card shadow-sm overflow-hidden">
+        <Card className="rounded-3xl bg-white/40 backdrop-blur-xl border border-white/50 shadow-sm overflow-hidden">
           <div className="p-12 flex flex-col items-center justify-center text-center min-h-[400px]">
             <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-6">
               <Bot className="w-10 h-10 text-muted-foreground" />
@@ -354,8 +354,8 @@ function AgentsContent() {
       )}
 
       {editingAgent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 animate-in fade-in">
-          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/40 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md bg-white/60 backdrop-blur-2xl border border-white/50 rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
             <h3 className="text-lg font-bold">Edit Agent Profile</h3>
             <form onSubmit={async (e) => {
               e.preventDefault()
@@ -405,8 +405,8 @@ function AgentsContent() {
       )}
 
       {deletingAgentId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 animate-in fade-in">
-          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/40 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md bg-white/60 backdrop-blur-2xl border border-white/50 rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
             <div className="flex items-center gap-3 text-rose-500">
               <AlertTriangle className="h-6 w-6 shrink-0" />
               <h3 className="text-lg font-bold">Delete AI Agent?</h3>
@@ -446,8 +446,8 @@ function AgentsContent() {
 
       {/* Bulk Delete Confirmation */}
       {isBulkDeleting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 animate-in fade-in">
-          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/40 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md bg-white/60 backdrop-blur-2xl border border-white/50 rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
             <div className="flex items-center gap-3 text-rose-500">
               <AlertTriangle className="h-6 w-6 shrink-0" />
               <h3 className="text-lg font-bold">Mass Delete {selectedIds.length} Agents?</h3>

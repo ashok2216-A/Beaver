@@ -135,7 +135,7 @@ export default function AnalyticsPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {statItems.map((item, i) => (
-          <Card key={i} className="rounded-2xl bg-card shadow-sm border-white/5 overflow-hidden">
+          <Card key={i} className="rounded-2xl bg-white/20 backdrop-blur-xl shadow-sm border border-white/40 overflow-hidden group transition-all duration-300">
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-4">
                 <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", item.bg)}>
@@ -149,11 +149,44 @@ export default function AnalyticsPage() {
                   {item.trend.replace('+', '').replace('-', '')}
                 </div>
               </div>
-              <div className="space-y-0.5">
-                <h3 className="text-xl font-bold tracking-tight">
-                  {loading ? <div className="h-7 w-12 bg-muted animate-pulse rounded-lg" /> : item.value}
-                </h3>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{item.title}</p>
+              
+              <div className="flex items-end justify-between gap-2">
+                <div className="space-y-0.5">
+                  <h3 className="text-xl font-bold tracking-tight">
+                    {loading ? <div className="h-7 w-12 bg-muted animate-pulse rounded-lg" /> : item.value}
+                  </h3>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{item.title}</p>
+                </div>
+                
+                {/* Mini Sparkline */}
+                <div className="h-10 w-24 shrink-0 overflow-hidden">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={
+                      i === 0 && velocityData.length > 0 
+                        ? velocityData.slice(-7).map(d => ({ v: d.requests })) 
+                        : i === 1 
+                          ? [{ v: 10 }, { v: 12 }, { v: 15 }, { v: 14 }, { v: 18 }, { v: 17 }, { v: 20 }]
+                          : i === 2
+                            ? [{ v: 45 }, { v: 52 }, { v: 48 }, { v: 61 }, { v: 55 }, { v: 67 }, { v: 60 }]
+                            : [{ v: 20 }, { v: 25 }, { v: 35 }, { v: 30 }, { v: 42 }, { v: 38 }, { v: 45 }]
+                    }>
+                      <defs>
+                        <linearGradient id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={item.color.includes('blue') ? '#3b82f6' : item.color.includes('purple') ? '#a855f7' : item.color.includes('emerald') ? '#10b981' : '#f59e0b'} stopOpacity={0.2}/>
+                          <stop offset="100%" stopColor={item.color.includes('blue') ? '#3b82f6' : item.color.includes('purple') ? '#a855f7' : item.color.includes('emerald') ? '#10b981' : '#f59e0b'} stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <Area 
+                        type="monotone" 
+                        dataKey="v" 
+                        stroke={item.color.includes('blue') ? '#3b82f6' : item.color.includes('purple') ? '#a855f7' : item.color.includes('emerald') ? '#10b981' : '#f59e0b'} 
+                        strokeWidth={1.5} 
+                        fill={`url(#grad-${i})`}
+                        isAnimationActive={false}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -161,7 +194,7 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2 rounded-3xl bg-card border-white/5 overflow-hidden shadow-2xl">
+        <Card className="lg:col-span-2 rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 overflow-hidden shadow-2xl">
           <CardHeader className="p-6 pb-2">
             <CardTitle className="text-lg font-bold">Request Velocity</CardTitle>
             <CardDescription className="text-xs">Volume of AI agent tool calls over the last 30 days.</CardDescription>
@@ -232,7 +265,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl bg-card border-white/5 overflow-hidden shadow-2xl">
+        <Card className="rounded-3xl bg-white/20 backdrop-blur-xl border border-white/40 overflow-hidden shadow-2xl">
           <CardHeader className="p-6 pb-2">
             <CardTitle className="text-lg font-bold">Health Snapshot</CardTitle>
             <CardDescription className="text-xs">System status and reliability.</CardDescription>
@@ -244,7 +277,7 @@ export default function AnalyticsPage() {
                   { label: "LLM Success", value: healthStats?.llm_success ?? "100%", status: "success" },
                   { label: "Latency", value: healthStats?.latency_ms ?? "0ms", status: "warning" },
                 ].map((metric, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-white/5">
+                  <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/20 border border-white/30 transition-colors">
                     <span className="text-xs font-medium text-muted-foreground">{metric.label}</span>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-xs">{metric.value}</span>

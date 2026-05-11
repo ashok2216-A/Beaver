@@ -126,7 +126,7 @@ export default function ApiKeysPage() {
         <div className="flex items-center justify-between border-b border-border pb-4">
           <h2 className="text-xl font-semibold">Generate New Key</h2>
         </div>
-        <Card className="rounded-2xl border-border bg-card shadow-[0_1px_3px_rgba(0,0,0,0.1),0_10px_20px_-5px_rgba(0,0,0,0.04)] overflow-hidden">
+        <Card className="rounded-2xl border-white/50 bg-white/40 backdrop-blur-xl shadow-[0_1px_3px_rgba(0,0,0,0.1),0_10px_20px_-5px_rgba(0,0,0,0.04)] overflow-hidden">
           <CardContent className="p-8">
             <form onSubmit={handleCreateKey} className="flex flex-col md:flex-row gap-4 items-end">
               <div className="flex-1 space-y-2.5 w-full">
@@ -135,13 +135,13 @@ export default function ApiKeysPage() {
                   value={newKeyName} 
                   onChange={e => setNewKeyName(e.target.value)} 
                   placeholder="e.g. Production Backend" 
-                  className="h-12 rounded-xl bg-muted/30 border-border focus:bg-background transition-all px-5"
+                  className="h-14 rounded-2xl border-white/50 bg-white/40 px-6 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]"
                 />
               </div>
               <Button 
                 type="submit" 
                 disabled={isCreating || !newKeyName.trim()}
-                className="h-12 px-8 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-bold transition-all shadow-sm"
+                className="h-14 px-8 rounded-2xl bg-foreground text-background hover:bg-foreground/90 font-bold transition-all shadow-sm"
               >
                 {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                 Generate Key
@@ -170,7 +170,7 @@ export default function ApiKeysPage() {
         ) : keys.length > 0 ? (
           <div className="grid gap-3">
             {keys.map(k => (
-              <div key={k.id} className="flex items-center justify-between p-6 rounded-2xl bg-card border border-border hover:border-primary/20 hover:shadow-sm transition-all group">
+              <div key={k.id} className="flex items-center justify-between p-6 rounded-2xl bg-white/40 backdrop-blur-xl border border-white/50 hover:border-primary/20 hover:shadow-sm transition-all group">
                 <div className="flex items-center gap-5">
                   <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground group-hover:bg-primary/5 group-hover:text-primary transition-colors">
                     <Key className="w-5 h-5" />
@@ -213,7 +213,7 @@ export default function ApiKeysPage() {
 
       {/* Secret View Modal: High Priority */}
       <Dialog open={!!createdKey} onOpenChange={(open) => !open && setCreatedKey(null)}>
-        <DialogContent className="rounded-2xl border-border shadow-2xl bg-card p-0 overflow-hidden max-w-md">
+        <DialogContent className="rounded-2xl border-white/50 shadow-2xl bg-white/60 backdrop-blur-2xl p-0 overflow-hidden max-w-md">
           <div className="p-8 space-y-6">
             <DialogHeader className="space-y-3">
               <div className="h-12 w-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 mb-2">
@@ -252,8 +252,8 @@ export default function ApiKeysPage() {
       </Dialog>
 
       {deletingKeyId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 animate-in fade-in">
-          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/40 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md bg-white/60 backdrop-blur-2xl border border-white/50 rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
             <div className="flex items-center gap-3 text-rose-500">
               <AlertTriangle className="h-6 w-6 shrink-0" />
               <h3 className="text-lg font-bold">Revoke API Key?</h3>

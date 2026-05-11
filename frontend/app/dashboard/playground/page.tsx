@@ -266,7 +266,7 @@ export default function PlaygroundPage() {
     <div className="h-[calc(100vh-8.5rem)] flex overflow-hidden">
       
       {/* ChatGPT Style History Sidebar */}
-      <div className="w-64 flex flex-col bg-muted/10 border-r border-white/5 p-4 shrink-0 overflow-y-auto custom-scrollbar animate-in slide-in-from-left duration-300">
+      <div className="w-64 flex flex-col bg-white/20 backdrop-blur-xl border-r border-slate-200 p-4 shrink-0 overflow-y-auto custom-scrollbar animate-in slide-in-from-left duration-300">
         <h2 className="text-xl font-bold text-foreground mb-4 px-1">Playground</h2>
         <button
           onClick={() => {
@@ -279,7 +279,7 @@ export default function PlaygroundPage() {
               }
             ])
           }}
-          className="mb-4 w-full flex items-center justify-center gap-2 text-xs py-2.5 px-3 rounded-xl bg-white text-slate-900 border border-white font-bold hover:bg-slate-50 hover:shadow-[0_6px_20px_rgba(255,255,255,0.15)] shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:translate-y-0.5 transition-all duration-200"
+          className="mb-4 w-full flex items-center justify-center gap-2 text-xs py-2.5 px-3 rounded-xl bg-slate-950 text-white border border-slate-900 font-bold hover:bg-slate-900 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:translate-y-0.5 transition-all duration-200"
         >
           <Plus className="w-3.5 h-3.5" />
           New Chat
@@ -304,8 +304,8 @@ export default function PlaygroundPage() {
                 className={cn(
                   "relative w-full rounded-xl border flex items-center group transition-all duration-200",
                   sessionId === convItem.id 
-                    ? "bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/20 shadow-[0_4px_12px_rgba(0,0,0,0.1)]" 
-                    : "border-transparent hover:bg-muted/10 hover:border-white/5"
+                    ? "bg-white/60 backdrop-blur-md border-slate-200 shadow-[0_4px_12px_rgba(0,0,0,0.05)]" 
+                    : "border-slate-100/50 hover:bg-white/40 hover:border-slate-200"
                 )}
               >
                 <button
@@ -336,7 +336,7 @@ export default function PlaygroundPage() {
       <div className="flex-1 flex flex-col items-center relative overflow-hidden">
       
       {/* Top Floating Dropdown Menu */}
-      <div className="z-20 sticky top-0 mt-2 bg-background/80 backdrop-blur-xl border border-white/5 py-2 px-4 rounded-full flex items-center gap-4 shadow-lg">
+      <div className="z-20 sticky top-0 mt-2 bg-white/40 backdrop-blur-xl border border-white/50 py-2 px-4 rounded-full flex items-center gap-4 shadow-lg">
         <button
           onClick={() => {
             setIsOrchestratorMode(!isOrchestratorMode)
@@ -393,7 +393,7 @@ export default function PlaygroundPage() {
                 </button>
 
             {isDropdownOpen && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-60 rounded-2xl bg-card/95 backdrop-blur-md border border-white/10 p-2 shadow-xl animate-in fade-in zoom-in-95 duration-200">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-60 rounded-2xl bg-white/60 backdrop-blur-2xl border border-white/50 p-2 shadow-xl animate-in fade-in zoom-in-95 duration-200">
                 <div className="text-[10px] font-bold text-muted-foreground/60 px-3 py-1 mb-1 uppercase tracking-wider border-b border-white/5">
                   Select Sub Agent
                 </div>
@@ -579,26 +579,26 @@ export default function PlaygroundPage() {
     </div>
 
       {/* Floating ChatGPT Action Pill bar */}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-10 animate-in slide-in-from-bottom-4 duration-300">
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-10 animate-in slide-in-from-bottom-4 duration-300">
         <form
           onSubmit={(e) => {
             e.preventDefault()
             handleSend()
           }}
-          className="relative flex items-center bg-card/80 backdrop-blur-2xl rounded-2xl border border-white/10 p-2 pr-3 focus-within:border-primary/40 focus-within:shadow-[0_0_20px_rgba(var(--primary),0.1)] transition-all duration-300 shadow-2xl"
+          className="relative flex items-center p-2 pr-3 transition-all duration-300"
         >
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={isOrchestratorMode ? "Message Orchestrator Engine..." : (selectedAgent ? `Message ${selectedAgent.name}...` : "Select an agent context.")}
             disabled={isLoading || (!isOrchestratorMode && !selectedAgent)}
-            className="w-full h-11 bg-transparent px-4 text-sm outline-none placeholder-muted-foreground/60 focus:outline-none"
+            className="w-full h-12 bg-white/40 backdrop-blur-xl border border-white/50 rounded-2xl px-4 text-sm outline-none placeholder-muted-foreground/60 focus:outline-none shadow-sm"
           />
           <Button 
             type="submit" 
             disabled={!input.trim() || isLoading || (!isOrchestratorMode && !selectedAgent)}
             size="icon"
-            className="h-9 w-9 rounded-xl shadow-glow bg-primary hover:bg-primary/90 transition-all ml-2"
+            className="h-10 w-10 rounded-xl shadow-glow bg-primary hover:bg-primary/90 transition-all ml-2 absolute right-5"
           >
             <ArrowRight className="h-4 w-4 text-primary-foreground" />
           </Button>
