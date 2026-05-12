@@ -742,8 +742,8 @@ export default function AgentBuilderPage() {
                   m.role === 'user' ? "flex-row-reverse" : "flex-row"
                 )}>
                   {m.role === 'user' ? (
-                    <div className="w-10 h-10 rounded-2xl bg-primary shadow-lg shadow-primary/20 flex items-center justify-center shrink-0">
-                      <User className="h-5 w-5 text-white" />
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-white via-slate-50 to-slate-100 shadow-lg shadow-black/5 flex items-center justify-center shrink-0 border-t border-white/80 transition-transform duration-300 hover:scale-105 active:scale-95">
+                      <User className="h-5 w-5 text-slate-600 drop-shadow-sm" />
                     </div>
                   ) : (
                     <div className="shrink-0">
@@ -753,8 +753,8 @@ export default function AgentBuilderPage() {
                   <div className={cn(
                     "max-w-[85%] rounded-3xl px-4 py-3 text-sm leading-relaxed shadow-sm border",
                     m.role === 'user' 
-                      ? "bg-primary text-primary-foreground border-transparent rounded-tr-sm" 
-                      : "bg-muted/50 text-foreground border-border/50 rounded-tl-sm"
+                      ? "bg-primary text-primary-foreground border-transparent rounded-tr-sm shadow-md" 
+                      : "bg-white/60 dark:bg-white/10 text-foreground border-border/50 rounded-tl-sm backdrop-blur-md shadow-sm"
                   )}>
                     {m.role === 'user' ? (
                       m.content.startsWith('Form submission:') ? (
@@ -855,7 +855,7 @@ export default function AgentBuilderPage() {
                   <div className="shrink-0">
                     <AgentAvatar id={Number(id)} size="md" />
                   </div>
-                  <div className="bg-card border border-border rounded-3xl rounded-tl-sm px-4 py-2">
+                  <div className="bg-white/60 dark:bg-white/10 border border-border/50 rounded-3xl rounded-tl-sm px-4 py-2 backdrop-blur-md shadow-sm">
                     <span className="text-xs text-muted-foreground animate-pulse italic">Thinking...</span>
                   </div>
                 </div>

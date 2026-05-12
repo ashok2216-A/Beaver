@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { UserButton } from "@clerk/nextjs"
+import { UserButton, useAuth } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Menu, Bell } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -45,9 +45,11 @@ const navigation = [
 export function DashboardHeader() {
   const pathname = usePathname()
   const router = useRouter()
+  const { getToken } = useAuth()
   const [mounted, setMounted] = React.useState(false)
   const [globalSearch, setGlobalSearch] = React.useState("")
   const [notifications, setNotifications] = React.useState<any[]>([])
+  const [tier, setTier] = React.useState<'free' | 'pro'>('free')
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,6 +60,18 @@ export function DashboardHeader() {
 
   React.useEffect(() => {
     setMounted(true)
+
+    // Fetch real tier from backend
+    getToken().then(token => {
+      if (!token) return
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => { if (data?.plan_type === 'pro') setTier('pro') })
+        .catch(() => {})
+    })
+
     const loadNotifs = () => {
       const stored = localStorage.getItem("api2bot_notifications")
       if (stored) {
@@ -205,8 +219,22 @@ export function DashboardHeader() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Theme Toggle */}
-          <ModeToggle />
+          {/* Theme Toggle — hidden for now */}
+          {/* <ModeToggle /> */}
+
+          {/* Tier Badge */}
+          <Link href="/dashboard/billing">
+            {tier === 'pro' ? (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 text-white shadow-md shadow-yellow-300/60 hover:shadow-yellow-400/80 hover:brightness-110 transition-all">
+                ✦ Pro
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-200 bg-slate-100 text-slate-400 hover:bg-slate-200 transition-all">
+                Free
+                <span className="text-[8px] font-bold text-slate-400">↑ Upgrade</span>
+              </span>
+            )}
+          </Link>
 
           {/* Separator */}
           <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-border" />

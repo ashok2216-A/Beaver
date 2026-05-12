@@ -179,7 +179,7 @@ function AgentsContent() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input 
             placeholder="Search agents..." 
-            className="w-full bg-white/40 backdrop-blur-xl border border-white/50 rounded-xl pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            className="w-full bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/50 dark:border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -211,7 +211,7 @@ function AgentsContent() {
             <Card 
               key={agent.id} 
               className={cn(
-                "rounded-3xl bg-white/40 backdrop-blur-xl border border-white/50 shadow-sm hover:shadow-glow-sm transition-all duration-300 overflow-hidden group p-0 relative",
+                "rounded-3xl bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-sm hover:shadow-glow-sm transition-all duration-300 overflow-hidden group p-0 relative",
                 selectedIds.includes(agent.id) && "shadow-glow-sm bg-primary/10 border-primary/30"
               )}
             >
@@ -334,7 +334,7 @@ function AgentsContent() {
           ))}
         </div>
       ) : (
-        <Card className="rounded-3xl bg-white/40 backdrop-blur-xl border border-white/50 shadow-sm overflow-hidden">
+        <Card className="rounded-3xl bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-sm overflow-hidden">
           <div className="p-12 flex flex-col items-center justify-center text-center min-h-[400px]">
             <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-6">
               <Bot className="w-10 h-10 text-muted-foreground" />

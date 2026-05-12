@@ -68,8 +68,8 @@ export const AgentAvatar = ({ id, name, className = "", size = "md", minimal = f
         "relative inline-flex items-center justify-center shrink-0 overflow-hidden transition-all duration-300",
         minimal 
           ? "bg-transparent border-none shadow-none" 
-          : "bg-slate-50 dark:bg-muted/30 border border-slate-200 dark:border-border/50 backdrop-blur-sm shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06),inset_0_1px_0_var(--avatar-top-shine),inset_0_-1px_0_rgba(0,0,0,0.05)]",
-        "[--avatar-top-shine:rgba(255,255,255,0.8)] dark:[--avatar-top-shine:rgba(255,255,255,0.02)]",
+          : "bg-gradient-to-br from-white to-slate-100 dark:from-muted/50 dark:to-muted/20 border-t border-white/80 dark:border-white/10 backdrop-blur-sm shadow-[0_8px_16px_-4px_rgba(0,0,0,0.1),0_4px_8px_-2px_rgba(0,0,0,0.06),inset_0_-2px_4px_rgba(0,0,0,0.05)]",
+        "[--avatar-top-shine:rgba(255,255,255,0.9)] dark:[--avatar-top-shine:rgba(255,255,255,0.05)]",
         sizeClasses[size],
         className
       )}

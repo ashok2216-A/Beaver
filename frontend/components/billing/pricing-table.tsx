@@ -34,7 +34,7 @@ const plans: PricingPlan[] = [
     name: "Free",
     price: { razorpay: "₹0", stripe: "$0" },
     description: "Perfect for exploring the power of agentic API tooling.",
-    buttonText: "Current Plan",
+    buttonText: "Switch to Free",
     features: [
       "1 Active AI Agent",
       "Standard Reasoning Speed",
@@ -220,12 +220,12 @@ export function PricingTable({ currentPlan = "free" }: { currentPlan?: string })
               onClick={() => handleUpgrade(plan.id)}
               disabled={plan.id === currentPlan || loading === plan.id}
               className={cn(
-                "w-full h-12 text-sm font-semibold transition-all group",
+                "w-full h-12 text-sm font-semibold transition-all group border",
                 plan.id === currentPlan
-                  ? (plan.popular ? "bg-zinc-800 text-zinc-500 border-zinc-700" : "bg-muted text-muted-foreground cursor-default")
+                  ? (plan.popular ? "bg-zinc-800 text-zinc-200/50 border-zinc-700 cursor-default" : "bg-slate-100 text-slate-400 border-slate-200 cursor-default shadow-none")
                   : plan.popular
-                  ? "bg-white text-black hover:bg-zinc-200"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90"
+                  ? "bg-white text-black border-transparent hover:bg-zinc-200"
+                  : "bg-slate-950 text-white border-transparent hover:bg-slate-800"
               )}
             >
               {loading === plan.id ? (

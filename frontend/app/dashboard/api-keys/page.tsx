@@ -135,7 +135,7 @@ export default function ApiKeysPage() {
                   value={newKeyName} 
                   onChange={e => setNewKeyName(e.target.value)} 
                   placeholder="e.g. Production Backend" 
-                  className="h-14 rounded-2xl border-white/50 bg-white/40 px-6 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]"
+                  className="h-14 rounded-2xl border-white/50 bg-white/40 dark:bg-white/5 px-6 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]"
                 />
               </div>
               <Button 
@@ -170,7 +170,7 @@ export default function ApiKeysPage() {
         ) : keys.length > 0 ? (
           <div className="grid gap-3">
             {keys.map(k => (
-              <div key={k.id} className="flex items-center justify-between p-6 rounded-2xl bg-white/40 backdrop-blur-xl border border-white/50 hover:border-primary/20 hover:shadow-sm transition-all group">
+              <div key={k.id} className="flex items-center justify-between p-6 rounded-2xl bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/50 dark:border-white/10 hover:border-primary/20 hover:shadow-sm transition-all group">
                 <div className="flex items-center gap-5">
                   <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground group-hover:bg-primary/5 group-hover:text-primary transition-colors">
                     <Key className="w-5 h-5" />
