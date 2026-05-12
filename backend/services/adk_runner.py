@@ -414,7 +414,7 @@ def _build_agent(
     return Agent(
         name=safe_name,
         model=adk_model,
-        instruction=instruction,
+        instruction=lambda _: instruction, # Wrapped in callable to bypass ADK's aggressive brace parsing (KeyError fix)
         description=f"AI API agent — {agent_name}",
         tools=[call_api_endpoint],
     )

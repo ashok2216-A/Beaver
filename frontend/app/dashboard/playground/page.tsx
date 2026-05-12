@@ -453,14 +453,14 @@ export default function PlaygroundPage() {
                 !isAI ? "flex-row-reverse" : "flex-row"
               )}
             >
-              {/* Avatar Icons */}
+              {/* Avatar Icons - 3D Badge Style */}
               <div className={cn(
-                "w-8 h-8 rounded-xl flex items-center justify-center border shrink-0",
+                "w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-lg border-t border-white/40 dark:border-white/10 transition-transform duration-300 hover:scale-105 active:scale-95",
                 isAI 
-                  ? "bg-primary/10 border-primary/20 text-primary" 
-                  : "bg-muted border-white/5 text-muted-foreground"
+                  ? "bg-gradient-to-br from-white via-slate-50 to-slate-100 text-primary shadow-black/5" 
+                  : "bg-gradient-to-br from-white via-slate-50 to-slate-100 text-slate-600 dark:text-slate-400 shadow-black/5 shadow-lg"
               )}>
-                {isAI ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                {isAI ? <Bot className="h-4 w-4 drop-shadow-sm" /> : <User className="h-4 w-4 drop-shadow-sm" />}
               </div>
 
               {/* Message Block */}
@@ -468,8 +468,8 @@ export default function PlaygroundPage() {
                 <div className={cn(
                   "rounded-2xl px-5 py-3.5 text-sm leading-relaxed w-fit max-w-full shadow-sm transition-all duration-200",
                   isAI 
-                    ? "text-foreground bg-muted/40 dark:bg-muted/20 border border-black/5 dark:border-white/5 rounded-bl-sm" 
-                    : "text-foreground bg-muted/40 dark:bg-muted/20 border border-black/5 dark:border-white/5 rounded-br-sm"
+                    ? "text-foreground bg-white/60 dark:bg-white/10 border border-black/5 dark:border-white/10 rounded-bl-sm backdrop-blur-md shadow-sm" 
+                    : "text-foreground bg-white/40 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-br-sm backdrop-blur-md shadow-sm"
                 )}>
                   <div className="break-words text-sm">
                     {/* Render chunked response with A2UI forms */}

@@ -16,12 +16,14 @@ export default function BillingPage() {
     async function fetchUser() {
       try {
         const token = await getToken();
-        const res = await fetch("/api/v1/auth/me", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
-        const data = await res.json();
-        if (data.plan_type) {
-          setCurrentPlan(data.plan_type);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.plan_type) {
+            setCurrentPlan(data.plan_type);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch user:", err);
@@ -34,7 +36,7 @@ export default function BillingPage() {
     setLoading(true);
     try {
       const token = await getToken();
-      const res = await fetch("/api/v1/billing/create-portal-session", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/billing/create-portal-session`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`

@@ -319,7 +319,7 @@ Conversation:
 
     matched = result.get("endpoint") or {}
     log_entry = Log(
-        agent_id=best_agent_id,
+        agent_id=agent.id,
         user_input=req.message,
         matched_path=matched.get("path", ""),
         method=matched.get("method", ""),

@@ -352,7 +352,7 @@ export default function NewAgentPage() {
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="Paste documentation link (e.g. developers.notion.com)"
-                    className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]"
+                    className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]"
                   />
                   {isPreviewing && (
                     <div className="absolute right-4 top-4">
@@ -375,7 +375,7 @@ export default function NewAgentPage() {
                     value={agentName}
                     onChange={(e) => setAgentName(e.target.value)}
                     placeholder="e.g. My Custom API"
-                    className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
+                    className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
                   />
                 </div>
                 <div className="space-y-2">
@@ -384,7 +384,7 @@ export default function NewAgentPage() {
                     value={baseUrl}
                     onChange={(e) => setBaseUrl(e.target.value)}
                     placeholder="https://api.example.com"
-                    className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
+                    className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
                   />
                 </div>
               </div>
@@ -400,7 +400,7 @@ export default function NewAgentPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   maxLength={150}
                   placeholder="What does this agent do?"
-                  className="w-full rounded-2xl border border-white/50 bg-white/40 p-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner min-h-[100px]"
+                  className="w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 p-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner min-h-[100px]"
                 />
               </div>
 
@@ -467,7 +467,7 @@ export default function NewAgentPage() {
                   <input
                     value={agentName}
                     onChange={(e) => setAgentName(e.target.value)}
-                    className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
+                    className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
                   />
                 </div>
                 <div className="space-y-2">
@@ -476,7 +476,7 @@ export default function NewAgentPage() {
                     <input
                       value={baseUrl}
                       onChange={(e) => setBaseUrl(e.target.value)}
-                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 pl-12 pr-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
+                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 pl-12 pr-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
                     />
                     <Globe className="absolute left-4 top-4.5 h-4 w-4 text-muted-foreground" />
                   </div>
@@ -492,7 +492,7 @@ export default function NewAgentPage() {
                     <select 
                       value={authType}
                       onChange={(e) => setAuthType(e.target.value)}
-                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 appearance-none shadow-inner transition-all"
+                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 appearance-none shadow-inner transition-all"
                     >
                       <option value="none">No Auth</option>
                       <option value="bearer">Bearer Token</option>
@@ -505,7 +505,7 @@ export default function NewAgentPage() {
                       value={authHeader}
                       onChange={(e) => setAuthHeader(e.target.value)}
                       placeholder="Authorization"
-                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-mono shadow-inner"
+                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-mono shadow-inner"
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
@@ -515,7 +515,7 @@ export default function NewAgentPage() {
                       value={authSecret}
                       onChange={(e) => setAuthSecret(e.target.value)}
                       placeholder="sk-••••••••••••••••••••••••••••"
-                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-mono shadow-inner"
+                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-mono shadow-inner"
                     />
                   </div>
                 </div>
