@@ -181,3 +181,27 @@ async def stripe_webhook(
                 user.subscription_status = "active"
                 db.commit()
     return {"status": "success"}
+
+@router.post("/create-portal-session")
+async def create_portal_session(
+    user: User = Depends(get_current_user)
+):
+    """Create a Stripe Customer Portal session for subscription management."""
+    settings = get_settings()
+    if not settings.stripe_secret_key:
+        raise HTTPException(status_code=400, detail="Stripe is not configured.")
+
+    if not user.stripe_customer_id:
+        log.warning(f"User {user.id} requested portal but has no stripe_customer_id")
+        raise HTTPException(status_code=400, detail="No active Stripe billing profile found.")
+
+    stripe.api_key = settings.stripe_secret_key
+    try:
+        session = stripe.billing_portal.Session.create(
+            customer=user.stripe_customer_id,
+            return_url=f"{settings.frontend_url}/dashboard/billing",
+        )
+        return {"url": session.url}
+    except Exception as e:
+        log.error(f"Stripe Portal Error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
