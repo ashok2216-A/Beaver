@@ -13,6 +13,7 @@ import { SecuritySection } from "@/components/landing/security-section";
 import { CtaSection } from "@/components/landing/cta-section";
 import { FooterSection } from "@/components/landing/footer-section";
 
+
 export default function Home() {
   return (
     <main className="relative min-h-screen overflow-x-hidden pitch-dark bg-black">
