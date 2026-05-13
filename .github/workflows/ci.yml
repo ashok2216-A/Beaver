@@ -106,10 +106,30 @@ jobs:
     permissions:
       deployments: write
     steps:
-      - name: Update Deployment Status
-        uses: chrnorm/deployment-status@v2
+      - name: 🚀 Update Production Status
+        uses: actions/github-script@v7
         with:
-          token: "${{ github.token }}"
-          environment: Production
-          state: "success"
-          description: "Beaver has been successfully validated and is active."
+          script: |
+            const { owner, repo } = context.repo;
+            
+            // 1. Create a new deployment for this commit
+            const deployment = await github.rest.repos.createDeployment({
+              owner,
+              repo,
+              ref: context.sha,
+              environment: 'Production',
+              auto_merge: false,
+              required_contexts: []
+            });
+
+            if (deployment.data.id) {
+              // 2. Immediately mark it as successful
+              await github.rest.repos.createDeploymentStatus({
+                owner,
+                repo,
+                deployment_id: deployment.data.id,
+                state: 'success',
+                description: 'Beaver is successfully validated and active.',
+                auto_inactive: true
+              });
+            }
