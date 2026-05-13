@@ -96,11 +96,12 @@ jobs:
   # 5. Report Deployment
   deploy-status:
     name: ✅ Mark Production Active
-    needs: [detect-changes, backend-test, frontend-test]
+    needs: [backend-test, frontend-test]
     if: |
+      always() &&
       github.ref == 'refs/heads/main' && 
-      (needs.backend-test.result == 'success' || needs.backend-test.result == 'skipped') &&
-      (needs.frontend-test.result == 'success' || needs.frontend-test.result == 'skipped')
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     permissions:
       deployments: write
