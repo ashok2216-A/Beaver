@@ -47,7 +47,7 @@ export default function DashboardLayout({
         backgroundImage: `
           radial-gradient(at 0% 0%, rgba(234, 168, 214, 0.2) 0px, transparent 50%),
           radial-gradient(at 100% 0%, rgba(167, 139, 250, 0.2) 0px, transparent 50%),
-          radial-gradient(at 100% 100%, rgba(103, 232, 249, 0.15) 0px, transparent 50%),
+          radial-gradient(at 100% 100%, rgba(103, 232, 249, 0.08) 0px, transparent 50%),
           radial-gradient(at 0% 100%, rgba(167, 139, 250, 0.15) 0px, transparent 50%)
         `
       }}
