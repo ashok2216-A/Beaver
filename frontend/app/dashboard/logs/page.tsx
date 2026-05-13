@@ -217,7 +217,7 @@ export default function LogsPage() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search by input, path, or agent name..."
-                className="pl-9 bg-white/20 backdrop-blur-sm border-white/50 focus:ring-primary/20 focus:bg-white/40 transition-all"
+                className="pl-9"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />

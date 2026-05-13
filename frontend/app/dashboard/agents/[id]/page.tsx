@@ -865,7 +865,7 @@ export default function AgentBuilderPage() {
 
           <div className="p-6 shrink-0 border-t border-border/50 bg-card/30 backdrop-blur-sm">
             <div className="max-w-3xl mx-auto relative">
-              <div className="flex items-end gap-3 bg-background border border-border rounded-2xl p-2 shadow-xl focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+              <div className="flex items-end gap-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl p-2 shadow-[0_20px_50px_rgba(0,0,0,0.1)] focus-within:ring-4 focus-within:ring-primary/10 transition-all">
                 <Textarea 
                   value={input}
                   onChange={(e) => setInput(e.target.value)}

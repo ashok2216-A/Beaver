@@ -46,9 +46,9 @@ export default function HelpPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-12 pb-20">
       {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-[3rem] bg-white/40 backdrop-blur-xl border border-white/50 p-12 text-center space-y-6 shadow-2xl">
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-[#eca8d6]/10 via-transparent to-[#67e8f9]/10 pointer-events-none" />
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/60 border border-white/50 shadow-sm text-primary text-xs font-bold uppercase tracking-widest animate-in fade-in zoom-in duration-500">
+      <div className="relative overflow-hidden rounded-[3rem] bg-gradient-to-br from-white to-slate-50 dark:from-white/10 dark:to-white/5 backdrop-blur-xl border-t border-white/80 dark:border-white/20 border-x border-b border-white/40 dark:border-white/10 p-12 text-center space-y-6 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1),0_16px_32px_-8px_rgba(0,0,0,0.05)] transition-all duration-500">
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-[#eca8d6]/5 via-transparent to-[#67e8f9]/5 pointer-events-none" />
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white dark:bg-white/10 border-t border-white dark:border-white/20 border-x border-b border-slate-200 dark:border-white/10 shadow-lg text-primary text-xs font-bold uppercase tracking-widest animate-in fade-in zoom-in duration-500">
           <LifeBuoy className="w-4 h-4" /> Support Center
         </div>
         <h1 className="text-5xl font-black tracking-tight text-foreground font-display">
@@ -62,7 +62,7 @@ export default function HelpPage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground h-5 w-5" />
           <input 
             placeholder="Search for guides, API docs, or solutions..." 
-            className="w-full h-14 bg-white/80 border border-white/50 rounded-2xl pl-12 pr-4 shadow-inner text-sm outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+            className="w-full h-14 bg-gradient-to-br from-white to-slate-50 dark:from-white/10 dark:to-white/5 backdrop-blur-xl border-t border-white/80 dark:border-white/20 border-x border-b border-white/40 dark:border-white/10 rounded-2xl pl-12 pr-4 shadow-[0_12px_24px_-8px_rgba(0,0,0,0.1),inset_0_-2px_4px_rgba(0,0,0,0.02)] text-sm outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -72,17 +72,17 @@ export default function HelpPage() {
       {/* Main Support Grid */}
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="rounded-3xl bg-white/40 backdrop-blur-xl border-white/50 shadow-lg hover:shadow-xl transition-all group overflow-hidden">
-          <CardHeader className="p-8">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Book className="h-6 w-6 text-blue-500" />
+          <CardHeader className="p-4">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+              <Book className="h-5 w-5 text-blue-500" />
             </div>
-            <CardTitle className="text-xl font-bold">Documentation</CardTitle>
-            <CardDescription className="text-sm leading-relaxed">
+            <CardTitle className="text-lg font-bold">Documentation</CardTitle>
+            <CardDescription className="text-xs leading-relaxed">
               Step-by-step guides on how to build, deploy, and scale your AI agents.
             </CardDescription>
           </CardHeader>
-          <CardContent className="px-8 pb-8">
-            <Button variant="outline" className="w-full rounded-xl border-white/50 bg-white/20 hover:bg-white/40 transition-colors" asChild>
+          <CardContent className="px-4 pb-4">
+            <Button variant="outline" size="sm" className="w-full rounded-xl border-white/50 bg-white/20 hover:bg-white/40 transition-colors h-9" asChild>
               <Link href="/docs" className="inline-flex items-center justify-center">
                 Explore Guides <ExternalLink className="ml-2 h-3 w-3" />
               </Link>
@@ -91,17 +91,17 @@ export default function HelpPage() {
         </Card>
 
         <Card className="rounded-3xl bg-white/40 backdrop-blur-xl border-white/50 shadow-lg hover:shadow-xl transition-all group overflow-hidden">
-          <CardHeader className="p-8">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <FileText className="h-6 w-6 text-purple-500" />
+          <CardHeader className="p-4">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+              <FileText className="h-5 w-5 text-purple-500" />
             </div>
-            <CardTitle className="text-xl font-bold">API Reference</CardTitle>
-            <CardDescription className="text-sm leading-relaxed">
+            <CardTitle className="text-lg font-bold">API Reference</CardTitle>
+            <CardDescription className="text-xs leading-relaxed">
               Technical specs for our SDKs and REST endpoints to integrate with your stack.
             </CardDescription>
           </CardHeader>
-          <CardContent className="px-8 pb-8">
-            <Button variant="outline" className="w-full rounded-xl border-white/50 bg-white/20 hover:bg-white/40 transition-colors" asChild>
+          <CardContent className="px-4 pb-4">
+            <Button variant="outline" size="sm" className="w-full rounded-xl border-white/50 bg-white/20 hover:bg-white/40 transition-colors h-9" asChild>
               <Link href="/api-reference" className="inline-flex items-center justify-center">
                 View API Specs <ExternalLink className="ml-2 h-3 w-3" />
               </Link>
@@ -110,17 +110,17 @@ export default function HelpPage() {
         </Card>
 
         <Card className="rounded-3xl bg-white/40 backdrop-blur-xl border-white/50 shadow-lg hover:shadow-xl transition-all group overflow-hidden">
-          <CardHeader className="p-8">
-            <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Video className="h-6 w-6 text-cyan-500" />
+          <CardHeader className="p-4">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+              <Video className="h-5 w-5 text-cyan-500" />
             </div>
-            <CardTitle className="text-xl font-bold">Video Tutorials</CardTitle>
-            <CardDescription className="text-sm leading-relaxed">
+            <CardTitle className="text-lg font-bold">Video Tutorials</CardTitle>
+            <CardDescription className="text-xs leading-relaxed">
               Watch our engineers walk through complex orchestration patterns and tool builds.
             </CardDescription>
           </CardHeader>
-          <CardContent className="px-8 pb-8">
-            <Button variant="outline" className="w-full rounded-xl border-white/50 bg-white/20 hover:bg-white/40 transition-colors" asChild>
+          <CardContent className="px-4 pb-4">
+            <Button variant="outline" size="sm" className="w-full rounded-xl border-white/50 bg-white/20 hover:bg-white/40 transition-colors h-9" asChild>
               <Link href="#" className="inline-flex items-center justify-center">
                 Watch Videos <ExternalLink className="ml-2 h-3 w-3" />
               </Link>
