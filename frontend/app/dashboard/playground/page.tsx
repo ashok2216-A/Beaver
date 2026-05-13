@@ -592,7 +592,7 @@ export default function PlaygroundPage() {
             onChange={(e) => setInput(e.target.value)}
             placeholder={isOrchestratorMode ? "Message Orchestrator Engine..." : (selectedAgent ? `Message ${selectedAgent.name}...` : "Select an agent context.")}
             disabled={isLoading || (!isOrchestratorMode && !selectedAgent)}
-            className="w-full h-12 bg-white/40 backdrop-blur-xl border border-white/50 rounded-2xl px-4 text-sm outline-none placeholder-muted-foreground/60 focus:outline-none shadow-sm"
+            className="w-full h-14 bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl px-5 text-sm outline-none placeholder-muted-foreground/50 focus:ring-4 focus:ring-primary/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all"
           />
           <Button 
             type="submit" 
