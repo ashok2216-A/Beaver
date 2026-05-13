@@ -279,7 +279,8 @@ def _build_agent(
         all_params = list(ep.get("parameters", []))
         
         def process_schema(schema: dict, required_list: list[str] = None):
-            if not isinstance(schema, dict): return
+            if not isinstance(schema, dict):
+                return
             s_type = schema.get("type", "object")
             if s_type == "object":
                 props = schema.get("properties", {})

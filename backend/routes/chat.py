@@ -221,14 +221,15 @@ Conversation:
                 keywords = [w for w in re.findall(r'\w+', context_text) if len(w) > 2]
                 
                 valid_metadata = [ep for ep in all_metadata if ep.agent_id in valid_ids]
-                ranked = []
                 for ep in valid_metadata:
                     score = 0
                     path_lower = ep.path.lower()
                     summary_lower = (ep.summary or "").lower()
                     for kw in keywords:
-                        if kw in path_lower: score += 10
-                        if kw in summary_lower: score += 5
+                        if kw in path_lower:
+                            score += 10
+                        if kw in summary_lower:
+                            score += 5
                     score += max(0, 5 - (ep.path.count('/') * 0.5))
                 # If a specific agent was selected, we should prioritize its endpoints
                 # while still allowing some global context if needed.
