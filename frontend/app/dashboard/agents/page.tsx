@@ -22,7 +22,7 @@ import {
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
-import { cn, addNotification } from "@/lib/utils"
+import { cn, addNotification, getAgentColor } from "@/lib/utils"
 import { AgentAvatar } from "@/components/dashboard/agent-avatar"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -207,14 +207,23 @@ function AgentsContent() {
         </div>
       ) : filteredAgents.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredAgents.map((agent) => (
-            <Card 
-              key={agent.id} 
-              className={cn(
-                "rounded-3xl bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-sm hover:shadow-glow-sm transition-all duration-300 overflow-hidden group p-0 relative",
-                selectedIds.includes(agent.id) && "shadow-glow-sm bg-primary/10 border-primary/30"
-              )}
-            >
+          {filteredAgents.map((agent) => {
+              const isSelected = selectedIds.includes(agent.id)
+              const colors = getAgentColor(agent.id)
+
+              return (
+                <Card 
+                  key={agent.id} 
+                  className={cn(
+                    "rounded-3xl bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-sm hover:shadow-glow-sm transition-all duration-300 overflow-hidden group p-0 relative",
+                    isSelected && `scale-[1.02] shadow-xl`
+                  )}
+                  style={isSelected ? { 
+                    backgroundColor: colors.glass,
+                    borderColor: colors.accent + "26", // 15% opacity hex
+                    boxShadow: `0 20px 50px -12px ${colors.glow}`
+                  } : {}}
+                >
               <button 
                 onClick={() => toggleSelect(agent.id)}
                 className={cn(
@@ -331,7 +340,7 @@ function AgentsContent() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            )})}
         </div>
       ) : (
         <Card className="rounded-3xl bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-sm overflow-hidden">
