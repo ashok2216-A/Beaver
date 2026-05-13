@@ -8,13 +8,18 @@ import { useUser, useAuth } from "@clerk/nextjs";
 
 export default function BillingPage() {
   const { user } = useUser();
-  const { getToken } = useAuth();
-  const [currentPlan, setCurrentPlan] = useState("free");
+  const { getToken, isLoaded } = useAuth();
+  const [currentPlan, setCurrentPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
     async function fetchUser() {
       try {
+        // 1. Check cache for instant load
+        const cached = localStorage.getItem("beaver_user_tier")
+        if (cached) setCurrentPlan(cached)
+
         const token = await getToken();
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
           headers: { "Authorization": `Bearer ${token}` }
@@ -23,14 +28,18 @@ export default function BillingPage() {
           const data = await res.json();
           if (data.plan_type) {
             setCurrentPlan(data.plan_type);
+            localStorage.setItem("beaver_user_tier", data.plan_type)
           }
         }
       } catch (err) {
         console.error("Failed to fetch user:", err);
+      } finally {
+        setFetching(false);
       }
     }
     if (user) fetchUser();
-  }, [user?.id, getToken]);
+    else if (!user && isLoaded) setFetching(false);
+  }, [user?.id, getToken, isLoaded]);
 
   const handleManageBilling = async () => {
     setLoading(true);
@@ -62,7 +71,9 @@ export default function BillingPage() {
             Manage your plan, payment methods, and invoices.
           </p>
         </div>
-        {currentPlan === "pro" && (
+        {(fetching && !currentPlan) ? (
+          <div className="h-10 w-44 rounded-xl bg-white/20 animate-pulse" />
+        ) : currentPlan === "pro" && (
           <Button 
             variant="outline" 
             className="border-border text-foreground hover:bg-accent"
@@ -84,7 +95,14 @@ export default function BillingPage() {
             </span>
             <h3 className="text-2xl font-semibold text-foreground">Choose Your Plan</h3>
           </div>
-          <PricingTable currentPlan={currentPlan} />
+          {(fetching && !currentPlan) ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto pt-4">
+              <div className="h-[500px] rounded-3xl bg-white/40 animate-pulse border border-white/50 shadow-sm" />
+              <div className="h-[500px] rounded-3xl bg-zinc-900/20 animate-pulse border border-white/5 shadow-xl scale-105" />
+            </div>
+          ) : (
+            <PricingTable currentPlan={currentPlan || "free"} />
+          )}
         </section>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">

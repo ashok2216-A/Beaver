@@ -45,11 +45,12 @@ const navigation = [
 export function DashboardHeader() {
   const pathname = usePathname()
   const router = useRouter()
-  const { getToken } = useAuth()
+  const { getToken, isLoaded, isSignedIn } = useAuth()
   const [mounted, setMounted] = React.useState(false)
   const [globalSearch, setGlobalSearch] = React.useState("")
   const [notifications, setNotifications] = React.useState<any[]>([])
-  const [tier, setTier] = React.useState<'free' | 'pro'>('free')
+  const [tier, setTier] = React.useState<'free' | 'pro' | null>(null)
+  const [loadingTier, setLoadingTier] = React.useState(true)
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,16 +62,42 @@ export function DashboardHeader() {
   React.useEffect(() => {
     setMounted(true)
 
-    // Fetch real tier from backend
-    getToken().then(token => {
-      if (!token) return
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` }
+    // 1. Check cache for instant load
+    const cachedTier = localStorage.getItem("beaver_user_tier")
+    if (cachedTier === 'pro') {
+      setTier('pro')
+      setLoadingTier(false)
+    } else if (cachedTier === 'free') {
+      setTier('free')
+      setLoadingTier(false)
+    }
+
+    if (isLoaded && isSignedIn) {
+      // 2. Fetch fresh tier from backend
+      getToken().then(token => {
+        if (!token) {
+          setLoadingTier(false)
+          return
+        }
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+          .then(res => res.ok ? res.json() : null)
+          .then(data => { 
+            if (data?.plan_type === 'pro') {
+              setTier('pro')
+              localStorage.setItem("beaver_user_tier", "pro")
+            } else {
+              setTier('free')
+              localStorage.setItem("beaver_user_tier", "free")
+            }
+          })
+          .catch(() => {})
+          .finally(() => setLoadingTier(false))
       })
-        .then(res => res.ok ? res.json() : null)
-        .then(data => { if (data?.plan_type === 'pro') setTier('pro') })
-        .catch(() => {})
-    })
+    } else if (isLoaded && !isSignedIn) {
+      setLoadingTier(false)
+    }
 
     const loadNotifs = () => {
       const stored = localStorage.getItem("api2bot_notifications")
@@ -96,7 +123,7 @@ export function DashboardHeader() {
       window.removeEventListener("storage", loadNotifs)
       clearInterval(interval)
     }
-  }, [])
+  }, [isLoaded, isSignedIn, getToken])
 
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-border/20 bg-card/20 backdrop-blur-xl px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
@@ -224,7 +251,9 @@ export function DashboardHeader() {
 
           {/* Tier Badge */}
           <Link href="/dashboard/billing">
-            {tier === 'pro' ? (
+            {loadingTier ? (
+              <div className="h-6 w-16 rounded-full bg-slate-200/50 dark:bg-white/5 animate-pulse" />
+            ) : tier === 'pro' ? (
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 text-white shadow-md shadow-yellow-300/60 hover:shadow-yellow-400/80 hover:brightness-110 transition-all">
                 ✦ Pro
               </span>
