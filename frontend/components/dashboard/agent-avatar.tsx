@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from "react";
-import { cn } from "@/lib/utils";
+import { cn, hash, getAgentColor } from "@/lib/utils";
 
 interface AgentAvatarProps {
   id: number;
@@ -11,25 +11,12 @@ interface AgentAvatarProps {
   minimal?: boolean;
 }
 
-// Deterministic hash for pseudo-random values based on seed
-const hash = (seed: number) => {
-  let t = seed + 0x6D2B79F5;
-  t = Math.imul(t ^ (t >>> 15), t | 1);
-  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-};
-
 export const AgentAvatar = ({ id, name, className = "", size = "md", minimal = false }: AgentAvatarProps) => {
   const avatarData = useMemo(() => {
-    // 1. Generate unique color (256x256x256 variations)
-    const r = Math.floor(hash(id * 10) * 256);
-    const g = Math.floor(hash(id * 20) * 256);
-    const b = Math.floor(hash(id * 30) * 256);
-    
-    // Adjust colors for light background: lower brightness, higher saturation
-    const accentColor = `rgb(${Math.max(0, r - 40)}, ${Math.max(0, g - 40)}, ${Math.max(0, b - 40)})`;
-    const glowColor = `rgba(${r}, ${g}, ${b}, 0.3)`;
-    const mutedColor = `rgba(${r}, ${g}, ${b}, 0.05)`;
+    const colors = getAgentColor(id);
+    const accentColor = colors.accent;
+    const glowColor = colors.glow;
+    const mutedColor = colors.muted;
 
     // 2. Generate unique grid size (3x3, 4x4, or 5x5)
     const gridSize = Math.floor(hash(id * 40) * 3) + 3;
