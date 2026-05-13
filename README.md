@@ -6,12 +6,13 @@ Turn any OpenAPI spec into a production-ready AI agent in seconds. `Beaver` pars
 
 ## ✨ Features
 
+- **3D Command Bar Experience**: A tactile, non-transparent interaction layer with multi-layered shadows for a premium physical feel.
+- **Dynamic Selection Palette**: Color-synchronized selection system where interaction glows match each agent's unique 3D badge.
+- **Instant Recognition**: Client-side tier caching and shimmer skeletons ensure zero-flicker performance during page transitions.
+- **Space-Efficient Density**: Optimized UI containers and support grids for maximum screen real estate utilization without sacrificing aesthetics.
 - **Instant Agent Generation**: Upload a JSON/YAML OpenAPI spec or paste a URL to automatically configure an agent.
 - **Enterprise-Grade Billing**: Support for both **Stripe** (International) and **Razorpay** (Domestic) with environment-driven provider switching.
 - **Security Hardened**: Built-in rate limiting (slowapi), IDOR protection, and a comprehensive security audit suite.
-- **Production-Ready Infra**: Database versioning via **Alembic**, structured JSON logging, and fail-fast environment validation.
-- **Live Testing Ground**: A 3-panel IDE-like interface to test your agent, view available endpoints, and tweak system prompts.
-- **Modern UI**: A premium, responsive design built with React, Tailwind CSS, and Framer Motion.
 
 ---
 
