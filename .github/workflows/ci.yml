@@ -96,8 +96,11 @@ jobs:
   # 5. Report Deployment
   deploy-status:
     name: ✅ Mark Production Active
-    needs: [backend-test, frontend-test]
-    if: github.ref == 'refs/heads/main' && success()
+    needs: [detect-changes, backend-test, frontend-test]
+    if: |
+      github.ref == 'refs/heads/main' && 
+      (needs.backend-test.result == 'success' || needs.backend-test.result == 'skipped') &&
+      (needs.frontend-test.result == 'success' || needs.frontend-test.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       deployments: write
