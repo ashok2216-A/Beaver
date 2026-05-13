@@ -92,3 +92,20 @@ jobs:
           echo "| ⚛️ Frontend | ${{ needs.frontend-test.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🚀 **All checks complete!**" >> $GITHUB_STEP_SUMMARY
+
+  # 5. Report Deployment
+  deploy-status:
+    name: ✅ Mark Production Active
+    needs: [backend-test, frontend-test]
+    if: github.ref == 'refs/heads/main' && success()
+    runs-on: ubuntu-latest
+    permissions:
+      deployments: write
+    steps:
+      - name: Update Deployment Status
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: "${{ github.token }}"
+          environment: Production
+          state: "success"
+          description: "Beaver has been successfully validated and is active."
