@@ -1,6 +1,8 @@
 from sqlalchemy import create_engine, text
 from config import get_settings
 
+
+
 def migrate():
     settings = get_settings()
     db_url = settings.database_url
