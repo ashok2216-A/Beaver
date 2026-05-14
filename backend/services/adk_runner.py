@@ -78,8 +78,10 @@ def _extract_a2ui_chunks(text: str) -> list[dict]:
 
     for start, end, json_str in combined:
         try:
-            payload = json.loads(json_str)
-        except json.JSONDecodeError:
+            import yaml
+            # Use yaml.safe_load as it is a superset of JSON and handles "Franken-JSON" (mixed YAML/JSON)
+            payload = yaml.safe_load(json_str)
+        except Exception:
             continue
 
         if not isinstance(payload, dict) or 'a2ui' not in payload:
@@ -169,8 +171,10 @@ def _build_agent(
             # Escape regex special characters in the template
             pattern = re.escape(t)
             # Replace escaped placeholders like \{index_name\} with a regex pattern
-            # re.escape turned '{' into '\{' and '}' into '\}'
             pattern = re.sub(r'\\\{[^{}]+\\\}', r'[^/]+', pattern)
+            # Replace colon-style placeholders like :documentation_id with a regex pattern
+            # Note: re.escape might or might not escape the colon depending on Python version.
+            pattern = re.sub(r'\\?:[a-zA-Z0-9_]+', r'[^/]+', pattern)
             return bool(re.match(f"^{pattern}$", a))
 
         ep_def = next(
@@ -180,7 +184,53 @@ def _build_agent(
         )
 
         if not ep_def:
-            log.warning(f"SECURITY: Agent attempted to call unauthorized endpoint: {method} {path} (Authorized endpoints count: {len(endpoints)})")
+            log.warning(f"SECURITY: Agent attempted to call unauthorized endpoint: {method} {path}")
+            
+            # PRO-LOGIC: Check if this endpoint exists GLOBALLY in the DB for this agent's API
+            # If it does, we can offer the user a way to "Authorize" it on the fly.
+            try:
+                from database import SessionLocal
+                from models import Endpoint as DBEp, Agent as DBAgent
+                with SessionLocal() as db:
+                    # Find ANY endpoint in the DB that matches this path/method (belonging to same base_url/API)
+                    # We assume base_url is a good proxy for the API identity
+                    global_match = db.query(DBEp).filter(
+                        DBEp.method == method.upper(),
+                        DBEp.is_locked.is_(False)
+                    ).all()
+                    
+                    actual_match = next((e for e in global_match if path_matches(e.path, path)), None)
+                    
+                    if actual_match:
+                        # Success! We found the tool, it's just not enabled for THIS agent.
+                        # We return a special A2UI form to enable it.
+                        return json.dumps({
+                            "component": "form",
+                            "title": "Enable New Capability?",
+                            "subtitle": f"The agent needs to call '{method} {path}' to fulfill your request, but this tool isn't enabled yet.",
+                            "submit_label": "Authorize & Enable Tool",
+                            "children": [
+                                {
+                                    "component": "textfield",
+                                    "key": "target_endpoint_id",
+                                    "label": "Endpoint ID",
+                                    "value": str(actual_match.id),
+                                    "required": true,
+                                    "hidden": true
+                                },
+                                {
+                                    "component": "textfield",
+                                    "key": "authorization_note",
+                                    "label": "Why is this needed?",
+                                    "value": f"Required for: {actual_match.summary or actual_match.description or 'Additional API operations'}",
+                                    "required": false
+                                }
+                            ],
+                            "note": "SECURITY: Once authorized, this tool will be permanently added to the agent's capability list."
+                        })
+            except Exception as e:
+                log.error(f"Error in global tool discovery: {e}")
+
             return json.dumps({
                 "status_code": 403,
                 "error": "unauthorized_endpoint",
@@ -501,16 +551,22 @@ def _build_agent(
         "you MUST respond with an interactive input form.\n\n"
         "CRITICAL: YOUR RESPONSE MUST CONTAIN A FENCED CODE BLOCK WITH THE 'a2ui' LANGUAGE IDENTIFIER.\n"
         "CRITICAL: THE JSON MUST START WITH THE 'a2ui' WRAPPER KEY.\n\n"
-        "FORM TEMPLATE (You MUST convert this YAML structure into standard JSON with { } and \" \" in your response):\n"
+        "FORM TEMPLATE (You MUST use this EXACT JSON structure with { } and \" \" in your response):\n"
         "```a2ui\n"
-        "a2ui:\n"
-        "  component: form\n"
-        "  title: [Title of the form]\n"
-        "  children:\n"
-        "    - component: [type]\n"
-        "      key: [parameter_name]\n"
-        "      label: [Label]\n"
-        "      required: true\n"
+        "{\n"
+        "  \"a2ui\": {\n"
+        "    \"component\": \"form\",\n"
+        "    \"title\": \"[Title of the form]\",\n"
+        "    \"children\": [\n"
+        "      {\n"
+        "        \"component\": \"textfield\",\n"
+        "        \"key\": \"[parameter_name]\",\n"
+        "        \"label\": \"[Label]\",\n"
+        "        \"required\": true\n"
+        "      }\n"
+        "    ]\n"
+        "  }\n"
+        "}\n"
         "```\n\n"
         "Available Field Components:\n"
         "- textfield: key, label, placeholder, required\n"
@@ -603,6 +659,31 @@ async def run_agent_stream(
     tool_log: list[dict] = []
     audio_artifacts: list[dict] = [] # sideband storage for large binaries
     session_id = session_id or str(uuid.uuid4())
+
+    # Intercept "Authorize & Enable Tool" A2UI submissions
+    if "Authorize & Enable Tool" in user_input and "target_endpoint_id" in user_input:
+        try:
+            import re
+            match = re.search(r'target_endpoint_id":\s*"(\d+)"', user_input)
+            if match:
+                ep_id = int(match.group(1))
+                from database import SessionLocal
+                from models import Agent as DBAgent, Endpoint as DBEp
+                with SessionLocal() as db:
+                    # We need to find which agent this is. 
+                    # We can use the agent_name (safe_name) or look up by session
+                    db_agent = db.query(DBAgent).filter(DBAgent.name == agent_name).first()
+                    if db_agent:
+                        # Add the endpoint to the agent
+                        target_ep = db.query(DBEp).filter(DBEp.id == ep_id).first()
+                        if target_ep and target_ep not in db_agent.endpoints:
+                            db_agent.endpoints.append(target_ep)
+                            db.commit()
+                            log.info(f"PERMANENT SOLUTION: Authorized endpoint {ep_id} for agent {db_agent.id}")
+                            # Replace user_input to something friendly so the AI knows it can proceed
+                            user_input = f"I have authorized the tool: {target_ep.summary or target_ep.path}. Please proceed with your task."
+        except Exception as e:
+            log.error(f"Failed to auto-authorize tool: {e}")
 
     adk_agent = _build_agent(
         agent_name=agent_name,
