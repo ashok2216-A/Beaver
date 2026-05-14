@@ -46,6 +46,12 @@ def _build_auth_headers(auth_type: str, auth_secret: str, url: str, auth_header:
     
     # Clean the secret (token)
     token = auth_secret.strip()
+
+    # SEC: If the secret is a JSON block (multi-key), we usually don't want to send it in a header
+    # unless explicitly requested via auth_header. This prevents leaking JSON keys in Bearer headers.
+    if token.startswith("{") and a_type in ("apikey", "query_key") and not auth_header:
+        return {}
+
     if token.lower().startswith("bearer "):
         token = token[7:].strip()
     elif token.lower().startswith("token "):
@@ -164,6 +170,23 @@ async def call_api(
         else:
             body_params[name] = value
 
+    # Support Multi-Key Auth Injection (e.g. Vonage api_key + api_secret)
+    if auth_type in ("apikey", "query_key") and auth_secret:
+        auth_data = {}
+        if auth_secret.strip().startswith("{"):
+            try:
+                auth_data = json.loads(auth_secret)
+            except:
+                auth_data = {auth_header or "api_key": auth_secret}
+        else:
+            auth_data = {auth_header or "api_key": auth_secret}
+
+        for k, v in auth_data.items():
+            if method_upper in ("GET", "DELETE") or auth_type == "query_key":
+                query_params[k] = v
+            else:
+                body_params[k] = v
+
     headers = {
         "User-Agent":   "api2bot-studio/1.0",
         "Content-Type": "application/json",
@@ -171,11 +194,6 @@ async def call_api(
         **_build_auth_headers(auth_type, auth_secret, url, auth_header),
     }
 
-    # Support Query Parameter Auth (e.g. ?api_key=...)
-    if (auth_type or "").lower() == "query_key" and auth_secret:
-        param_name = auth_header or "api_key"
-        query_params[param_name] = auth_secret
-    
     # Inject dynamic custom headers
     if custom_headers:
         headers.update(custom_headers)

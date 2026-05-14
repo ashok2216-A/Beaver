@@ -497,6 +497,7 @@ export default function NewAgentPage() {
                       <option value="none">No Auth</option>
                       <option value="bearer">Bearer Token</option>
                       <option value="apikey">Custom Header (API Key)</option>
+                      <option value="query_key">Query Parameter (URL)</option>
                     </select>
                   </div>
                   <div className="space-y-2">

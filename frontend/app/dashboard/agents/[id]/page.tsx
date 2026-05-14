@@ -990,6 +990,7 @@ export default function AgentBuilderPage() {
                       <option value="none">None</option>
                       <option value="bearer">Bearer Token</option>
                       <option value="apikey">Custom Header (API Key)</option>
+                      <option value="query_key">Query Parameter (URL)</option>
                     </select>
                   </div>
 
