@@ -262,25 +262,28 @@ def _build_agent(
             custom_headers=decrypt_dict(ep_def.get("custom_headers")) if ep_def.get("custom_headers") is not None else decrypt_dict(custom_headers),
         )
 
-        # ─── Audio/Media Detection ───
-        # Automatically detect if the response contains base64 audio data
+        # ─── Audio/Media Detection (Improved Recursive Scanner) ───
         is_audio = False
         audio_payload = None
         
-        if isinstance(data, dict):
-            # Check for common audio keys or raw base64 data strings
-            for k in ["audio", "audio_data", "speech", "voice_data", "data"]:
-                val = data.get(k)
-                if isinstance(val, str) and len(val) > 100:
-                    # Common headers: SUQz (MP3), UklG (WAV), AAA (AAC)
-                    if any(val.startswith(h) for h in ["SUQz", "UklG", "AAAA", "T2dnU"]):
-                        is_audio = True
-                        audio_payload = val
-                        break
-        elif isinstance(data, str) and len(data) > 100:
-             if any(data.startswith(h) for h in ["SUQz", "UklG", "AAAA", "T2dnU"]):
-                is_audio = True
-                audio_payload = data
+        def find_audio_in_obj(obj):
+            nonlocal is_audio, audio_payload
+            if is_audio: return
+            
+            if isinstance(obj, dict):
+                for v in obj.values():
+                    find_audio_in_obj(v)
+            elif isinstance(obj, list):
+                for item in obj:
+                    find_audio_in_obj(item)
+            elif isinstance(obj, str) and len(obj) > 100:
+                # Signatures: ID3 (SUQz), RIFF (UklG), AAC/MP4 (AAAA), Ogg (T2dnU), FLAC (ZmxhY), Raw (//v)
+                headers = ["SUQz", "UklG", "AAAA", "T2dnU", "ZmxhY", "//v"]
+                if any(obj.startswith(h) for h in headers):
+                    is_audio = True
+                    audio_payload = obj
+        
+        find_audio_in_obj(data)
 
         if is_audio:
             log.info(f"Audio detected from {path} ({len(audio_payload)} chars). Storing in sideband.")
@@ -310,7 +313,18 @@ def _build_agent(
             
             hint = "The API returned an error. Please provide the correct values below."
             if isinstance(data, dict):
-                hint = data.get("detail") or data.get("message") or hint
+                msg = data.get("detail") or data.get("message") or ""
+                code = data.get("code") or ""
+                
+                if status == 403:
+                    if "feature_not_available" in str(data) or "not enabled" in msg.lower():
+                        hint = f"PLAN LIMITATION: {msg} (Please check your ElevenLabs subscription or workspace settings)."
+                    else:
+                        hint = f"PERMISSION DENIED: {msg}"
+                elif status == 400 and "free_tier" in msg.lower():
+                    hint = f"FREE TIER RESTRICTION: {msg}. You can only use pre-made voices (like Bella, Josh, or Antoni) via the API on the free plan. Please use a standard Voice ID or upgrade."
+                else:
+                    hint = msg or hint
             elif isinstance(data, str) and len(data) < 200:
                 hint = data
             
