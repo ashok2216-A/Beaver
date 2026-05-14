@@ -25,6 +25,7 @@ import logging
 import os
 import re
 import uuid
+import litellm
 from typing import Any
 
 from google.adk.agents import Agent
@@ -108,6 +109,71 @@ def _extract_a2ui_chunks(text: str) -> list[dict]:
 
 
 # ─── Agent factory ────────────────────────────────────────────────────────────
+
+async def _generate_corrective_a2ui(status: int, path: str, method: str, error_response: Any, original_params: dict) -> dict | None:
+    """
+    Uses AI to analyze an API error and generate a structured A2UI form 
+    with real input fields for the missing/invalid parameters.
+    """
+    import json
+    settings = get_settings()
+    api_key = settings.mistral_api_key or settings.gemini_api_key or os.getenv("MISTRAL_API_KEY")
+    if not api_key:
+        return None
+
+    error_text = json.dumps(error_response) if isinstance(error_response, dict) else str(error_response)
+
+    prompt = f"""An API call to {method} {path} failed with status {status}.
+Error Response: {error_text}
+Original Payload: {json.dumps(original_params)}
+
+Task: Analyze the error message and IDENTIFY EVERY MISSING OR INVALID PARAMETER.
+Create a high-fidelity A2UI form JSON that provides INDIVIDUAL text fields for each missing parameter.
+
+Rules:
+1. One field per missing parameter (e.g. if 'from' and 'text' are missing, create TWO textfields).
+2. Use descriptive labels (e.g. 'Sender Number' instead of 'from').
+3. Use exact dot-notation keys for the 'key' field (e.g. 'voice_settings.stability').
+4. ALWAYS include a 'user_correction' multiline field at the bottom for anything else.
+
+Return ONLY the JSON object. No other text.
+{{
+  "a2ui": {{
+    "component": "form",
+    "title": "Missing Parameters Found",
+    "subtitle": "The API requires the following fields to be corrected:",
+    "children": [
+      {{ "component": "textfield", "key": "from", "label": "Sender ID", "required": true }},
+      ...
+      {{ "component": "textfield", "key": "user_correction", "label": "Other Corrections", "multiline": true }}
+    ]
+  }}
+}}"""
+
+    try:
+        # We use a fast, small model for this utility task
+        res = await litellm.acompletion(
+            model="mistral/mistral-small-latest",
+            messages=[{"role": "user", "content": prompt}],
+            api_key=api_key,
+            temperature=0
+        )
+        text = res.choices[0].message.content
+        # Extract JSON from potential markdown markers
+        if "```" in text:
+            import re
+            match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+            if match:
+                text = match.group(1)
+        
+        form_json = json.loads(text)
+        if "a2ui" in form_json:
+            return form_json
+    except Exception as e:
+        log.error(f"Error in corrective A2UI generation: {e}")
+    
+    return None
+
 
 def _build_agent(
     agent_name: str,
@@ -357,40 +423,45 @@ def _build_agent(
                 })
 
             # FALLBACK: If self-healing failed or it's a 403/Unfixable, show A2UI form.
-            log.info(f"A2UI FALLBACK: Injecting correction form for {status} error from {path}")
+            log.info(f"A2UI FALLBACK: Generating intelligent correction form for {status} error from {path}")
             
-            a2ui_error_form = {
-                "a2ui": {
-                    "component": "form",
-                    "title": f"Fix API Parameters ({status})",
-                    "subtitle": str(hint),
-                    "submit_label": "Retry with Corrections",
-                    "children": [
-                        {
-                            "component": "textfield",
-                            "key": "retry_endpoint",
-                            "label": "Failed Endpoint",
-                            "value": f"{method.upper()} {path}",
-                            "required": False
-                        },
-                        {
-                            "component": "textfield",
-                            "key": "original_params",
-                            "label": "Original Parameters",
-                            "value": json.dumps(params_dict, default=str)[:300],
-                            "required": False
-                        },
-                        {
-                            "component": "textfield",
-                            "key": "user_correction",
-                            "label": "Your Correction",
-                            "placeholder": "e.g. Change model to 'mistral-tts-latest', remove invalid field, etc.",
-                            "required": True,
-                            "multiline": True
-                        }
-                    ]
+            # Use AI to generate a SPECIFIC form based on the error
+            intelligent_form = None
+            if status in (400, 422) and data:
+                try:
+                    intelligent_form = await _generate_corrective_a2ui(status, path, method, data, params_dict)
+                except Exception as e:
+                    log.error(f"Failed to generate intelligent A2UI form: {e}")
+
+            if intelligent_form:
+                a2ui_error_form = intelligent_form
+            else:
+                # Default generic fallback form
+                a2ui_error_form = {
+                    "a2ui": {
+                        "component": "form",
+                        "title": f"Fix API Parameters ({status})",
+                        "subtitle": str(hint),
+                        "submit_label": "Retry with Corrections",
+                        "children": [
+                            {
+                                "component": "textfield",
+                                "key": "retry_endpoint",
+                                "label": "Failed Endpoint",
+                                "value": f"{method.upper()} {path}",
+                                "required": False
+                            },
+                            {
+                                "component": "textfield",
+                                "key": "user_correction",
+                                "label": "Your Correction",
+                                "placeholder": "Describe the missing fields or values (e.g. Set stability to 0.5)",
+                                "required": True,
+                                "multiline": True
+                            }
+                        ]
+                    }
                 }
-            }
             
             tool_log.append({
                 "path":        path,
@@ -621,8 +692,9 @@ def _build_agent(
         "- EXHAUSTIVENESS: Include relevant optional parameters (e.g., 'pod_type', 'replicas', 'cloud', 'region') for full control.\n"
         "- NO AD-HOC FIELDS: NEVER invent fields that are not in the tool metadata. DO NOT add UI-only toggles like 'Wait for Index to be Ready'.\n"
         "- Hiding Constants (CRITICAL): If a parameter requires a static technical value (e.g. service identifiers, fixed modes, or protocol flags), DO NOT include it in the form. Set these values internally in your tool call. Only include fields in the form that require unique variable user input (e.g. specific IDs, content, or custom settings).\n"
+        "- A2UI SUBMISSIONS: When a user submits an A2UI form, you will receive their input as a JSON message (e.g. {\"key\": \"value\"}). You MUST parse this JSON, extract the values, and immediately use them to RETRY your failed tool call. Do not ask for the information again if it is present in the JSON.\n"
         "- DOT-NOTATION (MANDATORY): For nested API objects (like 'conversation_config'), you MUST use the exact dot-notation keys (e.g. 'conversation_config.model_id') as your A2UI form 'key'. This is the ONLY way the backend knows how to build the JSON body. DO NOT shorten or flatten these keys.\n"
-        "- AFTER the A2UI block, you may add a very brief explanatory sentence."
+        "- AFTER the A2UI block, you may add a very brief explanatory sentence.\"\n"
     )
 
     base_instruction = (
