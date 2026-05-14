@@ -64,6 +64,27 @@ def _build_auth_headers(auth_type: str, auth_secret: str, url: str, auth_header:
     return {}
 
 
+def _unflatten_params(params: dict[str, Any]) -> dict[str, Any]:
+    """
+    Convert a flat dict with dot-notation keys into a nested dict.
+    e.g. {'user.name': 'Bob', 'user.age': 30} -> {'user': {'name': 'Bob', 'age': 30}}
+    """
+    result = {}
+    for key, value in params.items():
+        if "." not in key:
+            result[key] = value
+            continue
+            
+        parts = key.split(".")
+        d = result
+        for part in parts[:-1]:
+            if part not in d or not isinstance(d[part], dict):
+                d[part] = {}
+            d = d[part]
+        d[parts[-1]] = value
+    return result
+
+
 async def call_api(
     base_url: str,
     path: str,
@@ -174,13 +195,16 @@ async def call_api(
             elif method_upper == "DELETE":
                 r = await client.delete(url, params=query_params, headers=headers)
             elif method_upper in ("POST", "PUT", "PATCH"):
+                # Unflatten body params to support nested JSON structures (e.g. conversation_config.model_id)
+                final_body = _unflatten_params(body_params) if body_params else {}
+                
                 # Ensure we send an empty JSON body {} instead of None for methods that usually expect a body,
                 # as some APIs (like GitHub starring) require Content-Length: 0 or an empty body.
                 r = await client.request(
                     method_upper,
                     url,
                     params=query_params,
-                    json=body_params if body_params else {},
+                    json=final_body,
                     headers=headers,
                 )
             else:

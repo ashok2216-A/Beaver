@@ -118,6 +118,7 @@ def _build_agent(
     auth_header: str | None,
     tool_log: list[dict],
     user_input: str,  # Added to support Ephemeral RAG
+    audio_artifacts: list[dict], # Added for sideband audio
     custom_headers: dict[str, str] | None = None,
 ) -> Agent:
     """
@@ -183,7 +184,12 @@ def _build_agent(
             return json.dumps({
                 "status_code": 403,
                 "error": "unauthorized_endpoint",
-                "detail": f"The agent is not authorized to call {method} {path}. This endpoint is not in the allowed specification."
+                "detail": f"The agent is not authorized to call {method} {path}. This endpoint is not in the allowed specification.",
+                "note": (
+                    f"CRITICAL: The endpoint {method} {path} is NOT authorized for this agent. "
+                    f"You MUST NOT attempt to call it again. You ONLY have access to the {len(endpoints)} tools listed in your catalogue. "
+                    f"Stop your turn now and explain to the user that this action is not permitted by your current configuration."
+                )
             })
             
         if ep_def.get("is_locked"):
@@ -205,6 +211,115 @@ def _build_agent(
             auth_header=ep_def.get("auth_header") or auth_header,
             custom_headers=decrypt_dict(ep_def.get("custom_headers")) if ep_def.get("custom_headers") is not None else decrypt_dict(custom_headers),
         )
+
+        # ─── Audio/Media Detection ───
+        # Automatically detect if the response contains base64 audio data
+        is_audio = False
+        audio_payload = None
+        
+        if isinstance(data, dict):
+            # Check for common audio keys or raw base64 data strings
+            for k in ["audio", "audio_data", "speech", "voice_data", "data"]:
+                val = data.get(k)
+                if isinstance(val, str) and len(val) > 100:
+                    # Common headers: SUQz (MP3), UklG (WAV), AAA (AAC)
+                    if any(val.startswith(h) for h in ["SUQz", "UklG", "AAAA", "T2dnU"]):
+                        is_audio = True
+                        audio_payload = val
+                        break
+        elif isinstance(data, str) and len(data) > 100:
+             if any(data.startswith(h) for h in ["SUQz", "UklG", "AAAA", "T2dnU"]):
+                is_audio = True
+                audio_payload = data
+
+        if is_audio:
+            log.info(f"Audio detected from {path} ({len(audio_payload)} chars). Storing in sideband.")
+            # Store audio in sideband — wrapped in the same chunk structure as _extract_a2ui_chunks
+            audio_artifacts.append({
+                "type": "a2ui",
+                "content": {
+                    "a2ui": {
+                        "component": "audioplayer",
+                        "label": "Generated Speech",
+                        "data": audio_payload,
+                        "title": f"API: {path}"
+                    }
+                }
+            })
+            # Return a SHORT reference to the LLM so it knows audio was generated
+            return json.dumps({
+                "status_code": status,
+                "data": "Audio generated successfully. The audio player will be shown to the user automatically.",
+                "latency_ms": latency,
+                "note": "Audio was generated successfully. DO NOT generate your own <audio> tags or markdown audio links. Just tell the user the audio is ready."
+            })
+
+        # ─── Error Handling & Guessing Prevention ───
+        if status >= 400:
+            log.warning(f"Tool Error {status} from {path}. Injecting A2UI correction form.")
+            
+            hint = "The API returned an error. Please provide the correct values below."
+            if isinstance(data, dict):
+                hint = data.get("detail") or data.get("message") or hint
+            elif isinstance(data, str) and len(data) < 200:
+                hint = data
+            
+            # CRITICAL: Ensure hint is a string to avoid React "Object as child" errors
+            hint = str(hint)
+
+            a2ui_error_form = {
+                "a2ui": {
+                    "component": "form",
+                    "title": f"Fix API Parameters ({status})",
+                    "subtitle": str(hint),
+                    "submit_label": "Retry with Corrections",
+                    "children": [
+                        {
+                            "component": "textfield",
+                            "key": "retry_endpoint",
+                            "label": "Failed Endpoint",
+                            "value": f"{method.upper()} {path}",
+                            "required": False
+                        },
+                        {
+                            "component": "textfield",
+                            "key": "original_params",
+                            "label": "Original Parameters",
+                            "value": json.dumps(params_dict, default=str)[:300],
+                            "required": False
+                        },
+                        {
+                            "component": "textfield",
+                            "key": "user_correction",
+                            "label": "Your Correction",
+                            "placeholder": "e.g. Change model to 'mistral-tts-latest', remove invalid field, etc.",
+                            "required": True,
+                            "multiline": True
+                        }
+                    ]
+                }
+            }
+            
+            tool_log.append({
+                "path":        path,
+                "method":      method.upper(),
+                "status_code": status,
+                "latency_ms":  latency,
+                "response":    data,
+            })
+
+            return json.dumps({
+                "status_code": status,
+                "data": a2ui_error_form,
+                "note": (
+                    f"CRITICAL: The API call to {method.upper()} {path} failed with status {status}. "
+                    f"DO NOT GUESS parameters. You MUST show the 'a2ui' JSON block exactly as provided below. "
+                    f"DO NOT remove or modify any fields (like 'retry_endpoint' or 'original_params'). "
+                    f"The user must see the full form to provide context. "
+                    f"Hint: The API likely expects a nested JSON structure (e.g. 'conversation_config' should be an object, not a string). "
+                    f"Wait for the user's correction, then RETRY the same endpoint."
+                )
+            })
 
         # ─── Ephemeral RAG Pipeline ───
         # If response is massive, we clean, chunk, and pick the best parts.
@@ -276,9 +391,24 @@ def _build_agent(
     # We use :placeholder style which Gemini understands natively.
     # CRITICAL: We now include the full parameter list for each endpoint so the agent knows exactly what to ask for.
     def flatten_parameters(ep: dict) -> list[dict]:
-        all_params = list(ep.get("parameters", []))
+        # Start with an empty list to avoid taking 'flat' versions from the raw spec list
+        # We will collect everything into a dict by name first to handle overrides
+        param_map = {}
         
-        def process_schema(schema: dict, required_list: list[str] = None):
+        # 1. Process standard parameters (path, query, etc.)
+        for p in ep.get("parameters", []):
+            if isinstance(p, dict) and "name" in p:
+                param_map[p["name"]] = {
+                    "name": p["name"],
+                    "type": p.get("type", "string"),
+                    "required": p.get("required", False),
+                    "description": p.get("description", ""),
+                    "enum": p.get("enum"),
+                    "default": p.get("default"),
+                    "in": p.get("in", "query")
+                }
+
+        def process_schema(schema: dict, required_list: list[str] = None, prefix: str = ""):
             if not isinstance(schema, dict):
                 return
             s_type = schema.get("type", "object")
@@ -286,27 +416,53 @@ def _build_agent(
                 props = schema.get("properties", {})
                 reqs = schema.get("required", [])
                 for p_name, p_schema in props.items():
-                    if p_schema.get("type") == "object":
-                        process_schema(p_schema, reqs)
+                    full_name = f"{prefix}{p_name}"
+                    p_type = p_schema.get("type", "string")
+                    
+                    if p_type == "object":
+                        # Add the parent but continue to children
+                        param_map[full_name] = {
+                            "name": full_name,
+                            "type": "object (JSON blob)",
+                            "required": p_name in reqs,
+                            "description": f"Nested structure. {p_schema.get('description', '')}",
+                            "default": p_schema.get("default"),
+                            "in": "body"
+                        }
+                        process_schema(p_schema, reqs, f"{full_name}.")
                     else:
-                        # Avoid duplicates from 'parameters' list
-                        if not any(p.get("name") == p_name for p in all_params):
-                            all_params.append({
-                                "name": p_name,
-                                "type": p_schema.get("type", "string"),
-                                "required": p_name in reqs,
-                                "description": p_schema.get("description", ""),
-                                "enum": p_schema.get("enum"),
-                                "default": p_schema.get("default")
-                            })
+                        # Hierarchical body param overrides any flat query/param of same name
+                        param_map[full_name] = {
+                            "name": full_name,
+                            "type": p_type,
+                            "required": p_name in reqs,
+                            "description": p_schema.get("description", ""),
+                            "enum": p_schema.get("enum"),
+                            "default": p_schema.get("default"),
+                            "in": "body"
+                        }
             elif s_type == "array":
-                # For arrays, we just note the field exists
                 pass
 
+        # 2. Process request body (this will override/add hierarchical names)
         rb = ep.get("request_body")
         if rb:
             process_schema(rb)
-        return all_params
+            
+        # 3. Final cleanup: If we have 'parent.child', we must REMOVE 'child' (flat) to avoid AI confusion
+        final_params = {}
+        for k, v in param_map.items():
+            if "." in k:
+                # This is a hierarchical key, keep it
+                final_params[k] = v
+            else:
+                # This is a flat key. Check if it's a 'leaf' that has a hierarchical parent
+                # e.g. if we have 'conversation_config.model_id', we don't want 'model_id' (flat)
+                is_redundant = any(hk.endswith(f".{k}") for hk in param_map.keys() if "." in hk)
+                if not is_redundant:
+                    final_params[k] = v
+
+        return list(final_params.values())
 
     cat_items = []
     for ep in endpoints:
@@ -369,8 +525,8 @@ def _build_agent(
         "- COMPLETENESS (CRITICAL): Include ALL required parameters from the API spec (e.g., 'dimension', 'name'). Missing required fields is unacceptable.\n"
         "- EXHAUSTIVENESS: Include relevant optional parameters (e.g., 'pod_type', 'replicas', 'cloud', 'region') for full control.\n"
         "- NO AD-HOC FIELDS: NEVER invent fields that are not in the tool metadata. DO NOT add UI-only toggles like 'Wait for Index to be Ready'.\n"
-        "- NESTING: For nested API objects (like Pinecone's 'spec'), use flat keys in the form and construct the nested JSON yourself for the tool call.\n"
-        "- After the A2UI block, you may add a very brief explanatory sentence."
+        "- DOT-NOTATION (MANDATORY): For nested API objects (like 'conversation_config'), you MUST use the exact dot-notation keys (e.g. 'conversation_config.model_id') as your A2UI form 'key'. This is the ONLY way the backend knows how to build the JSON body. DO NOT shorten or flatten these keys.\n"
+        "- AFTER the A2UI block, you may add a very brief explanatory sentence."
     )
 
     base_instruction = (
@@ -434,6 +590,7 @@ async def run_agent_stream(
     auth_header: str | None,
     user_input: str,
     session_id: str | None = None,
+    history: list[dict] | None = None, # Added for session memory
     custom_headers: dict[str, str] | None = None,
 ):
     """
@@ -444,6 +601,7 @@ async def run_agent_stream(
       - {"type": "final", "data": {...}}
     """
     tool_log: list[dict] = []
+    audio_artifacts: list[dict] = [] # sideband storage for large binaries
     session_id = session_id or str(uuid.uuid4())
 
     adk_agent = _build_agent(
@@ -456,7 +614,8 @@ async def run_agent_stream(
         auth_secret=decrypt_secret(auth_secret),
         auth_header=auth_header,
         tool_log=tool_log,
-        user_input=user_input, # Pass through here
+        user_input=user_input, 
+        audio_artifacts=audio_artifacts, # Pass sideband
         custom_headers=custom_headers,
     )
 
@@ -469,6 +628,21 @@ async def run_agent_stream(
     try:
         from google.adk.errors.already_exists_error import AlreadyExistsError
         await _session_service.create_session(app_name=APP_NAME, user_id="user", session_id=session_id)
+        
+        # Hydrate session with historical messages from DB
+        if history:
+            for msg in history:
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                if not content: continue
+                
+                adk_msg = genai_types.Content(role=role, parts=[genai_types.Part(text=content)])
+                await _session_service.add_message(
+                    app_name=APP_NAME,
+                    user_id="user",
+                    session_id=session_id,
+                    message=adk_msg
+                )
     except AlreadyExistsError:
         pass
     except Exception as e:
@@ -573,7 +747,10 @@ async def run_agent_stream(
         except Exception as e:
             log.debug(f"Failed to persist assistant message to session: {e}")
     # Parse A2UI chunks for streaming final response
-    final_data["chunks"] = _extract_a2ui_chunks(final_text)
+    text_chunks = _extract_a2ui_chunks(final_text)
+    
+    # Merge text chunks with sideband audio artifacts (large binaries preserved)
+    final_data["chunks"] = text_chunks + audio_artifacts
     
     yield json.dumps({
         "type": "final",
@@ -592,6 +769,7 @@ async def run_agent_async(
     auth_header: str | None,
     user_input: str,
     session_id: str | None = None,
+    history: list[dict] | None = None, # Added
     custom_headers: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Non-streaming version for backward compatibility."""
@@ -609,6 +787,7 @@ async def run_agent_async(
         auth_header=auth_header,
         user_input=user_input,
         session_id=session_id,
+        history=history, # Pass history
         custom_headers=custom_headers,
     ):
         chunk = json.loads(chunk_str)

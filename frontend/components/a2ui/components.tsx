@@ -175,6 +175,19 @@ const STYLES = {
     minWidth: '35px',
     textAlign: 'center' as const,
   },
+  audioContainer: {
+    padding: '16px',
+    background: '#f8fafc',
+    borderRadius: '16px',
+    border: '1px solid #f1f5f9',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '12px',
+  },
+  audioPlayer: {
+    width: '100%',
+    height: '40px',
+  },
 }
 
 // ─── FIELD COMPONENTS ─────────────────────────────────────────────────────────
@@ -198,7 +211,7 @@ export function A2TextField({ label, required, placeholder = 'Type here…', val
     <div style={STYLES.fieldGroup}>
       {label && (
         <span style={STYLES.label}>
-          {label}
+          {String(label)}
           {required && <span style={STYLES.requiredStar}>*</span>}
         </span>
       )}
@@ -206,7 +219,7 @@ export function A2TextField({ label, required, placeholder = 'Type here…', val
         <textarea
           style={STYLES.textarea}
           placeholder={placeholder}
-          defaultValue={value}
+          defaultValue={String(value)}
           onChange={e => onChange(fieldKey, e.target.value)}
         />
       ) : (
@@ -214,7 +227,7 @@ export function A2TextField({ label, required, placeholder = 'Type here…', val
           style={STYLES.input}
           type="text"
           placeholder={placeholder}
-          defaultValue={value}
+          defaultValue={String(value)}
           onChange={e => onChange(fieldKey, e.target.value)}
         />
       )}
@@ -265,10 +278,11 @@ interface A2ChoicePickerProps extends FieldProps {
 export function A2ChoicePicker({ label, required, options = [], multi = false, fieldKey, onChange }: A2ChoicePickerProps) {
   const [selected, setSelected] = useState<string[]>([])
 
-  const toggle = (opt: string) => {
+  const toggle = (opt: any) => {
+    const optValue = typeof opt === 'object' ? (opt.value ?? opt.id ?? String(opt)) : String(opt)
     const next = multi
-      ? selected.includes(opt) ? selected.filter(x => x !== opt) : [...selected, opt]
-      : [opt]
+      ? selected.includes(optValue) ? selected.filter(x => x !== optValue) : [...selected, optValue]
+      : [optValue]
     setSelected(next)
     onChange(fieldKey, next.length === 1 && !multi ? next[0] : next)
   }
@@ -277,21 +291,25 @@ export function A2ChoicePicker({ label, required, options = [], multi = false, f
     <div style={STYLES.fieldGroup}>
       {label && (
         <span style={STYLES.label}>
-          {label}
+          {String(label)}
           {required && <span style={STYLES.requiredStar}>*</span>}
         </span>
       )}
       <div style={STYLES.choiceOptions}>
-        {options.map((opt, i) => (
-          <button
-            key={i}
-            type="button"
-            style={STYLES.choiceBtn(selected.includes(opt))}
-            onClick={() => toggle(opt)}
-          >
-            {opt}
-          </button>
-        ))}
+        {options.map((opt: any, i) => {
+          const optLabel = typeof opt === 'object' ? (opt.label ?? opt.name ?? String(opt)) : String(opt)
+          const optValue = typeof opt === 'object' ? (opt.value ?? opt.id ?? String(opt)) : String(opt)
+          return (
+            <button
+              key={i}
+              type="button"
+              style={STYLES.choiceBtn(selected.includes(optValue))}
+              onClick={() => toggle(opt)}
+            >
+              {optLabel}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -394,6 +412,39 @@ export function A2DateTimeInput({ label, required, type = 'date', fieldKey, onCh
   )
 }
 
+// Audio Player
+interface A2AudioPlayerProps extends FieldProps {
+  src?: string
+  data?: string
+  title?: string
+}
+
+export function A2AudioPlayer({ label, src, data, title }: A2AudioPlayerProps) {
+  // If data is provided without the prefix, add it
+  const audioSrc = src || (data ? (data.startsWith('data:') ? data : `data:audio/mpeg;base64,${data}`) : '')
+  
+  return (
+    <div style={STYLES.audioContainer}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ padding: '8px', background: '#0f172a', borderRadius: '10px', color: 'white' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+          </svg>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={STYLES.label}>{String(label || 'Audio Playback')}</span>
+          {title && <span style={{ fontSize: '12px', fontWeight: 600, color: '#0f172a' }}>{String(title)}</span>}
+        </div>
+      </div>
+      <audio 
+        controls 
+        src={audioSrc} 
+        style={STYLES.audioPlayer} 
+      />
+    </div>
+  )
+}
+
 // ─── A2UI INPUT FORM ──────────────────────────────────────────────────────────
 // Top-level component: renders the full input form described by the agent's a2ui JSON
 
@@ -411,6 +462,9 @@ export interface A2UIField {
   step?: number
   value?: string | number | boolean
   type?: string          // for datetime: 'date' | 'datetime-local' | 'time'
+  src?: string           // for audioplayer
+  data?: string          // for audioplayer
+  title?: string         // for audioplayer
 }
 
 export interface A2UIFormNode {
@@ -499,6 +553,10 @@ export function A2InputForm({ data, onSubmit }: A2InputFormProps) {
       case 'datetimeinput':
       case 'date':
         return <A2DateTimeInput key={key} {...commonProps} type={(field.type as 'date' | 'datetime-local' | 'time') || 'date'} />
+      case 'audioplayer':
+      case 'audio':
+      case 'media':
+        return <A2AudioPlayer key={key} {...commonProps} src={field.src} data={field.data} title={field.title} />
       default:
         return null
     }
@@ -516,10 +574,10 @@ export function A2InputForm({ data, onSubmit }: A2InputFormProps) {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="hsl(var(--primary))">
             <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-9 11H7v-2h4v2zm6-4H7V7h10v2z"/>
           </svg>
-          {title}
+          {String(title)}
         </div>
       )}
-      {subtitle && <div style={STYLES.formSubtitle}>{subtitle}</div>}
+      {subtitle && <div style={STYLES.formSubtitle}>{String(subtitle)}</div>}
 
       {fields.map((field, idx) => renderField(field, idx))}
 

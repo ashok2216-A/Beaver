@@ -301,6 +301,15 @@ Conversation:
                 "custom_headers": ep_agent.custom_headers,
             })
 
+    # Fetch history for multi-turn continuity
+    history = []
+    if session_id:
+        db_msgs = db.query(ChatMessage).filter(
+            ChatMessage.conversation_id == session_id
+        ).order_by(ChatMessage.created_at.desc()).limit(10).all()
+        for m in reversed(db_msgs):
+            history.append({"role": m.role, "content": m.content})
+
     params = {
         "user_input": _sanitize_input(req.message),
         "endpoints": endpoint_list,
@@ -313,6 +322,7 @@ Conversation:
         "agent_name": "orchestrated_agent",
         "model": agent.model_id,
         "session_id": session_id,
+        "history": history,
     }
 
     from services.agent import run_agent
@@ -420,12 +430,20 @@ async def chat(
             # Bonus for shorter paths (usually more root-level/common)
             score += max(0, 5 - (ep.path.count('/') * 0.5))
             
-            if score > 0 or len(all_metadata) <= 15:
-                ranked_endpoints.append((score, ep.id))
+            ranked_endpoints.append((score, ep.id))
 
-        # Sort by score and take top 15
+        # Sort by score and select endpoints
         ranked_endpoints.sort(key=lambda x: x[0], reverse=True)
-        top_ids = [item[1] for item in ranked_endpoints[:15]]
+        
+        # If <= 30 endpoints total, pass ALL of them — don't risk filtering out relevant tools
+        if len(ranked_endpoints) <= 30:
+            top_ids = [item[1] for item in ranked_endpoints]
+        else:
+            # For large specs, keep top 20 PLUS any with score > 0 (up to 30)
+            top_ids = [item[1] for item in ranked_endpoints[:20]]
+            for item in ranked_endpoints[20:]:
+                if item[0] > 0 and len(top_ids) < 30:
+                    top_ids.append(item[1])
 
         # Step 3: Fetch full details only for the most relevant endpoints
         endpoints = db.query(Endpoint).filter(Endpoint.id.in_(top_ids)).all()
@@ -442,6 +460,15 @@ async def chat(
             for ep in endpoints
         ]
 
+    # Fetch history for multi-turn continuity
+    history = []
+    if session_id:
+        db_msgs = db.query(ChatMessage).filter(
+            ChatMessage.conversation_id == session_id
+        ).order_by(ChatMessage.created_at.desc()).limit(10).all()
+        for m in reversed(db_msgs):
+            history.append({"role": m.role, "content": m.content})
+
     params = {
         "user_input": _sanitize_input(req.message),
         "endpoints": endpoint_list,
@@ -454,6 +481,7 @@ async def chat(
         "agent_name": agent.name,
         "model": agent.model_id,
         "session_id": session_id,
+        "history": history,
     }
 
     if stream:

@@ -7,7 +7,7 @@ import { useAuth } from "@clerk/nextjs"
 import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { A2InputForm } from "@/components/a2ui/components"
+import { A2InputForm, A2AudioPlayer } from "@/components/a2ui/components"
 
 interface MessageChunk {
   type: 'text' | 'a2ui'
@@ -478,10 +478,26 @@ export default function PlaygroundPage() {
                         {message.chunks.map((chunk, chunkIdx) => (
                           <div key={chunkIdx}>
                             {chunk.type === 'a2ui' ? (
-                              <A2InputForm
-                                data={chunk.content as any}
-                                onSubmit={(msg) => handleSend(msg)}
-                              />
+                              (() => {
+                                const a2data = chunk.content as any;
+                                const comp = a2data?.a2ui?.component?.toLowerCase?.();
+                                if (comp === 'audioplayer' || comp === 'audio') {
+                                  return (
+                                    <A2AudioPlayer
+                                      label={a2data.a2ui.label}
+                                      src={a2data.a2ui.src}
+                                      data={a2data.a2ui.data}
+                                      title={a2data.a2ui.title}
+                                    />
+                                  );
+                                }
+                                return (
+                                  <A2InputForm
+                                    data={a2data}
+                                    onSubmit={(msg) => handleSend(msg)}
+                                  />
+                                );
+                              })()
                             ) : (
                               <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
