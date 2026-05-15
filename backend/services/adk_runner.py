@@ -40,6 +40,7 @@ from google.genai import types as genai_types
 from config import get_settings
 from services.executor import call_api
 from utils.security import decrypt_secret
+from services.dynamic_discovery import get_dynamic_discovery
 
 log = logging.getLogger(__name__)
 
@@ -127,11 +128,22 @@ async def _generate_corrective_a2ui(status: int, path: str, method: str, error_r
 
     error_text = json.dumps(error_response) if isinstance(error_response, dict) else str(error_response)
 
+    # ── Dynamic Discovery Step ──
+    # We use programmatic mining to extract structured hints from the error response
+    discovery = get_dynamic_discovery()
+    hints = discovery.extract_schema_hints(error_response) if isinstance(error_response, dict) else {}
+    
+    discovery_context = ""
+    if hints.get("required_fields"):
+        discovery_context = f"\nTECHNICAL HINTS (from programmatic error mining):\n- Required Fields: {', '.join(hints['required_fields'])}\n"
+        if hints.get("field_messages"):
+            discovery_context += "- Field Details:\n" + "\n".join([f"  * {k}: {v}" for k, v in hints["field_messages"].items()])
+
     prompt = f"""An API call to {method} {path} failed with status {status}.
 Error Response: {error_text}
-Original Payload: {json.dumps(original_params)}
+Original Payload: {json.dumps(original_params)}{discovery_context}
 
-Task: Analyze the error message and IDENTIFY EVERY MISSING OR INVALID PARAMETER.
+Task: Analyze the error message and the technical hints to IDENTIFY EVERY MISSING OR INVALID PARAMETER.
 Create a high-fidelity A2UI form JSON that provides INDIVIDUAL text fields for each missing parameter.
 
 Rules:
@@ -175,6 +187,61 @@ Return ONLY the JSON object. No other text.
             return form_json
     except Exception as e:
         log.error(f"Error in corrective A2UI generation: {e}")
+    
+    return None
+
+
+async def _repair_payload_with_ai(path: str, method: str, original_payload: dict, error_response: Any, pattern_hint: str = "") -> dict | None:
+    """
+    Dedicated AI Repair Engine: Analyzes structural errors and returns a corrected JSON payload.
+    Utilizes known successful patterns (memory) if available.
+    """
+    import json
+    settings = get_settings()
+    api_key = settings.mistral_api_key or settings.gemini_api_key or os.getenv("MISTRAL_API_KEY")
+    if not api_key:
+        return None
+
+    error_text = json.dumps(error_response) if isinstance(error_response, dict) else str(error_response)
+
+    prompt = f"""You are an API Payload Repair Engine.
+Endpoint: {method.upper()} {path}
+Original Payload: {json.dumps(original_payload, indent=2)}
+API Error Response: {error_text}{pattern_hint}
+
+Task: REPAIR the payload structure based on the error.
+Common repairs:
+- WRAPPING: If error says 'must be an array', wrap the object in [].
+- UNWRAPPING/FLATTENING: If error says 'Field X must be provided' but it's nested, move it to the TOP LEVEL.
+- TOP-LEVEL FIELDS: If error says 'text' or 'inputs' must be provided, ensure these exact keys exist at the root.
+- CONVERSION: Convert types (e.g. string to number) if the error suggests a type mismatch.
+
+RULES:
+1. Return ONLY the corrected JSON payload. No explanations.
+2. Maintain all existing values; only change the STRUCTURE.
+3. If you cannot fix it, return the original payload.
+
+Corrected JSON Payload:"""
+
+    try:
+        # We use a fast model for structural repair
+        res = await litellm.acompletion(
+            model="mistral/mistral-small-latest",
+            messages=[{"role": "user", "content": prompt}],
+            api_key=api_key,
+            temperature=0
+        )
+        text = res.choices[0].message.content
+        if "```" in text:
+            import re
+            match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+            if match:
+                text = match.group(1)
+        
+        repaired = json.loads(text)
+        return repaired
+    except Exception as e:
+        log.error(f"Payload repair failed: {e}")
     
     return None
 
@@ -320,19 +387,54 @@ def _build_agent(
                 "detail": f"The endpoint {method} {path} is currently locked by the administrator."
             })
 
-        data, status, latency = await call_api(
-            base_url=ep_def.get("base_url") or base_url,
-            path=path,
-            method=method,
-            endpoint_params=ep_def.get("parameters", []),
-            extracted_params=params_dict,
-            auth_type=ep_def.get("auth_type") or auth_type,
-            auth_secret=decrypt_secret(ep_def.get("auth_secret")) if ep_def.get("auth_secret") is not None else auth_secret,
-            auth_header=ep_def.get("auth_header") or auth_header,
-            custom_headers=decrypt_dict(ep_def.get("custom_headers")) if ep_def.get("custom_headers") is not None else decrypt_dict(custom_headers),
-        )
+        # Autonomous Retry & Repair Loop (Self-Healing)
+        MAX_INTERNAL_RETRIES = 3
+        current_payload = params_dict
+        data, status, latency = {}, 0, 0
+        discovery = get_dynamic_discovery()
+        
+        for attempt in range(MAX_INTERNAL_RETRIES):
+            data, status, latency = await call_api(
+                base_url=ep_def.get("base_url") or base_url,
+                path=path,
+                method=method,
+                endpoint_params=ep_def.get("parameters", []),
+                extracted_params=current_payload,
+                auth_type=ep_def.get("auth_type") or auth_type,
+                auth_secret=decrypt_secret(auth_secret) if ep_def.get("auth_secret") is not None else auth_secret,
+                auth_header=ep_def.get("auth_header") or auth_header,
+                custom_headers=decrypt_dict(ep_def.get("custom_headers")) if ep_def.get("custom_headers") is not None else decrypt_dict(custom_headers),
+            )
 
-        # ─── Audio/Media Detection (Improved Recursive Scanner) ───
+            # SUCCESS: Log and return
+            if status < 400:
+                log.info(f"SUCCESS: Tool call to {method} {path} succeeded on attempt {attempt + 1}")
+                # Save this successful structure for future reference
+                discovery.save_successful_pattern(method, path, current_payload)
+                break
+
+            # FAILURE: Check if fixable via AI Repair
+            if status in (400, 422) and attempt < MAX_INTERNAL_RETRIES - 1:
+                log.info(f"Self-Healing Attempt {attempt + 1}: Repairing payload for {method} {path} ({status})")
+                
+                # Check if we have a known pattern to help the repair
+                known_pattern = discovery.get_pattern(method, path)
+                pattern_hint = f"\nKNOWN SUCCESSFUL PATTERN: {json.dumps(known_pattern)}" if known_pattern else ""
+
+                # Turn 1: Try Intelligent Structure Repair
+                repaired = await _repair_payload_with_ai(path, method, current_payload, data, pattern_hint)
+                if repaired and repaired != current_payload:
+                    log.info(f"REPAIR SUCCESS: AI suggested structural correction. Retrying...")
+                    current_payload = repaired
+                    continue # Retry with repaired payload
+                else:
+                    # If repair didn't change anything, we don't waste more turns
+                    break
+            else:
+                # Permanent failure or out of retries
+                break
+
+        # Audio/Media Detection
         is_audio = False
         audio_payload = None
         
@@ -378,11 +480,12 @@ def _build_agent(
             })
 
         # ─── Error Handling & Self-Healing Logic ───
+        # Final Error Handling & A2UI Fallback
         if status >= 400:
             # Check how many times this specific tool has failed in this turn
             fail_count = sum(1 for l in tool_log if l["path"] == path and l["method"] == method.upper() and l["status_code"] >= 400)
             
-            log.warning(f"Tool Error {status} from {path}. FailCount: {fail_count}")
+            log.warning(f"Tool Error {status} from {path} after internal attempts.")
 
             hint = "The API returned an error."
             if isinstance(data, dict):
@@ -404,53 +507,32 @@ def _build_agent(
                     if parts:
                         msg = (msg + " | " if msg else "") + " - " + "; ".join(parts)
 
+                # Ensure msg is a string for .lower() checks
+                msg_str = str(msg).lower() if msg else ""
+
                 if status == 403:
-                    if "feature_not_available" in str(data) or "not enabled" in msg.lower():
+                    if "feature_not_available" in str(data) or "not enabled" in msg_str:
                         hint = f"PLAN LIMITATION: {msg} (Please check your ElevenLabs subscription or workspace settings)."
                     else:
                         hint = f"PERMISSION DENIED: {msg}"
                 elif status == 422:
                     detail = data.get("detail") or data.get("title") or ""
                     hint = f"VALIDATION ERROR (422): {msg or detail}. Please ensure ALL required fields are included."
-                elif status == 400 and "free_tier" in msg.lower():
+                elif status == 400 and "free_tier" in msg_str:
                     hint = f"FREE TIER RESTRICTION: {msg}. Use a standard Voice ID."
                 else:
                     hint = msg or hint
             elif isinstance(data, str) and len(data) < 200:
                 hint = data
 
-            # SELF-HEALING: If this is the FIRST failure and it's a fixable error (400, 404, 422),
-            # give the agent a chance to fix it silently without showing A2UI to the user.
-            if fail_count == 0 and status in (400, 404, 422):
-                log.info(f"SELF-HEALING: Giving agent one chance to fix {status} error from {path}")
-                
-                tool_log.append({
-                    "path":        path,
-                    "method":      method.upper(),
-                    "status_code": status,
-                    "latency_ms":  latency,
-                    "response":    data,
-                })
-
-                return json.dumps({
-                    "status_code": status,
-                    "data": data,
-                    "note": (
-                        f"SELF-CORRECTION REQUIRED: The API call to {method.upper()} {path} failed with status {status}. "
-                        f"Error Detail: {hint}. "
-                        f"Analyze the error, correct your parameters, and RETRY the call immediately. "
-                        f"DO NOT ask the user for help yet. Try to fix it yourself first."
-                    )
-                })
-
-            # FALLBACK: If self-healing failed or it's a 403/Unfixable, show A2UI form.
+            # FALLBACK: Generate intelligent correction form for the user
             log.info(f"A2UI FALLBACK: Generating intelligent correction form for {status} error from {path}")
             
-            # Use AI to generate a SPECIFIC form based on the error
             intelligent_form = None
             if status in (400, 422) and data:
                 try:
-                    intelligent_form = await _generate_corrective_a2ui(status, path, method, data, params_dict)
+                    # Pass the last attempted payload (potentially repaired) for context
+                    intelligent_form = await _generate_corrective_a2ui(status, path, method, data, current_payload)
                 except Exception as e:
                     log.error(f"Failed to generate intelligent A2UI form: {e}")
 
@@ -476,7 +558,7 @@ def _build_agent(
                                 "component": "textfield",
                                 "key": "user_correction",
                                 "label": "Your Correction",
-                                "placeholder": "Describe the missing fields or values (e.g. Set stability to 0.5)",
+                                "placeholder": "Describe the missing fields or values",
                                 "required": True,
                                 "multiline": True
                             }
@@ -496,7 +578,7 @@ def _build_agent(
                 "status_code": status,
                 "data": a2ui_error_form,
                 "note": (
-                    f"CRITICAL: The API call to {method.upper()} {path} failed twice or is a plan restriction. "
+                    f"CRITICAL: The API call to {method.upper()} {path} failed even after internal repair attempts. "
                     f"You MUST show the 'a2ui' JSON block exactly as provided below so the user can help. "
                     f"Wait for the user's correction, then RETRY the same endpoint."
                 )
@@ -709,12 +791,11 @@ def _build_agent(
         "Rules:\n"
         "- WRAPPER: Your JSON must be wrapped in an 'a2ui' key: {\"a2ui\": {\"component\": \"form\", ...}}\n"
         "- CODE BLOCK: You MUST use ```a2ui [JSON] ``` markers. Failure to do this will result in rendering failure.\n"
-        "- COMPLETENESS (CRITICAL): Include ALL required parameters from the API spec (e.g., 'dimension', 'name'). Missing required fields is unacceptable.\n"
-        "- EXHAUSTIVENESS: Include relevant optional parameters (e.g., 'pod_type', 'replicas', 'cloud', 'region') for full control.\n"
-        "- NO AD-HOC FIELDS: NEVER invent fields that are not in the tool metadata. DO NOT add UI-only toggles like 'Wait for Index to be Ready'.\n"
-        "- Hiding Constants (CRITICAL): If a parameter requires a static technical value (e.g. service identifiers, fixed modes, or protocol flags), DO NOT include it in the form. Set these values internally in your tool call. Only include fields in the form that require unique variable user input (e.g. specific IDs, content, or custom settings).\n"
-        "- A2UI SUBMISSIONS: When a user submits an A2UI form, you will receive their input as a JSON message (e.g. {\"key\": \"value\"}). You MUST parse this JSON, extract the values, and immediately use them to RETRY your failed tool call. Do not ask for the information again if it is present in the JSON.\n"
-        "- DOT-NOTATION (MANDATORY): For nested API objects (like 'conversation_config'), you MUST use the exact dot-notation keys (e.g. 'conversation_config.model_id') as your A2UI form 'key'. This is the ONLY way the backend knows how to build the JSON body. DO NOT shorten or flatten these keys.\n"
+        "- SCHEMA-DRIVEN EXHAUSTIVENESS (CRITICAL): When generating a form, you MUST include ALL fields from the tool's JSON Schema (both REQUIRED and OPTIONAL). Map schema 'type' and 'enum' to the most appropriate A2UI component (e.g. use 'choicepicker' for enums, 'checkbox' for booleans, 'number' for integers).\n"
+        "- LABELS & DESCRIPTIONS: Use the schema 'description' as the 'placeholder' and the parameter name (converted to Title Case) as the 'label'.\n"
+        "- DOT-NOTATION (MANDATORY): For nested objects, you MUST use the exact dot-notation keys provided in the parameter list (e.g. 'settings.mode').\n"
+        "- A2UI SUBMISSIONS: When a user submits a form, you will receive a JSON message. Extract these values and immediately use them to EXECUTE or RETRY the tool call.\n"
+        "- NO AD-HOC FIELDS: NEVER invent fields that are not present in the tool specification.\n"
         "- AFTER the A2UI block, you may add a very brief explanatory sentence.\"\n"
     )
 
@@ -886,19 +967,28 @@ async def run_agent_stream(
     final_text = ""
     error_msg = ""
 
+    input_tokens = 0
+    output_tokens = 0
+
     try:
         async for event in runner.run_async(
             user_id="user",
             session_id=session_id,
             new_message=message,
         ):
-            # Capture tokens for streaming
+            # Capture tokens and usage metadata
             if event.is_final_response():
                 if event.content and event.content.parts:
                     for part in event.content.parts:
                         if hasattr(part, "text") and part.text:
                             final_text += part.text
                             yield json.dumps({"type": "token", "text": part.text}) + "\n"
+                
+                # Capture usage statistics if available
+                if hasattr(event, "usage_metadata") and event.usage_metadata:
+                    input_tokens = getattr(event.usage_metadata, "prompt_token_count", 0)
+                    output_tokens = getattr(event.usage_metadata, "candidates_token_count", 0)
+                    log.info(f"LLM USAGE: Input {input_tokens}, Output {output_tokens}")
             
             # Optionally capture tool calls as they happen
             if hasattr(event, "call") and event.call:
@@ -955,6 +1045,8 @@ async def run_agent_stream(
         "api_response": last_call.get("response"),
         "status_code":  last_call.get("status_code", 0),
         "latency_ms":   last_call.get("latency_ms", 0),
+        "input_tokens":  input_tokens,
+        "output_tokens": output_tokens,
         "error":        error_msg,
     }
 

@@ -66,6 +66,8 @@ interface LogEntry {
   api_response: string
   llm_thought: string
   error: string
+  input_tokens: number
+  output_tokens: number
   created_at: string
 }
 
@@ -116,7 +118,7 @@ export default function LogsPage() {
       toast.error("No logs available to export")
       return
     }
-    const headers = ["ID", "Agent Name", "User Input", "Matched Path", "Method", "Status Code", "Latency (ms)", "Created At"]
+    const headers = ["ID", "Agent Name", "User Input", "Matched Path", "Method", "Status Code", "Latency (ms)", "In Tokens", "Out Tokens", "Created At"]
     const rows = filteredLogs.map(log => [
       log.id,
       log.agent_name || `Agent ${log.agent_id}`,
@@ -125,6 +127,8 @@ export default function LogsPage() {
       log.method || "N/A",
       log.status_code,
       log.latency_ms,
+      log.input_tokens || 0,
+      log.output_tokens || 0,
       log.created_at
     ])
     const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n")
@@ -246,6 +250,8 @@ export default function LogsPage() {
                   <TableHead>User Input</TableHead>
                   <TableHead>Endpoint</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">In Tokens</TableHead>
+                  <TableHead className="text-right">Out Tokens</TableHead>
                   <TableHead className="text-right">Latency</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -254,12 +260,12 @@ export default function LogsPage() {
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i} className="animate-pulse">
-                      <TableCell colSpan={7} className="h-16 bg-muted/10" />
+                      <TableCell colSpan={9} className="h-16 bg-muted/10" />
                     </TableRow>
                   ))
                 ) : filteredLogs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <Database className="h-8 w-8 opacity-20" />
                         <p>No activity logs found matching your filters.</p>
@@ -298,7 +304,13 @@ export default function LogsPage() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell>{getStatusBadge(log.status_code)}</TableCell>
+                       <TableCell>{getStatusBadge(log.status_code)}</TableCell>
+                      <TableCell className="text-right">
+                        <span className="text-xs font-mono font-medium text-primary/70">{log.input_tokens || 0}</span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="text-xs font-mono font-medium text-emerald-500/70">{log.output_tokens || 0}</span>
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground/70">
                           <Clock className="h-3 w-3" />
@@ -330,7 +342,7 @@ export default function LogsPage() {
                               </SheetHeader>
 
                               <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-3 gap-4">
                                   <div className="space-y-1.5 p-3 rounded-xl bg-muted/30 border border-border/50">
                                     <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Status</span>
                                     <div>{getStatusBadge(log.status_code)}</div>
@@ -340,6 +352,13 @@ export default function LogsPage() {
                                     <div className="flex items-center gap-1 font-mono text-sm font-bold text-foreground">
                                       <Clock className="h-3 w-3 text-primary" />
                                       {log.latency_ms}ms
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1.5 p-3 rounded-xl bg-muted/30 border border-border/50">
+                                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Usage</span>
+                                    <div className="flex flex-col gap-1">
+                                      <div className="text-[11px] font-mono"><span className="text-muted-foreground">In:</span> <span className="font-bold text-primary">{log.input_tokens || 0}</span></div>
+                                      <div className="text-[11px] font-mono"><span className="text-muted-foreground">Out:</span> <span className="font-bold text-emerald-500">{log.output_tokens || 0}</span></div>
                                     </div>
                                   </div>
                                 </div>

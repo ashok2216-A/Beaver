@@ -339,6 +339,8 @@ Conversation:
         api_response=encrypt_secret(json.dumps(result.get("api_response"), default=str)[:4096]),
         llm_thought=f"Orchestrated match targeting operational domain: {agent.name}",
         error=result.get("error", ""),
+        input_tokens=result.get("input_tokens", 0),
+        output_tokens=result.get("output_tokens", 0),
     )
     db.add(log_entry)
     db.commit()
@@ -507,6 +509,8 @@ async def chat(
                             api_response=encrypt_secret(json.dumps(res.get("api_response"), default=str)[:4096]),
                             llm_thought=f"Auth: {agent.auth_type} | SecretLen: {len(agent.auth_secret)}",
                             error=res.get("error", ""),
+                            input_tokens=res.get("input_tokens", 0),
+                            output_tokens=res.get("output_tokens", 0),
                         )
                         db.add(log_entry)
                         db.commit()
@@ -531,6 +535,8 @@ async def chat(
         api_response=encrypt_secret(json.dumps(result.get("api_response"), default=str)[:4096]),
         llm_thought=f"Auth: {agent.auth_type} | SecretLen: {len(agent.auth_secret)}",
         error=result.get("error", ""),
+        input_tokens=result.get("input_tokens", 0),
+        output_tokens=result.get("output_tokens", 0),
     )
     db.add(log_entry)
     db.commit()

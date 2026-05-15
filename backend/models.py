@@ -121,6 +121,8 @@ class Log(Base):
     api_response = Column(Text, default="")
     llm_thought  = Column(Text, default="")
     error        = Column(Text, default="")
+    input_tokens = Column(Integer, default=0)
+    output_tokens= Column(Integer, default=0)
     created_at   = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     agent = relationship("Agent", back_populates="logs")

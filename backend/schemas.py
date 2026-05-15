@@ -228,6 +228,8 @@ class LogOut(BaseModel):
     api_response: Optional[str] = ""
     llm_thought: Optional[str] = ""
     error: Optional[str] = ""
+    input_tokens: int = 0
+    output_tokens: int = 0
     agent_name: Optional[str] = None
     created_at: datetime
 
