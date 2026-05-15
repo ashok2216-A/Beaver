@@ -386,7 +386,24 @@ def _build_agent(
 
             hint = "The API returned an error."
             if isinstance(data, dict):
-                msg = data.get("detail") or data.get("message") or ""
+                # Try to find a meaningful message in various common fields
+                msg = data.get("detail") or data.get("message") or data.get("error") or data.get("title") or ""
+                
+                # Check for structured error arrays (e.g. invalid_parameters, errors)
+                invalid_params = data.get("invalid_parameters") or data.get("errors")
+                if isinstance(invalid_params, list):
+                    parts = []
+                    for p in invalid_params:
+                        if isinstance(p, dict):
+                            p_name = p.get("name") or p.get("field") or p.get("key")
+                            p_reason = p.get("reason") or p.get("message") or p.get("detail")
+                            if p_name and p_reason:
+                                parts.append(f"'{p_name}': {p_reason}")
+                            elif p_reason:
+                                parts.append(p_reason)
+                    if parts:
+                        msg = (msg + " | " if msg else "") + " - " + "; ".join(parts)
+
                 if status == 403:
                     if "feature_not_available" in str(data) or "not enabled" in msg.lower():
                         hint = f"PLAN LIMITATION: {msg} (Please check your ElevenLabs subscription or workspace settings)."
@@ -394,7 +411,7 @@ def _build_agent(
                         hint = f"PERMISSION DENIED: {msg}"
                 elif status == 422:
                     detail = data.get("detail") or data.get("title") or ""
-                    hint = f"VALIDATION ERROR (422): {detail}. Please ensure ALL required fields are included."
+                    hint = f"VALIDATION ERROR (422): {msg or detail}. Please ensure ALL required fields are included."
                 elif status == 400 and "free_tier" in msg.lower():
                     hint = f"FREE TIER RESTRICTION: {msg}. Use a standard Voice ID."
                 else:

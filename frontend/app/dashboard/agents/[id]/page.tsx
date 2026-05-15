@@ -757,16 +757,7 @@ export default function AgentBuilderPage() {
                       : "bg-white/60 dark:bg-white/10 text-foreground border-border/50 rounded-tl-sm backdrop-blur-md shadow-sm"
                   )}>
                     {m.role === 'user' ? (
-                      m.content.startsWith('Form submission:') ? (
-                        <div className="flex items-center gap-2 py-1 px-1">
-                          <div className="bg-white/20 p-1 rounded-lg">
-                            <Check className="h-3.5 w-3.5 text-white" />
-                          </div>
-                          <span className="text-xs font-bold tracking-tight">Sent!</span>
-                        </div>
-                      ) : (
-                        <p className="whitespace-pre-wrap">{m.content}</p>
-                      )
+                      <p className="whitespace-pre-wrap">{m.content}</p>
                     ) : (
                       <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-muted/50 prose-pre:border prose-pre:border-border/50">
                         {m.role === 'assistant' && m.chunks && m.chunks.length > 0 ? (
