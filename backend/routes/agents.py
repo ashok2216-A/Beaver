@@ -12,16 +12,14 @@ from sqlalchemy.orm import Session, defer
 from sqlalchemy import func, case, distinct, or_
 
 from database import get_db
-from models import Agent, Endpoint, AgentStatus, User, Log
+from models import Agent, Endpoint, AgentStatus, User, Log, ToolSource
 from schemas import (
     AgentCreate, AgentOut, AgentDetail, AgentUpdate,
-    EndpointOut, EndpointCreate, EndpointUpdate, IngestUrlRequest, MessageOut,
-    IngestPreviewRequest, IngestPreviewOut, StatsOut,
-    PaginatedEndpoints, HealthStatsOut, VelocityOut,
+    EndpointOut, EndpointCreate, EndpointUpdate, MessageOut,
+    StatsOut, PaginatedEndpoints, HealthStatsOut, VelocityOut,
     BulkDeleteRequest
 )
 from services.parser import parse_openapi
-from services.ai_discovery import smart_ingest_url
 from utils.auth import get_current_user
 from utils.security import validate_url_safe, encrypt_secret, decrypt_secret
 from slowapi import Limiter
@@ -194,6 +192,15 @@ def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
         except Exception:
             has_secret = False
 
+    source_type = "rest"
+    mcp_url = None
+    if getattr(agent, "endpoints", None):
+        for ep in agent.endpoints:
+            if hasattr(ep, "source_type") and getattr(ep, "source_type") == ToolSource.mcp_sse:
+                source_type = "mcp_sse"
+                mcp_url = ep.mcp_server_url
+                break
+
     return AgentOut(
         id=agent.id,
         owner_id=agent.owner_id,
@@ -208,6 +215,8 @@ def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
         auth_header=agent.auth_header,
         endpoint_count=ep_count if ep_count is not None else len(agent.endpoints),
         custom_headers=decrypt_dict(agent.custom_headers),
+        source_type=source_type,
+        mcp_server_url=mcp_url,
         created_at=agent.created_at,
         updated_at=agent.updated_at,
     )
@@ -248,129 +257,33 @@ def create_agent(
     )
     if data.api_spec:
         agent = _ingest_spec(agent, data.api_spec, db)
+    elif data.source_type == "mcp_sse":
+        db.add(agent)
+        db.commit()
+        db.refresh(agent)
+        from services.mcp_service import discover_mcp_tools_sync
+        mcp_url = data.mcp_server_url or data.base_url
+        tools = discover_mcp_tools_sync(mcp_url, user_id=user.id)
+        for t in tools:
+            ep = Endpoint(
+                agent_id=agent.id,
+                method="POST",
+                path=f"/mcp/tools/{t['name']}",
+                summary=t['name'],
+                description=t['description'],
+                parameters=t.get("parameters", []),
+                source_type=ToolSource.mcp_sse,
+                mcp_server_url=mcp_url,
+                is_locked=False
+            )
+            db.add(ep)
+        db.commit()
+        db.refresh(agent)
     else:
         db.add(agent)
         db.commit()
         db.refresh(agent)
         
-    return _agent_out(agent)
-
-
-@router.post("/ingest/preview", response_model=IngestPreviewOut)
-@limiter.limit("10/minute")
-async def ingest_preview(request: Request, body: IngestPreviewRequest):
-    """Fetch a spec URL and return basic metadata for the UI preview."""
-    import os
-    import json
-    import yaml
-    
-    if not body.url.startswith("http"):
-        try:
-            for p in [body.url, os.path.join("backend", "templates", os.path.basename(body.url)), os.path.join(os.path.dirname(__file__), "..", "templates", os.path.basename(body.url))]:
-                if os.path.exists(p):
-                    with open(p, 'r', encoding='utf-8') as f:
-                        raw_text = f.read()
-                    break
-            else:
-                raise FileNotFoundError("Local file not found.")
-        except Exception as e:
-            raise HTTPException(status_code=422, detail=f"Failed to read local file: {e}")
-    else:
-        validate_url_safe(body.url)
-        try:
-            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-                r = await client.get(body.url)
-                r.raise_for_status()
-                raw_text = r.text
-        except Exception as exc:
-            log.error(f"Preview fetch failed: {exc}")
-            raise HTTPException(status_code=422, detail=f"Failed to fetch spec for preview: {exc}")
-
-    try:
-        try:
-            spec = json.loads(raw_text)
-        except Exception:
-            spec = yaml.safe_load(raw_text)
-    except Exception:
-        raise HTTPException(status_code=422, detail="Could not parse spec format (must be JSON or YAML).")
-
-    info = spec.get("info", {})
-    return IngestPreviewOut(
-        name=info.get("title", "Discovered Agent"),
-        description=info.get("description", ""),
-        base_url=spec.get("servers", [{}])[0].get("url", "")
-    )
-
-
-@router.post("/ingest/url", response_model=AgentOut, status_code=status.HTTP_201_CREATED)
-@limiter.limit("5/minute")
-async def ingest_url(
-    request: Request,
-    body: IngestUrlRequest, 
-    user: User = Depends(get_current_user), 
-    db: Session = Depends(get_db)
-):
-    # SEC-MON: Enforce plan limits
-    if user.plan_type == "free":
-        count = db.query(Agent).filter(Agent.owner_id == user.id).count()
-        if count >= 1:
-            raise HTTPException(
-                status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                detail="Free plan limit reached (1 agent). Please upgrade to Pro for unlimited agents."
-            )
-
-    import os
-    import json
-    import yaml
-    
-    if not body.url.startswith("http"):
-        try:
-            for p in [body.url, os.path.join("backend", "templates", os.path.basename(body.url)), os.path.join(os.path.dirname(__file__), "..", "templates", os.path.basename(body.url))]:
-                if os.path.exists(p):
-                    with open(p, 'r', encoding='utf-8') as f:
-                        raw_text = f.read()
-                    break
-            else:
-                raise FileNotFoundError("Local file not found.")
-        except Exception as e:
-            raise HTTPException(status_code=422, detail=f"Failed to read local file: {e}")
-    else:
-        validate_url_safe(body.url)
-        if body.base_url:
-            validate_url_safe(body.base_url)
-            
-        try:
-            async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-                r = await client.get(body.url)
-                r.raise_for_status()
-                raw_text = r.text
-        except httpx.HTTPError as exc:
-            raise HTTPException(status_code=422, detail=f"Failed to fetch spec: {exc}")
-
-    try:
-        try:
-            spec = json.loads(raw_text)
-        except Exception:
-            spec = yaml.safe_load(raw_text)
-    except Exception:
-            raise HTTPException(status_code=422, detail="Could not parse fetched spec.")
-
-    base_url = body.base_url or spec.get("servers", [{}])[0].get("url", "")
-    
-    agent = Agent(
-        owner_id=user.id,
-        name=body.name,
-        description=body.description,
-        base_url=base_url,
-        system_prompt="",
-        auth_type="bearer",
-        auth_secret=encrypt_secret(body.auth_secret or ""),
-        model_id="mistral/mistral-small-latest",
-        custom_headers=encrypt_dict(body.custom_headers),
-        status=AgentStatus.draft,
-        api_spec="",
-    )
-    agent = _ingest_spec(agent, spec, db)
     return _agent_out(agent)
 
 
@@ -421,56 +334,6 @@ async def ingest_file(
         auth_header=auth_header,
         auth_secret=encrypt_secret(auth_secret or ""),
         model_id="mistral/mistral-small-latest",
-        status=AgentStatus.draft,
-        api_spec="",
-    )
-    agent = _ingest_spec(agent, spec, db)
-    return _agent_out(agent)
-
-
-@router.post("/ingest/smart", response_model=AgentOut)
-@limiter.limit("5/minute")
-async def ingest_smart(
-    request: Request,
-    body: IngestPreviewRequest, 
-    user: User = Depends(get_current_user), 
-    db: Session = Depends(get_db)
-):
-    # SEC-MON: Enforce plan limits
-    if user.plan_type == "free":
-        count = db.query(Agent).filter(Agent.owner_id == user.id).count()
-        if count >= 1:
-            raise HTTPException(
-                status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                detail="Free plan limit reached (1 agent). Please upgrade to Pro for unlimited agents."
-            )
-
-    """
-    Automated discovery: Hunter + AI Fallback.
-    """
-    if body.url.startswith("http"):
-        validate_url_safe(body.url)
-    try:
-        spec = await smart_ingest_url(body.url)
-    except Exception as e:
-        raise HTTPException(status_code=422, detail=str(e))
-
-    # Basic discovery of metadata from generated/found spec
-    discovered_name = spec.get("info", {}).get("title", "Discovered Agent")
-    discovered_description = spec.get("info", {}).get("description", "")
-    discovered_base_url = spec.get("servers", [{}])[0].get("url", "https://api.example.com")
-    
-    agent = Agent(
-        owner_id=user.id,
-        name=body.name or discovered_name,
-        description=body.description or discovered_description,
-        base_url=body.base_url or discovered_base_url,
-        system_prompt="",
-        auth_type=body.auth_type or "bearer",
-        auth_header=body.auth_header,
-        auth_secret=encrypt_secret(body.auth_secret or ""),
-        model_id="mistral/mistral-small-latest",
-        custom_headers=encrypt_dict({}),
         status=AgentStatus.draft,
         api_spec="",
     )

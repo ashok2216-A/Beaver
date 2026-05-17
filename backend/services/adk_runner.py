@@ -259,6 +259,7 @@ def _build_agent(
     user_input: str,  # Added to support Ephemeral RAG
     audio_artifacts: list[dict], # Added for sideband audio
     custom_headers: dict[str, str] | None = None,
+    user_id: str = "user",
 ) -> Agent:
     """
     Construct an ADK Agent with one universal API-call tool and memory tools.
@@ -392,6 +393,31 @@ def _build_agent(
         current_payload = params_dict
         data, status, latency = {}, 0, 0
         discovery = get_dynamic_discovery()
+        
+        # Check if this is an MCP tool call
+        if ep_def.get("source_type") == "mcp_sse":
+            from services.mcp_service import execute_mcp_tool
+            mcp_url = ep_def.get("mcp_server_url") or base_url
+            ep_path = ep_def.get("path", "")
+            tool_name = ep_path.split("/")[-1] if "/mcp/tools/" in ep_path else (ep_def.get("summary") or path.strip("/"))
+            data, status, latency = await execute_mcp_tool(
+                user_id=user_id,
+                mcp_server_url=mcp_url,
+                tool_name=tool_name,
+                arguments=params_dict,
+            )
+            tool_log.append({
+                "path":        path,
+                "method":      method.upper(),
+                "status_code": status,
+                "latency_ms":  latency,
+                "response":    data,
+            })
+            return json.dumps({
+                "status_code": status,
+                "data": data,
+                "latency_ms": latency
+            })
         
         for attempt in range(MAX_INTERNAL_RETRIES):
             data, status, latency = await call_api(
@@ -840,6 +866,9 @@ def _build_agent(
     )[:50] or "api_agent"
 
     model_name = model or "mistral/mistral-small-latest"
+    if "gemini" in model_name.lower():
+        model_name = "mistral/mistral-small-latest"
+        
     adk_model = LiteLlm(model=model_name, num_retries=3)
 
     async def auto_save_session_to_memory_callback(callback_context):
@@ -876,6 +905,7 @@ async def run_agent_stream(
     session_id: str | None = None,
     history: list[dict] | None = None, # Added for session memory
     custom_headers: dict[str, str] | None = None,
+    user_id: str = "user",
 ):
     """
     Async generator that yields JSON chunks as the agent runs.
@@ -926,6 +956,7 @@ async def run_agent_stream(
         user_input=user_input, 
         audio_artifacts=audio_artifacts, # Pass sideband
         custom_headers=custom_headers,
+        user_id=user_id,
     )
 
     runner = Runner(
@@ -1092,6 +1123,7 @@ async def run_agent_async(
     session_id: str | None = None,
     history: list[dict] | None = None, # Added
     custom_headers: dict[str, str] | None = None,
+    user_id: str = "user",
 ) -> dict[str, Any]:
     """Non-streaming version for backward compatibility."""
     final_text = ""
@@ -1110,6 +1142,7 @@ async def run_agent_async(
         session_id=session_id,
         history=history, # Pass history
         custom_headers=custom_headers,
+        user_id=user_id,
     ):
         chunk = json.loads(chunk_str)
         if chunk["type"] == "final":

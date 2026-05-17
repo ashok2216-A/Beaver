@@ -27,6 +27,11 @@ class HttpMethod(str, enum.Enum):
     delete = "DELETE"
 
 
+class ToolSource(str, enum.Enum):
+    rest = "rest"
+    mcp_sse = "mcp_sse"
+
+
 # ─── Models ───────────────────────────────────────────────────────────────────
 
 class User(Base):
@@ -50,6 +55,7 @@ class User(Base):
     agents        = relationship("Agent", back_populates="owner", cascade="all, delete-orphan")
     api_keys      = relationship("ApiKey", back_populates="owner", cascade="all, delete-orphan")
     conversations = relationship("Conversation", back_populates="owner", cascade="all, delete-orphan")
+    integrations  = relationship("UserIntegration", back_populates="owner", cascade="all, delete-orphan")
 
 
 class ApiKey(Base):
@@ -63,6 +69,24 @@ class ApiKey(Base):
     last_used_at = Column(DateTime(timezone=True), nullable=True)
 
     owner = relationship("User", back_populates="api_keys")
+
+
+class UserIntegration(Base):
+    __tablename__ = "user_integrations"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    user_id       = Column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    provider      = Column(String(64), nullable=False, index=True) # e.g. "google", "github", "slack"
+    account_id    = Column(String(255), nullable=True)             # e.g. email address or username
+    access_token  = Column(Text, nullable=False)                   # Encrypted via AES-256
+    refresh_token = Column(Text, nullable=True)                    # Encrypted via AES-256
+    expires_at    = Column(DateTime(timezone=True), nullable=True)
+    scopes        = Column(JSON, default=list)
+    created_at    = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at    = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+                            onupdate=lambda: datetime.now(timezone.utc))
+
+    owner = relationship("User", back_populates="integrations")
 
 
 class Agent(Base):
@@ -104,6 +128,8 @@ class Endpoint(Base):
     parameters  = Column(JSON, default=list)   # list[{name, in, required, schema}]
     request_body= Column(JSON, default=dict)   # simplified body schema
     is_locked   = Column(Boolean, default=False)
+    source_type = Column(SAEnum(ToolSource), default=ToolSource.rest, nullable=False)
+    mcp_server_url = Column(String(512), nullable=True)
 
     agent = relationship("Agent", back_populates="endpoints")
 

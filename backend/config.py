@@ -39,6 +39,14 @@ class Settings(BaseSettings):
     admin_key: str = "" # Legacy
     secret_key: str = "change_me_in_production"
     access_token_expire_minutes: int = 60
+    
+    # OAuth Providers
+    oauth_google_client_id: str = ""
+    oauth_google_client_secret: str = ""
+    oauth_github_client_id: str = ""
+    oauth_github_client_secret: str = ""
+    oauth_slack_client_id: str = ""
+    oauth_slack_client_secret: str = ""
 
     # ── Billing ───────────────────────────────────────────────────
     payment_provider: str = "both" # razorpay | stripe | both

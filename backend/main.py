@@ -25,7 +25,7 @@ from utils.limiter import limiter
 
 from config import get_settings
 from database import Base, engine
-from routes import agents, chat, auth, billing
+from routes import agents, chat, auth, billing, oauth
 from utils.auth import get_current_user
 
 from utils.logging_config import setup_logging
@@ -153,6 +153,12 @@ app.include_router(
 app.include_router(
     billing.router,
     prefix="/api/v1",
+)
+
+app.include_router(
+    oauth.router,
+    prefix="/api/v1",
+    dependencies=[Depends(get_current_user)]
 )
 
 

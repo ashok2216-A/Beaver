@@ -1054,7 +1054,6 @@ export default function AgentBuilderPage() {
                   >
                     <option value="mistral/mistral-small-latest">mistral-small (Mistral)</option>
                     <option value="mistral/mistral-large-latest">mistral-large (Mistral)</option>
-                    <option value="gemini/gemini-2.0-flash-lite">gemini-2.0-flash (Google)</option>
                     <option value="openai/gpt-4o-mini">gpt-4o-mini (OpenAI)</option>
                   </select>
                 </div>

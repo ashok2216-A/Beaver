@@ -299,6 +299,8 @@ Conversation:
                 "auth_header":  ep_agent.auth_header,
                 "auth_secret":  ep_agent.auth_secret,
                 "custom_headers": ep_agent.custom_headers,
+                "source_type":  ep.source_type if hasattr(ep, "source_type") else "rest",
+                "mcp_server_url": ep.mcp_server_url if hasattr(ep, "mcp_server_url") else None,
             })
 
     # Fetch history for multi-turn continuity
@@ -323,6 +325,7 @@ Conversation:
         "model": agent.model_id,
         "session_id": session_id,
         "history": history,
+        "user_id": str(user.id),
     }
 
     from services.agent import run_agent
@@ -458,6 +461,8 @@ async def chat(
                 "description":  ep.description,
                 "parameters":   ep.parameters or [],
                 "request_body": ep.request_body or {},
+                "source_type":  ep.source_type if hasattr(ep, "source_type") else "rest",
+                "mcp_server_url": ep.mcp_server_url if hasattr(ep, "mcp_server_url") else None,
             }
             for ep in endpoints
         ]
@@ -484,6 +489,7 @@ async def chat(
         "model": agent.model_id,
         "session_id": session_id,
         "history": history,
+        "user_id": str(user.id),
     }
 
     if stream:
