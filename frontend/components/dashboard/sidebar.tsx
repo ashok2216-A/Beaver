@@ -62,7 +62,7 @@ export function DashboardSidebar({
         {/* Collapse Toggle Button - Outside scroll container */}
         <button
           onClick={onToggle}
-          className="absolute -right-3 top-20 z-[60] flex h-6 w-6 items-center justify-center rounded-full border border-border/30 bg-card/20 backdrop-blur-md text-muted-foreground hover:text-foreground shadow-sm transition-transform hover:scale-110"
+          className="absolute -right-3 top-20 z-[60] flex h-6 w-6 items-center justify-center rounded-full border border-border/50 bg-card/50 backdrop-blur-md text-muted-foreground hover:text-foreground shadow-sm transition-transform hover:scale-110"
         >
           {isCollapsed ? (
             <ChevronRight className="h-3.5 w-3.5" />

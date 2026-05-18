@@ -64,6 +64,7 @@ interface Endpoint {
   path: string
   summary: string
   is_locked: boolean
+  description?: string
 }
 
 const methodColors: Record<string, string> = {
@@ -564,23 +565,27 @@ export default function AgentBuilderPage() {
           <div className="p-5 space-y-4 border-b border-border/50">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">Endpoints</h2>
+                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">
+                  {agent?.base_url?.startsWith("smithery:") ? "Integration Capabilities" : "Endpoints"}
+                </h2>
                 <p className="text-xs text-muted-foreground">{endpoints.length} tools discovered</p>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-8 rounded-xl border-border/50 bg-background/50 text-xs font-bold text-muted-foreground hover:text-primary hover:border-primary/40 shadow-sm px-3 flex items-center gap-1.5"
-                onClick={() => {
-                  setNewMethod("GET")
-                  setNewPath("")
-                  setNewSummary("")
-                  setIsAddEndpointOpen(true)
-                }}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add Endpoint
-              </Button>
+              {!agent?.base_url?.startsWith("smithery:") && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 rounded-xl border-border/50 bg-background/50 text-xs font-bold text-muted-foreground hover:text-primary hover:border-primary/40 shadow-sm px-3 flex items-center gap-1.5"
+                  onClick={() => {
+                    setNewMethod("GET")
+                    setNewPath("")
+                    setNewSummary("")
+                    setIsAddEndpointOpen(true)
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Endpoint
+                </Button>
+              )}
             </div>
 
             <div className="relative">
@@ -593,125 +598,180 @@ export default function AgentBuilderPage() {
               />
             </div>
 
-            <div className="flex flex-wrap gap-1">
-              {['ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => {
-                const isActive = selectedMethod === m;
-                const colorsMap = {
-                  ALL: isActive ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border/50",
-                  GET: isActive ? "bg-emerald-500/20 text-emerald-500 border-emerald-500/40 shadow-sm" : "bg-background text-muted-foreground border-border/50 hover:border-emerald-500/30",
-                  POST: isActive ? "bg-blue-500/20 text-blue-500 border-blue-500/40 shadow-sm" : "bg-background text-muted-foreground border-border/50 hover:border-blue-500/30",
-                  PUT: isActive ? "bg-amber-500/20 text-amber-500 border-amber-500/40 shadow-sm" : "bg-background text-muted-foreground border-border/50 hover:border-amber-500/30",
-                  PATCH: isActive ? "bg-violet-500/20 text-violet-500 border-violet-500/40 shadow-sm" : "bg-background text-muted-foreground border-border/50 hover:border-violet-500/30",
-                  DELETE: isActive ? "bg-rose-500/20 text-rose-500 border-rose-500/40 shadow-sm" : "bg-background text-muted-foreground border-border/50 hover:border-rose-500/30",
-                };
-                const currentStyles = colorsMap[m as keyof typeof colorsMap];
+            {!agent?.base_url?.startsWith("smithery:") ? (
+              <>
+                <div className="flex flex-wrap gap-1">
+                  {['ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => {
+                    const isActive = selectedMethod === m;
+                    const colorsMap = {
+                      ALL: isActive ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border/50",
+                      GET: isActive ? "bg-emerald-500/20 text-emerald-500 border-emerald-500/40 shadow-sm" : "bg-background text-muted-foreground border-border/50 hover:border-emerald-500/30",
+                      POST: isActive ? "bg-blue-500/20 text-blue-500 border-blue-500/40 shadow-sm" : "bg-background text-muted-foreground border-border/50 hover:border-blue-500/30",
+                      PUT: isActive ? "bg-amber-500/20 text-amber-500 border-amber-500/40 shadow-sm" : "bg-background text-muted-foreground border-border/50 hover:border-amber-500/30",
+                      PATCH: isActive ? "bg-violet-500/20 text-violet-500 border-violet-500/40 shadow-sm" : "bg-background text-muted-foreground border-border/50 hover:border-violet-500/30",
+                      DELETE: isActive ? "bg-rose-500/20 text-rose-500 border-rose-500/40 shadow-sm" : "bg-background text-muted-foreground border-border/50 hover:border-rose-500/30",
+                    };
+                    const currentStyles = colorsMap[m as keyof typeof colorsMap];
 
-                return (
-                  <button
-                    key={m}
-                    onClick={() => setSelectedMethod(m)}
-                    className={cn(
-                      "px-2 py-1 rounded-md text-[10px] font-bold transition-all border",
-                      currentStyles
-                    )}
+                    return (
+                      <button
+                        key={m}
+                        onClick={() => setSelectedMethod(m)}
+                        className={cn(
+                          "px-2 py-1 rounded-md text-[10px] font-bold transition-all border",
+                          currentStyles
+                        )}
+                      >
+                        {m}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                    {selectedMethod === 'ALL' ? 'All Methods' : `${selectedMethod} Only`}
+                  </span>
+                  <div className="flex gap-1.5">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 text-[9px] font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1 rounded-lg px-1.5 border border-transparent hover:border-destructive/20" 
+                      onClick={() => handleBulkLock(true)}
+                    >
+                      <Lock className="h-2.5 w-2.5" />
+                      Lock {selectedMethod}
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 text-[9px] font-bold text-muted-foreground hover:text-primary hover:bg-primary/10 gap-1 rounded-lg px-1.5 border border-transparent hover:border-primary/20" 
+                      onClick={() => handleBulkLock(false)}
+                    >
+                      <Unlock className="h-2.5 w-2.5" />
+                      Unlock {selectedMethod}
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                  Discovered Actions
+                </span>
+                <div className="flex gap-1.5">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 text-[9px] font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1 rounded-lg px-1.5 border border-transparent hover:border-destructive/20" 
+                    onClick={() => handleBulkLock(true)}
                   >
-                    {m}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                {selectedMethod === 'ALL' ? 'All Methods' : `${selectedMethod} Only`}
-              </span>
-              <div className="flex gap-1.5">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 text-[9px] font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1 rounded-lg px-1.5 border border-transparent hover:border-destructive/20" 
-                  onClick={() => handleBulkLock(true)}
-                >
-                  <Lock className="h-2.5 w-2.5" />
-                  Lock {selectedMethod}
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 text-[9px] font-bold text-muted-foreground hover:text-primary hover:bg-primary/10 gap-1 rounded-lg px-1.5 border border-transparent hover:border-primary/20" 
-                  onClick={() => handleBulkLock(false)}
-                >
-                  <Unlock className="h-2.5 w-2.5" />
-                  Unlock {selectedMethod}
-                </Button>
+                    <Lock className="h-2.5 w-2.5" />
+                    Lock All
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 text-[9px] font-bold text-muted-foreground hover:text-primary hover:bg-primary/10 gap-1 rounded-lg px-1.5 border border-transparent hover:border-primary/20" 
+                    onClick={() => handleBulkLock(false)}
+                  >
+                    <Unlock className="h-2.5 w-2.5" />
+                    Unlock All
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
             <div className="p-3 space-y-2">
-              {filteredEndpoints.map(ep => (
-                <div
-                  key={ep.id}
-                  onClick={() => {
-                    if (ep.is_locked) return
-                    setEditingEndpoint(ep)
-                    setNewMethod(ep.method)
-                    setNewPath(ep.path)
-                    setNewSummary(ep.summary)
-                    setIsEditEndpointOpen(true)
-                  }}
-                  className={cn(
-                    "w-full text-left p-3 rounded-xl border transition-all relative group cursor-pointer",
-                    ep.is_locked ? "bg-muted/30 border-transparent opacity-60" : "bg-card border-border/50 hover:border-primary/40 shadow-sm"
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className={cn(
-                      "px-1.5 py-0.5 rounded text-[9px] font-bold border shrink-0",
-                      methodColors[ep.method]
-                    )}>
-                      {ep.method}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      {!ep.is_locked && (
-                        <>
-                          <button 
-                            onClick={(e) => { 
-                              e.stopPropagation()
-                              setEditingEndpoint(ep)
-                              setNewMethod(ep.method)
-                              setNewPath(ep.path)
-                              setNewSummary(ep.summary)
-                              setIsEditEndpointOpen(true)
-                            }}
-                            className="h-6 w-6 flex items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:text-primary hover:border-primary/40 transition-all md:opacity-0 md:group-hover:opacity-100"
-                          >
-                            <Edit2 className="h-3 w-3" />
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleDeleteEndpoint(ep.id); }}
-                            className="h-6 w-6 flex items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-all md:opacity-0 md:group-hover:opacity-100"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </>
+              {filteredEndpoints.map(ep => {
+                const isMcpTool = agent?.base_url?.startsWith("smithery:") || ep.path.startsWith("/mcp/tools/");
+                return (
+                  <div
+                    key={ep.id}
+                    onClick={() => {
+                      if (ep.is_locked || isMcpTool) return
+                      setEditingEndpoint(ep)
+                      setNewMethod(ep.method)
+                      setNewPath(ep.path)
+                      setNewSummary(ep.summary)
+                      setIsEditEndpointOpen(true)
+                    }}
+                    className={cn(
+                      "w-full text-left p-3.5 rounded-2xl border transition-all relative group",
+                      !ep.is_locked && !isMcpTool && "cursor-pointer",
+                      ep.is_locked ? "bg-muted/30 border-transparent opacity-60" : "bg-card/70 border-border/50 hover:border-primary/40 shadow-sm backdrop-blur-sm"
+                    )} ep-id={ep.id}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      {isMcpTool ? (
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-extrabold tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shrink-0 shadow-sm">
+                          ACTION
+                        </span>
+                      ) : (
+                        <span className={cn(
+                          "px-1.5 py-0.5 rounded text-[9px] font-bold border shrink-0",
+                          methodColors[ep.method]
+                        )}>
+                          {ep.method}
+                        </span>
                       )}
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleToggleLock(ep.id); }}
-                        className={cn(
-                          "h-6 w-6 flex items-center justify-center rounded-lg border transition-all",
-                          ep.is_locked ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-background border-border text-muted-foreground hover:text-primary"
+                      <div className="flex items-center gap-1">
+                        {!ep.is_locked && !isMcpTool && (
+                          <>
+                            <button 
+                              onClick={(e) => { 
+                                e.stopPropagation()
+                                setEditingEndpoint(ep)
+                                setNewMethod(ep.method)
+                                setNewPath(ep.path)
+                                setNewSummary(ep.summary)
+                                setIsEditEndpointOpen(true)
+                              }}
+                              className="h-7 w-7 flex items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:text-primary hover:border-primary/40 transition-all md:opacity-0 md:group-hover:opacity-100"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleDeleteEndpoint(ep.id); }}
+                              className="h-7 w-7 flex items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-all md:opacity-0 md:group-hover:opacity-100"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </>
                         )}
-                      >
-                        {ep.is_locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                      </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleToggleLock(ep.id); }}
+                          className={cn(
+                            "h-7 w-7 flex items-center justify-center rounded-lg border transition-all shadow-sm",
+                            ep.is_locked ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-background border-border text-muted-foreground hover:text-primary"
+                          )}
+                        >
+                          {ep.is_locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
                     </div>
+                    {isMcpTool ? (() => {
+                      const cleanName = ep.path.replace("/mcp/tools/", "") || ep.summary;
+                      const formattedDesc = ep.description || (ep.summary && ep.summary !== cleanName ? ep.summary : `Executes the ${cleanName.replace(/_/g, " ")} capability.`);
+                      return (
+                        <>
+                          <p className="font-mono font-bold text-xs truncate text-foreground">{cleanName}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1.5 line-clamp-2 font-medium leading-relaxed">{formattedDesc}</p>
+                        </>
+                      );
+                    })() : (
+                      <>
+                        <p className="font-mono text-[11px] truncate text-foreground/80">{ep.path}</p>
+                        {ep.summary && (
+                          <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 font-medium">{ep.summary}</p>
+                        )}
+                      </>
+                    )}
                   </div>
-                  <p className="font-mono text-[11px] truncate text-foreground/80">{ep.path}</p>
-                  {ep.summary && <p className="text-[10px] text-muted-foreground mt-1 line-clamp-1">{ep.summary}</p>}
-                </div>
-              ))}
+                );
+              })}
               {filteredEndpoints.length === 0 && (
                 <div className="py-20 text-center opacity-30">
                   <Search className="h-8 w-8 mx-auto mb-2" />
@@ -961,87 +1021,102 @@ export default function AgentBuilderPage() {
                   <p className="text-[10px] text-muted-foreground italic">Personality, rules, and constraints.</p>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Base API URL</label>
-                  <Input name="base_url" defaultValue={agent.base_url} className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs" />
-                </div>
-              </div>
-
-              <div className="space-y-6 pt-6 border-t border-border/50">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-primary">Authentication</h3>
-                
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-foreground/70">Auth Type</label>
-                    <select 
-                      name="auth_type" 
-                      defaultValue={agent.auth_type} 
-                      className="w-full h-11 rounded-xl border border-border/50 bg-background/50 px-4 text-xs outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
-                    >
-                      <option value="none">None</option>
-                      <option value="bearer">Bearer Token</option>
-                      <option value="apikey">Custom Header (API Key)</option>
-                      <option value="query_key">Query Parameter (URL)</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-foreground/70">Custom Header Name</label>
-                    <Input name="auth_header" defaultValue={agent.auth_header} placeholder="Authorization" className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-foreground/70">Auth Secret / Token</label>
-                    <Input type="password" name="auth_secret" defaultValue={agent.auth_secret} placeholder="sk-••••••••••••" className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs" />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-foreground/70">Global Headers</label>
-                    <button 
-                      type="button" 
-                      onClick={() => setCustomHeaders([...customHeaders, ['', '']])}
-                      className="text-[10px] font-bold text-primary hover:underline"
-                    >
-                      + Add Pair
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {customHeaders.map(([k, v], idx) => (
-                      <div key={idx} className="flex gap-2 group">
-                        <Input 
-                          placeholder="Key" 
-                          value={k} 
-                          onChange={(e) => {
-                            const newHeaders = [...customHeaders];
-                            newHeaders[idx][0] = e.target.value;
-                            setCustomHeaders(newHeaders);
-                          }}
-                          className="h-8 rounded-lg bg-background/50 border-border/50 text-[10px] font-mono px-2"
-                        />
-                        <Input 
-                          placeholder="Value" 
-                          value={v}
-                          onChange={(e) => {
-                            const newHeaders = [...customHeaders];
-                            newHeaders[idx][1] = e.target.value;
-                            setCustomHeaders(newHeaders);
-                          }}
-                          className="h-8 rounded-lg bg-background/50 border-border/50 text-[10px] font-mono px-2"
-                        />
-                        <button 
-                          type="button"
-                          onClick={() => setCustomHeaders(customHeaders.filter((_, i) => i !== idx))}
-                          className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                {agent?.base_url?.startsWith("smithery:") ? (
+                  <div className="space-y-2 pt-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Integration Connection</label>
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-sans text-xs font-bold shadow-inner">
+                      <div className="flex items-center gap-2.5">
+                        <Check className="h-4 w-4 stroke-[3px]" />
+                        <span className="capitalize">{agent.base_url.replace("smithery:", "").replace("googlecalendar", "Google Calendar")}</span>
                       </div>
-                    ))}
+                      <span className="text-[10px] uppercase font-sans tracking-wider bg-emerald-500/20 px-2 py-0.5 rounded-md font-extrabold text-emerald-600 dark:text-emerald-400">Verified</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Base API URL</label>
+                    <Input name="base_url" defaultValue={agent.base_url} className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs" />
+                  </div>
+                )}
+              </div>
+
+              {!agent?.base_url?.startsWith("smithery:") && (
+                <div className="space-y-6 pt-6 border-t border-border/50">
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-primary">Authentication</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-foreground/70">Auth Type</label>
+                      <select 
+                        name="auth_type" 
+                        defaultValue={agent?.auth_type} 
+                        className="w-full h-11 rounded-xl border border-border/50 bg-background/50 px-4 text-xs outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
+                      >
+                        <option value="none">None</option>
+                        <option value="bearer">Bearer Token</option>
+                        <option value="apikey">Custom Header (API Key)</option>
+                        <option value="query_key">Query Parameter (URL)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-foreground/70">Custom Header Name</label>
+                      <Input name="auth_header" defaultValue={agent?.auth_header} placeholder="Authorization" className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-foreground/70">Auth Secret / Token</label>
+                      <Input type="password" name="auth_secret" defaultValue={agent?.auth_secret} placeholder="sk-••••••••••••" className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-foreground/70">Global Headers</label>
+                      <button 
+                        type="button" 
+                        onClick={() => setCustomHeaders([...customHeaders, ['', '']])}
+                        className="text-[10px] font-bold text-primary hover:underline"
+                      >
+                        + Add Pair
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {customHeaders.map(([k, v], idx) => (
+                        <div key={idx} className="flex gap-2 group">
+                          <Input 
+                            placeholder="Key" 
+                            value={k} 
+                            onChange={(e) => {
+                              const newHeaders = [...customHeaders];
+                              newHeaders[idx][0] = e.target.value;
+                              setCustomHeaders(newHeaders);
+                            }}
+                            className="h-8 rounded-lg bg-background/50 border-border/50 text-[10px] font-mono px-2"
+                          />
+                          <Input 
+                            placeholder="Value" 
+                            value={v}
+                            onChange={(e) => {
+                              const newHeaders = [...customHeaders];
+                              newHeaders[idx][1] = e.target.value;
+                              setCustomHeaders(newHeaders);
+                            }}
+                            className="h-8 rounded-lg bg-background/50 border-border/50 text-[10px] font-mono px-2"
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => setCustomHeaders(customHeaders.filter((_, i) => i !== idx))}
+                            className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="space-y-4 pt-6 border-t border-border/50">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-primary">Engine</h3>

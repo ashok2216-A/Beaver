@@ -104,7 +104,13 @@ function NewAgentContent() {
     loadOauthAndTemplates();
   }, [getToken]);
 
-  const categories = Array.from(new Set(templates.map((t) => t.category)));
+  const queryParam = searchParams.get("query") || "";
+  const filteredTemplates = templates.filter(t => {
+    if (!queryParam) return true;
+    const q = queryParam.toLowerCase();
+    return t.name.toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q) || t.category.toLowerCase().includes(q);
+  });
+  const categories = Array.from(new Set(filteredTemplates.map((t) => t.category)));
 
   const getProviderForTemplate = (t: Template) => {
     const dom = (t.domain || "").toLowerCase();
@@ -115,8 +121,20 @@ function NewAgentContent() {
     return null;
   };
 
+  const getLogoForTemplate = (t: Template) => {
+    const id = (t.id || "").toLowerCase();
+    if (id === "gmail") return "https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg";
+    if (id === "google_calendar") return "https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg";
+    if (id === "google_drive") return "https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg";
+    if (id === "google_sheets") return "https://upload.wikimedia.org/wikipedia/commons/3/30/Google_Sheets_logo_%282014-2020%29.svg";
+    if (id === "google_docs") return "https://upload.wikimedia.org/wikipedia/commons/0/01/Google_Docs_logo_%282014-2020%29.svg";
+    if (id === "notion") return "https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png";
+    if (id === "slack_mcp") return "https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg";
+    if (id === "github_mcp") return "https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg";
+    return `https://www.google.com/s2/favicons?sz=128&domain=${t.domain}`;
+  };
+
   const handleTemplateClick = async (t: Template) => {
-    if (connectedTools.includes(t.id)) return;
     setActionLoading(t.id);
     try {
       const token = await getToken();
@@ -135,6 +153,18 @@ function NewAgentContent() {
       const sType = detail.source_type || "mcp_sse";
       const desc = detail.description || "";
       const aType = detail.auth_type || "bearer";
+
+      if (connectedTools.includes(t.id)) {
+        setAgentName(name);
+        setBaseUrl(mcpUrl);
+        setMcpServerUrl(mcpUrl);
+        setSourceType(sType);
+        setDescription(desc);
+        setAuthType(aType);
+        setTab("manual");
+        toast.info(`Loaded configuration for connected engine "${name}".`);
+        return;
+      }
 
       toast.info(`Connecting ${detail.name} and initiating MCP discovery...`);
 
@@ -344,7 +374,7 @@ function NewAgentContent() {
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/20 via-indigo-500/10 to-transparent rounded-full blur-3xl -mr-20 -mt-20 group-hover:scale-125 transition-transform duration-700 pointer-events-none" />
 
               <div className="flex items-center justify-between w-full mb-8">
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 p-4 text-white shadow-lg shadow-blue-500/25 flex items-center justify-center transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+                <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 p-4 text-white shadow-lg shadow-blue-500/25 flex items-center justify-center transform group-hover:scale-110 transition-all duration-300">
                   <Boxes className="w-8 h-8" />
                 </div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-semibold tracking-wide border border-blue-500/20">
@@ -372,7 +402,7 @@ function NewAgentContent() {
               <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-transparent rounded-full blur-3xl -mr-20 -mt-20 group-hover:scale-125 transition-transform duration-700 pointer-events-none" />
 
               <div className="flex items-center justify-between w-full mb-8">
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 p-4 text-white shadow-lg shadow-emerald-500/25 flex items-center justify-center transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+                <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 p-4 text-white shadow-lg shadow-emerald-500/25 flex items-center justify-center transform group-hover:scale-110 transition-all duration-300">
                   <FileCode2 className="w-8 h-8" />
                 </div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold tracking-wide border border-slate-200 dark:border-slate-700">
@@ -402,8 +432,19 @@ function NewAgentContent() {
                 Choose a template or use your own spec to get started.
               </p>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => setTab(null)} className="rounded-xl font-bold">
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Selection
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (tab === "manual") {
+                  setTab("templates");
+                } else {
+                  setTab(null);
+                }
+              }}
+              className="rounded-xl font-bold"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" /> {tab === "manual" ? "Back to Marketplace" : "Back to Selection"}
             </Button>
           </div>
 
@@ -415,24 +456,24 @@ function NewAgentContent() {
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     <p className="text-sm text-muted-foreground">Loading template marketplace...</p>
                   </div>
-                ) : templates.length === 0 ? (
+                ) : filteredTemplates.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 border-2 border-dashed border-border rounded-3xl">
                     <Globe className="h-10 w-10 text-muted-foreground opacity-20" />
                     <div className="space-y-1">
-                      <p className="text-sm font-medium">No templates found</p>
-                      <p className="text-xs text-muted-foreground">Check your connection or manifest.json</p>
+                      <p className="text-sm font-medium">No matching integrations found</p>
+                      <p className="text-xs text-muted-foreground">Try adjusting your search query</p>
                     </div>
                   </div>
                 ) : (
                   categories.map((cat) => (
                     <div key={cat} className="space-y-6">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-3">
-                        <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-                        {cat} ({templates.filter((t) => t.category === cat).length})
-                        <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center justify-center gap-4 my-4">
+                        <span className="h-px w-12 sm:w-20 bg-slate-200 dark:bg-slate-800" />
+                        {cat} ({filteredTemplates.filter((t) => t.category === cat).length})
+                        <span className="h-px w-12 sm:w-20 bg-slate-200 dark:bg-slate-800" />
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto w-full px-2">
-                        {templates.filter((t) => t.category === cat).map((t) => {
+                        {filteredTemplates.filter((t) => t.category === cat).map((t) => {
                           const isConnecting = actionLoading === t.id;
                           const isConnected = connectedTools.includes(t.id);
                           const isHovered = hoveredTool === t.id;
@@ -440,16 +481,16 @@ function NewAgentContent() {
                           return (
                             <div
                               key={t.id}
-                              onClick={() => !isConnected && !isConnecting && handleTemplateClick(t)}
+                              onClick={() => !isConnecting && handleTemplateClick(t)}
                               className={cn(
-                                "group flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 transition-all duration-300 text-left",
-                                !isConnected && !isConnecting && "cursor-pointer hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/5"
+                                "group flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 transition-all duration-300 text-left cursor-pointer hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/5",
+                                isConnected && "hover:border-emerald-500/50 hover:shadow-emerald-500/5"
                               )}
                             >
                               <div className="flex items-center gap-4 min-w-0 pr-2">
                                 <div className="h-10 w-10 flex-shrink-0 flex items-center justify-center rounded-lg p-1 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
                                   <img
-                                    src={`https://www.google.com/s2/favicons?sz=128&domain=${t.domain}`}
+                                    src={getLogoForTemplate(t)}
                                     alt={t.name}
                                     className="h-7 w-7 object-contain transition-transform group-hover:scale-110"
                                   />
@@ -512,6 +553,42 @@ function NewAgentContent() {
                     </div>
                   ))
                 )}
+              </div>
+            ) : sourceType === "mcp_sse" ? (
+              <div className="rounded-3xl border border-white/50 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl p-10 shadow-2xl space-y-8 animate-in fade-in">
+                <div className="flex items-center gap-4 pb-6 border-b border-border/50">
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-500 flex items-center justify-center shadow-inner">
+                    <Boxes className="h-8 w-8" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">Verified Integration Setup</h2>
+                    <p className="text-xs text-muted-foreground">Manage agent profile and execution parameters for this connected integration.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Integration Agent Name</label>
+                  <input
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
+                    placeholder="e.g. Gmail Agent"
+                    className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner font-semibold text-foreground"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Capabilities & Description</label>
+                    <span className="text-[10px] font-bold text-muted-foreground/50">{description.length}/150</span>
+                  </div>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    maxLength={150}
+                    placeholder="What does this agent do?"
+                    className="w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 p-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner min-h-[120px] text-foreground leading-relaxed font-medium"
+                  />
+                </div>
               </div>
             ) : (
               <div className="rounded-3xl border border-white/50 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl p-10 shadow-2xl space-y-8 animate-in fade-in">
@@ -606,8 +683,8 @@ function NewAgentContent() {
               </div>
             )}
 
-            {/* Configuration & Auth Fields (Visible when name/file/preview exists) */}
-            {(agentName || file) && (
+            {/* Configuration & Auth Fields (Visible when name/file/preview exists for OpenAPI) */}
+            {tab === "manual" && sourceType !== "mcp_sse" && (agentName || file) && (
               <div className="mt-10 grid gap-8 animate-in fade-in slide-in-from-top-4 pt-10 border-t border-border/50">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -620,15 +697,12 @@ function NewAgentContent() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                      {sourceType === "mcp_sse" ? "MCP Server Endpoint" : "API Base Endpoint"}
+                      API Base Endpoint
                     </label>
                     <div className="relative">
                       <input
                         value={baseUrl}
-                        onChange={(e) => {
-                          setBaseUrl(e.target.value);
-                          if (sourceType === "mcp_sse") setMcpServerUrl(e.target.value);
-                        }}
+                        onChange={(e) => setBaseUrl(e.target.value)}
                         className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 pl-12 pr-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
                       />
                       <Globe className="absolute left-4 top-4.5 h-4 w-4 text-muted-foreground" />
@@ -714,6 +788,11 @@ function NewAgentContent() {
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Working...
+                    </>
+                  ) : sourceType === "mcp_sse" ? (
+                    <>
+                      <Check className="mr-2 h-4 w-4 stroke-[3px]" />
+                      Save Integration
                     </>
                   ) : (
                     <>

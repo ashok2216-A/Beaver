@@ -298,20 +298,29 @@ export function A2ChoicePicker({ label, required, options = [], multi = false, f
         </span>
       )}
       <div style={STYLES.choiceOptions}>
-        {options.map((opt: any, i) => {
-          const optLabel = typeof opt === 'object' ? (opt.label ?? opt.name ?? String(opt)) : String(opt)
-          const optValue = typeof opt === 'object' ? (opt.value ?? opt.id ?? String(opt)) : String(opt)
-          return (
-            <button
-              key={i}
-              type="button"
-              style={STYLES.choiceBtn(selected.includes(optValue))}
-              onClick={() => toggle(opt)}
-            >
-              {optLabel}
-            </button>
-          )
-        })}
+        {(!options || options.length === 0) ? (
+          <input
+            style={STYLES.input}
+            type="text"
+            placeholder="Enter value (e.g. 'primary')..."
+            onChange={e => onChange(fieldKey, e.target.value)}
+          />
+        ) : (
+          options.map((opt: any, i) => {
+            const optLabel = typeof opt === 'object' ? (opt.label ?? opt.name ?? String(opt)) : String(opt)
+            const optValue = typeof opt === 'object' ? (opt.value ?? opt.id ?? String(opt)) : String(opt)
+            return (
+              <button
+                key={i}
+                type="button"
+                style={STYLES.choiceBtn(selected.includes(optValue))}
+                onClick={() => toggle(opt)}
+              >
+                {optLabel}
+              </button>
+            )
+          })
+        )}
       </div>
     </div>
   )
