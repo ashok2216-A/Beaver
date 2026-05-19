@@ -363,7 +363,7 @@ def _build_agent(
                                     "key": "authorization_note",
                                     "label": "Why is this needed?",
                                     "value": f"Required for: {actual_match.summary or actual_match.description or 'Additional API operations'}",
-                                    "required": false
+                                    "required": False
                                 }
                             ],
                             "note": "SECURITY: Once authorized, this tool will be permanently added to the agent's capability list."
