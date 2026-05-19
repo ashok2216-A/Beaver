@@ -266,7 +266,7 @@ export default function PlaygroundPage() {
     <div className="h-[calc(100vh-8.5rem)] flex overflow-hidden">
       
       {/* ChatGPT Style History Sidebar */}
-      <div className="w-64 flex flex-col bg-white/20 backdrop-blur-xl border-r border-slate-200 p-4 shrink-0 overflow-y-auto custom-scrollbar animate-in slide-in-from-left duration-300">
+      <div className="w-64 flex flex-col bg-white/20 backdrop-blur-xl border-r border-slate-200 p-4 shrink-0 animate-in slide-in-from-left duration-300">
         <h2 className="text-xl font-bold text-foreground mb-4 px-1">Playground</h2>
         <button
           onClick={() => {
@@ -285,52 +285,56 @@ export default function PlaygroundPage() {
           New Chat
         </button>
 
-        <h3 className="text-[10px] font-bold text-muted-foreground/80 mb-4 flex items-center gap-2 px-2 uppercase tracking-widest">
+        <h3 className="text-[10px] font-bold text-muted-foreground/80 mb-2 flex items-center gap-2 px-2 uppercase tracking-widest">
           Chat History
         </h3>
-        {isLoadingHistory ? (
-          <div className="flex flex-col items-center justify-center py-10">
-            <Loader2 className="w-4 h-4 animate-spin text-primary/60" />
-          </div>
-        ) : history.length === 0 ? (
-          <div className="text-[10px] text-muted-foreground/40 text-center py-10 px-2 italic">
-            No active chat threads.
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {history.map((convItem) => (
-              <div
-                key={convItem.id}
-                className={cn(
-                  "relative w-full rounded-xl border flex items-center group transition-all duration-200",
-                  sessionId === convItem.id 
-                    ? "bg-white/60 backdrop-blur-md border-slate-200 shadow-[0_4px_12px_rgba(0,0,0,0.05)]" 
-                    : "border-slate-100/50 hover:bg-white/40 hover:border-slate-200"
-                )}
-              >
-                <button
-                  onClick={() => loadConversation(convItem.id)}
-                  className="flex-1 text-left p-2.5 text-xs flex flex-col gap-1 text-muted-foreground hover:text-foreground"
+        
+        {/* Scrollable container for threads */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pr-1">
+          {isLoadingHistory ? (
+            <div className="flex flex-col items-center justify-center py-10">
+              <Loader2 className="w-4 h-4 animate-spin text-primary/60" />
+            </div>
+          ) : history.length === 0 ? (
+            <div className="text-[10px] text-muted-foreground/40 text-center py-10 px-2 italic">
+              No active chat threads.
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {history.map((convItem) => (
+                <div
+                  key={convItem.id}
+                  className={cn(
+                    "relative w-full rounded-xl border flex items-center group transition-all duration-200",
+                    sessionId === convItem.id 
+                      ? "bg-white/60 backdrop-blur-md border-slate-200 shadow-[0_4px_12px_rgba(0,0,0,0.05)]" 
+                      : "border-slate-100/50 hover:bg-white/40 hover:border-slate-200"
+                  )}
                 >
-                  <span className={cn("truncate transition-all w-[140px]", sessionId === convItem.id ? "text-primary font-bold" : "")}>
-                    {convItem.title || "Conversation"}
-                  </span>
-                  <span className="text-[9px] text-muted-foreground/40">
-                    {new Date(convItem.created_at).toLocaleDateString()}
-                  </span>
-                </button>
-                
-                <button
-                  onClick={(e) => deleteConversation(convItem.id, e)}
-                  className="p-2 mr-1 rounded-lg text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 flex items-center justify-center shrink-0"
-                  title="Delete thread"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+                  <button
+                    onClick={() => loadConversation(convItem.id)}
+                    className="flex-1 text-left p-2.5 text-xs flex flex-col gap-1 text-muted-foreground hover:text-foreground"
+                  >
+                    <span className={cn("truncate transition-all w-[140px]", sessionId === convItem.id ? "text-primary font-bold" : "")}>
+                      {convItem.title || "Conversation"}
+                    </span>
+                    <span className="text-[9px] text-muted-foreground/40">
+                      {new Date(convItem.created_at).toLocaleDateString()}
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={(e) => deleteConversation(convItem.id, e)}
+                    className="p-2 mr-1 rounded-lg text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 flex items-center justify-center shrink-0"
+                    title="Delete thread"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col items-center relative overflow-hidden">

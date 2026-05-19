@@ -43,6 +43,11 @@ PROVIDERS = {
         "auth_url": "https://slack.com/oauth/v2/authorize",
         "token_url": "https://slack.com/api/oauth.v2.access",
         "default_scopes": ["channels:read", "chat:write", "users:read", "channels:history"],
+    },
+    "instagram": {
+        "auth_url": "https://www.facebook.com/v19.0/dialog/oauth",
+        "token_url": "https://graph.facebook.com/v19.0/oauth/access_token",
+        "default_scopes": ["instagram_basic", "instagram_content_publish", "instagram_manage_comments", "instagram_manage_insights", "pages_read_engagement", "pages_show_list"],
     }
 }
 
@@ -74,6 +79,8 @@ async def connect_provider(
         client_id = settings.oauth_github_client_id
     elif provider_lower == "slack":
         client_id = settings.oauth_slack_client_id
+    elif provider_lower == "instagram":
+        client_id = settings.oauth_instagram_client_id
     else:
         client_id = ""
         
@@ -99,7 +106,7 @@ async def connect_provider(
         params["prompt"] = "consent"
     elif provider_lower == "github":
         params["scope"] = " ".join(cfg["default_scopes"])
-    elif provider_lower == "slack":
+    elif provider_lower in ["slack", "instagram"]:
         params["scope"] = ",".join(cfg["default_scopes"])
 
     auth_url = f"{cfg['auth_url']}?{urllib.parse.urlencode(params)}"
@@ -139,6 +146,9 @@ async def oauth_callback(
     elif provider_lower == "slack":
         client_id = settings.oauth_slack_client_id
         client_secret = settings.oauth_slack_client_secret
+    elif provider_lower == "instagram":
+        client_id = settings.oauth_instagram_client_id
+        client_secret = settings.oauth_instagram_client_secret
     else:
         client_id, client_secret = "", ""
 
@@ -205,6 +215,21 @@ async def oauth_callback(
                 body = userinfo.json()
                 if body.get("ok"):
                     account_id = f"{body.get('team', 'SlackTeam')}::{body.get('user', 'User')}"
+    elif provider_lower == "instagram":
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            userinfo = await client.get(
+                "https://graph.facebook.com/v19.0/me?fields=id,name",
+                params={"access_token": access_token}
+            )
+            if userinfo.status_code == 200:
+                account_id = userinfo.json().get("name", account_id)
+            else:
+                userinfo_ig = await client.get(
+                    "https://graph.instagram.com/me?fields=id,username",
+                    params={"access_token": access_token}
+                )
+                if userinfo_ig.status_code == 200:
+                    account_id = userinfo_ig.json().get("username", account_id)
 
     # Securely encrypt tokens before storing in DB
     enc_access = encrypt_secret(access_token)

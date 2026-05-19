@@ -246,13 +246,13 @@ export default function LogsPage() {
               <TableHeader className="bg-muted/50">
                 <TableRow className="hover:bg-transparent border-border/50">
                   <TableHead className="w-[180px]">Timestamp</TableHead>
-                  <TableHead>Agent</TableHead>
-                  <TableHead>User Input</TableHead>
-                  <TableHead>Endpoint</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">In Tokens</TableHead>
-                  <TableHead className="text-right">Out Tokens</TableHead>
-                  <TableHead className="text-right">Latency</TableHead>
+                  <TableHead className="w-[180px]">Agent</TableHead>
+                  <TableHead className="max-w-[300px]">User Input</TableHead>
+                  <TableHead className="w-[200px]">Endpoint</TableHead>
+                  <TableHead className="w-[120px]">Status</TableHead>
+                  <TableHead className="text-right w-[100px]">In Tokens</TableHead>
+                  <TableHead className="text-right w-[100px]">Out Tokens</TableHead>
+                  <TableHead className="text-right w-[120px]">Latency</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -286,8 +286,8 @@ export default function LogsPage() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="font-medium text-foreground/90 max-w-[300px]" title={log.user_input}>
+                      <TableCell className="max-w-[300px]">
+                        <div className="font-medium text-foreground/90 truncate" title={log.user_input}>
                           {truncate(log.user_input, 60)}
                         </div>
                       </TableCell>
@@ -343,20 +343,20 @@ export default function LogsPage() {
 
                               <div className="space-y-6">
                                 <div className="grid grid-cols-3 gap-4">
-                                  <div className="space-y-1.5 p-3 rounded-xl bg-muted/30 border border-border/50">
+                                  <div className="space-y-1.5 p-3 rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center text-center">
                                     <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Status</span>
-                                    <div>{getStatusBadge(log.status_code)}</div>
+                                    <div className="flex items-center justify-center">{getStatusBadge(log.status_code)}</div>
                                   </div>
-                                  <div className="space-y-1.5 p-3 rounded-xl bg-muted/30 border border-border/50">
+                                  <div className="space-y-1.5 p-3 rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center text-center">
                                     <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Latency</span>
-                                    <div className="flex items-center gap-1 font-mono text-sm font-bold text-foreground">
+                                    <div className="flex items-center justify-center gap-1 font-mono text-sm font-bold text-foreground w-full">
                                       <Clock className="h-3 w-3 text-primary" />
                                       {log.latency_ms}ms
                                     </div>
                                   </div>
-                                  <div className="space-y-1.5 p-3 rounded-xl bg-muted/30 border border-border/50">
+                                  <div className="space-y-1.5 p-3 rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center text-center">
                                     <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Usage</span>
-                                    <div className="flex flex-col gap-1">
+                                    <div className="flex flex-col gap-1 items-center justify-center w-full text-center">
                                       <div className="text-[11px] font-mono"><span className="text-muted-foreground">In:</span> <span className="font-bold text-primary">{log.input_tokens || 0}</span></div>
                                       <div className="text-[11px] font-mono"><span className="text-muted-foreground">Out:</span> <span className="font-bold text-emerald-500">{log.output_tokens || 0}</span></div>
                                     </div>

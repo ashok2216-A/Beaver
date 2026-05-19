@@ -46,6 +46,7 @@ class McpSubprocessManager:
                     "github": {"personalAccessToken": auth_token, "token": auth_token},
                     "slack": {"botToken": auth_token, "token": auth_token},
                     "notion": {"notionApiKey": auth_token, "apiKey": auth_token, "token": auth_token},
+                    "instagram": {"instagramAccessToken": auth_token, "accessToken": auth_token, "token": auth_token},
                     "token": auth_token
                 })
             except Exception as e:
@@ -69,6 +70,9 @@ class McpSubprocessManager:
             elif "notion" in url_lower:
                 env["NOTION_API_KEY"] = auth_token
                 env["NOTION_TOKEN"] = auth_token
+            elif "instagram" in url_lower:
+                env["INSTAGRAM_TOKEN"] = auth_token
+                env["INSTAGRAM_ACCESS_TOKEN"] = auth_token
             elif "google" in url_lower or "drive" in url_lower or "gdrive" in url_lower or "gmail" in url_lower or "calendar" in url_lower or "sheet" in url_lower or "doc" in url_lower:
                 env["GOOGLE_DRIVE_TOKEN"] = auth_token
                 env["GOOGLE_DRIVE_ACCESS_TOKEN"] = auth_token

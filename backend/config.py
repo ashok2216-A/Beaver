@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     oauth_github_client_secret: str = ""
     oauth_slack_client_id: str = ""
     oauth_slack_client_secret: str = ""
+    oauth_instagram_client_id: str = ""
+    oauth_instagram_client_secret: str = ""
 
     # ── Billing ───────────────────────────────────────────────────
     payment_provider: str = "both" # razorpay | stripe | both

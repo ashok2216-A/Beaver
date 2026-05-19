@@ -118,6 +118,7 @@ function NewAgentContent() {
     if (id.includes("github") || dom.includes("github")) return "github";
     if (id.includes("google") || dom.includes("google")) return "google";
     if (id.includes("slack") || dom.includes("slack")) return "slack";
+    if (id.includes("instagram") || dom.includes("instagram")) return "instagram";
     return null;
   };
 
@@ -131,6 +132,7 @@ function NewAgentContent() {
     if (id === "notion") return "https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png";
     if (id === "slack_mcp") return "https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg";
     if (id === "github_mcp") return "https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg";
+    if (id === "instagram") return "https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg";
     return `https://www.google.com/s2/favicons?sz=128&domain=${t.domain}`;
   };
 
@@ -436,7 +438,7 @@ function NewAgentContent() {
               variant="ghost"
               size="sm"
               onClick={() => {
-                if (tab === "manual") {
+                if (tab === "manual" && sourceType === "mcp_sse") {
                   setTab("templates");
                 } else {
                   setTab(null);
@@ -444,7 +446,8 @@ function NewAgentContent() {
               }}
               className="rounded-xl font-bold"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" /> {tab === "manual" ? "Back to Marketplace" : "Back to Selection"}
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              {tab === "manual" && sourceType === "mcp_sse" ? "Back to Integrations" : "Back to Selection"}
             </Button>
           </div>
 
@@ -614,19 +617,46 @@ function NewAgentContent() {
                   </div>
                 </div>
 
-                {/* Middle Row: Description */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="text-sm font-bold">Description (Optional)</label>
-                    <span className="text-[10px] font-bold text-muted-foreground/50">{description.length}/150</span>
+
+                {/* Security Configuration */}
+                <div className="pt-4 border-t border-border/50">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60 mb-4">Security Configuration</h4>
+                  <div className="grid gap-6 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold">Auth Type</label>
+                      <div className="relative">
+                        <select
+                          value={authType}
+                          onChange={(e) => setAuthType(e.target.value)}
+                          className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-slate-900 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 appearance-none shadow-inner transition-all"
+                        >
+                          <option value="none">No Auth</option>
+                          <option value="bearer">Bearer Token</option>
+                          <option value="apikey">Custom Header (API Key)</option>
+                          <option value="query_key">Query Parameter (URL)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold">Auth Header Name</label>
+                      <input
+                        value={authHeader}
+                        onChange={(e) => setAuthHeader(e.target.value)}
+                        placeholder="Authorization"
+                        className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-mono shadow-inner"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold">API Secret / Access Token</label>
+                      <input
+                        type="password"
+                        value={authSecret}
+                        onChange={(e) => setAuthSecret(e.target.value)}
+                        placeholder="sk-••••••••••••••••••••••••••••"
+                        className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-mono shadow-inner"
+                      />
+                    </div>
                   </div>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    maxLength={150}
-                    placeholder="What does this agent do?"
-                    className="w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 p-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner min-h-[100px]"
-                  />
                 </div>
 
                 {/* Bottom Row: Side-by-Side Upload and Spec */}
@@ -680,76 +710,25 @@ function NewAgentContent() {
                     />
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Configuration & Auth Fields (Visible when name/file/preview exists for OpenAPI) */}
-            {tab === "manual" && sourceType !== "mcp_sse" && (agentName || file) && (
-              <div className="mt-10 grid gap-8 animate-in fade-in slide-in-from-top-4 pt-10 border-t border-border/50">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Final Agent Name</label>
-                    <input
-                      value={agentName}
-                      onChange={(e) => setAgentName(e.target.value)}
-                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
-                    />
+                {/* Description (Moved below) */}
+                <div className="space-y-2 pt-4 border-t border-border/50">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-bold">Description (Optional)</label>
+                    <span className="text-[10px] font-bold text-muted-foreground/50">{description.length}/150</span>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                      API Base Endpoint
-                    </label>
-                    <div className="relative">
-                      <input
-                        value={baseUrl}
-                        onChange={(e) => setBaseUrl(e.target.value)}
-                        className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 pl-12 pr-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
-                      />
-                      <Globe className="absolute left-4 top-4.5 h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Auth Configuration */}
-                <div className="pt-6 border-t border-border/50">
-                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-6">Security Configuration</h4>
-                  <div className="grid gap-6 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-foreground/70">Auth Type</label>
-                      <select
-                        value={authType}
-                        onChange={(e) => setAuthType(e.target.value)}
-                        className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 appearance-none shadow-inner transition-all"
-                      >
-                        <option value="none">No Auth</option>
-                        <option value="bearer">Bearer Token</option>
-                        <option value="apikey">Custom Header (API Key)</option>
-                        <option value="query_key">Query Parameter (URL)</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-foreground/70">Auth Header Name</label>
-                      <input
-                        value={authHeader}
-                        onChange={(e) => setAuthHeader(e.target.value)}
-                        placeholder="Authorization"
-                        className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-mono shadow-inner"
-                      />
-                    </div>
-                    <div className="space-y-2 sm:col-span-2">
-                      <label className="text-xs font-bold text-foreground/70">API Secret / Access Token</label>
-                      <input
-                        type="password"
-                        value={authSecret}
-                        onChange={(e) => setAuthSecret(e.target.value)}
-                        placeholder="sk-••••••••••••••••••••••••••••"
-                        className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-mono shadow-inner"
-                      />
-                    </div>
-                  </div>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    maxLength={150}
+                    placeholder="What does this agent do?"
+                    className="w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 p-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner min-h-[100px]"
+                  />
                 </div>
               </div>
             )}
+
+
 
             {generating && (
               <div className="mt-10 transition-all animate-in fade-in zoom-in-95 bg-slate-500/5 rounded-3xl p-8 border border-slate-200/50 backdrop-blur-sm">

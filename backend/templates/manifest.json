@@ -188,6 +188,15 @@
       "mcp_server_url": "smithery:airtable",
       "source_type": "mcp_sse",
       "description": "Query tables, update records, and manage automated relational bases."
+    },
+    {
+      "id": "instagram",
+      "name": "Instagram",
+      "category": "Social & CRM",
+      "domain": "instagram.com",
+      "mcp_server_url": "smithery:instagram",
+      "source_type": "mcp_sse",
+      "description": "Publish photos, inspect posts, view comments, and analyze account insights."
     }
   ]
 }

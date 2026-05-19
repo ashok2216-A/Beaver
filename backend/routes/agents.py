@@ -201,6 +201,30 @@ def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
                 mcp_url = ep.mcp_server_url
                 break
 
+    if source_type == "mcp_sse" and mcp_url:
+        url_lower = mcp_url.lower()
+        provider = None
+        from services.mcp_service import MCP_PROVIDER_MAP
+        for key, val in MCP_PROVIDER_MAP.items():
+            if key in url_lower:
+                provider = val
+                break
+        if provider:
+            from database import SessionLocal
+            from models import UserIntegration
+            try:
+                with SessionLocal() as db_session:
+                    integration = db_session.query(UserIntegration).filter(
+                        UserIntegration.user_id == str(agent.owner_id),
+                        UserIntegration.provider == provider.lower()
+                    ).first()
+                    if integration:
+                        has_secret = True
+            except Exception as e:
+                log.warning(f"Error checking OAuth status for agent {agent.id}: {e}")
+        else:
+            has_secret = True
+
     return AgentOut(
         id=agent.id,
         owner_id=agent.owner_id,
@@ -404,7 +428,8 @@ def get_health_stats(user: User = Depends(get_current_user), db: Session = Depen
             api_availability="100%",
             llm_success="100%",
             latency_ms="0ms",
-            upgrade_percentage=0
+            upgrade_percentage=0,
+            plan_type=user.plan_type
         )
         
     success_logs = db.query(Log).join(Agent).filter(
@@ -432,7 +457,8 @@ def get_health_stats(user: User = Depends(get_current_user), db: Session = Depen
         api_availability=api_availability,
         llm_success=llm_success,
         latency_ms=latency_ms,
-        upgrade_percentage=upgrade_percentage
+        upgrade_percentage=upgrade_percentage,
+        plan_type=user.plan_type
     )
 
 

@@ -32,6 +32,7 @@ MCP_PROVIDER_MAP = {
     "github": "github",
     "slack": "slack",
     "notion": "notion",
+    "instagram": "instagram",
 }
 
 
@@ -65,6 +66,10 @@ async def refresh_oauth_token_if_needed(integration: UserIntegration, db: Sessio
             token_url = "https://slack.com/api/oauth.v2.access"
             client_id = settings.oauth_slack_client_id
             client_secret = settings.oauth_slack_client_secret
+        elif integration.provider == "instagram":
+            token_url = "https://graph.facebook.com/v19.0/oauth/access_token"
+            client_id = settings.oauth_instagram_client_id
+            client_secret = settings.oauth_instagram_client_secret
 
         if not token_url or not client_id:
             log.warning(f"Unable to refresh token for {integration.provider}: Missing client credentials.")
@@ -109,6 +114,8 @@ def normalize_mcp_url(url: str) -> str:
             return "smithery:github"
         elif "slack" in url_lower:
             return "smithery:slack"
+        elif "instagram" in url_lower:
+            return "smithery:instagram"
     return url
 
 

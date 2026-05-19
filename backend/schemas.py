@@ -272,6 +272,7 @@ class HealthStatsOut(BaseModel):
     llm_success: str
     latency_ms: str
     upgrade_percentage: int
+    plan_type: str = "free"
 
 
 class DailyVelocity(BaseModel):
