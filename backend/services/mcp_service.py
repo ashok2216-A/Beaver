@@ -24,8 +24,14 @@ log = logging.getLogger(__name__)
 MCP_PROVIDER_MAP = {
     "gdrive": "google",
     "google_drive": "google",
+    "googledrive": "google",
+    "gmail": "google",
+    "googlecalendar": "google",
+    "googlesheets": "google",
+    "googledocs": "google",
     "github": "github",
     "slack": "slack",
+    "notion": "notion",
 }
 
 

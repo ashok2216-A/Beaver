@@ -153,7 +153,7 @@ async def chat_orchestrate(
     agent_ids = list(agent_map.keys())
     
     all_metadata = db.query(
-        Endpoint.id, Endpoint.path, Endpoint.method, Endpoint.summary, Endpoint.agent_id
+        Endpoint.id, Endpoint.path, Endpoint.method, Endpoint.summary, Endpoint.agent_id, Endpoint.description
     ).filter(
         Endpoint.agent_id.in_(agent_ids),
         Endpoint.is_locked.is_(False)
@@ -200,7 +200,7 @@ Conversation:
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
                 max_tokens=20,
-                timeout=5.0
+                timeout=15.0
             )
             
             raw_ids = response.choices[0].message.content.strip()
@@ -209,7 +209,6 @@ Conversation:
             
             if valid_ids:
                 log.info(f"LLM ROUTER successfully selected Agent IDs: {valid_ids}")
-                agent = agent_map[valid_ids[0]]  # Primary agent context
                 
                 # Context-aware endpoint ranking
                 user_input = _sanitize_input(req.message).lower()
@@ -221,26 +220,49 @@ Conversation:
                 keywords = [w for w in re.findall(r'\w+', context_text) if len(w) > 2]
                 
                 valid_metadata = [ep for ep in all_metadata if ep.agent_id in valid_ids]
+                
+                # Group and score endpoints by agent to avoid starvation of any selected agent's tools
+                agent_endpoints = {aid: [] for aid in valid_ids}
+                best_agent_id = valid_ids[0]
+                max_score = -1
+                
                 for ep in valid_metadata:
                     score = 0
                     path_lower = ep.path.lower()
                     summary_lower = (ep.summary or "").lower()
+                    desc_lower = (ep.description or "").lower()
                     for kw in keywords:
                         if kw in path_lower:
                             score += 10
                         if kw in summary_lower:
                             score += 5
+                        if kw in desc_lower:
+                            score += 3
                     score += max(0, 5 - (ep.path.count('/') * 0.5))
-                # If a specific agent was selected, we should prioritize its endpoints
-                # while still allowing some global context if needed.
-                # For now, let's give the selected agent its FULL toolkit.
+                    
+                    if score > max_score:
+                        max_score = score
+                        best_agent_id = ep.agent_id
+                    
+                    if ep.agent_id in agent_endpoints:
+                        agent_endpoints[ep.agent_id].append((score, ep.id))
+                
+                # Primary agent context is the one with the highest scoring endpoint
+                agent = agent_map[best_agent_id]
+                
+                # Select the top relevant endpoints for each agent, distributing limits evenly
+                top_ep_ids = []
+                limit_per_agent = max(6, 18 // len(valid_ids))
+                for aid, eps in agent_endpoints.items():
+                    eps.sort(key=lambda x: x[0], reverse=True)
+                    top_ep_ids.extend([item[1] for item in eps[:limit_per_agent]])
+
                 endpoints = db.query(Endpoint).filter(
-                    Endpoint.agent_id == agent.id,
+                    Endpoint.id.in_(top_ep_ids),
                     Endpoint.is_locked.is_(False)
                 ).all()
                 
-                # If we need even more context (e.g. multi-agent coordination), we could add more.
-                log.info(f"Passed {len(endpoints)} tools to agent {agent.name}")
+                log.info(f"Passed {len(endpoints)} ranked tools to agent {agent.name}")
             else:
                 raise ValueError("Invalid IDs received from LLM")
                 

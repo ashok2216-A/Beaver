@@ -38,9 +38,14 @@ class McpSubprocessManager:
             try:
                 config_arg = json.dumps({
                     "googledrive": {"oauthToken": auth_token, "accessToken": auth_token, "token": auth_token},
+                    "gmail": {"oauthToken": auth_token, "accessToken": auth_token, "token": auth_token},
+                    "googlecalendar": {"oauthToken": auth_token, "accessToken": auth_token, "token": auth_token},
+                    "googlesheets": {"oauthToken": auth_token, "accessToken": auth_token, "token": auth_token},
+                    "googledocs": {"oauthToken": auth_token, "accessToken": auth_token, "token": auth_token},
                     "google": {"oauthToken": auth_token, "accessToken": auth_token},
                     "github": {"personalAccessToken": auth_token, "token": auth_token},
                     "slack": {"botToken": auth_token, "token": auth_token},
+                    "notion": {"notionApiKey": auth_token, "apiKey": auth_token, "token": auth_token},
                     "token": auth_token
                 })
             except Exception as e:
@@ -52,6 +57,8 @@ class McpSubprocessManager:
             # Universal token environment variables
             env["AUTH_TOKEN"] = auth_token
             env["MCP_ACCESS_TOKEN"] = auth_token
+            env["API_KEY"] = auth_token
+            env["TOKEN"] = auth_token
 
             if "github" in url_lower:
                 env["GITHUB_PERSONAL_ACCESS_TOKEN"] = auth_token
@@ -59,11 +66,16 @@ class McpSubprocessManager:
             elif "slack" in url_lower:
                 env["SLACK_TOKEN"] = auth_token
                 env["SLACK_BOT_TOKEN"] = auth_token
-            elif "google" in url_lower or "drive" in url_lower or "gdrive" in url_lower:
+            elif "notion" in url_lower:
+                env["NOTION_API_KEY"] = auth_token
+                env["NOTION_TOKEN"] = auth_token
+            elif "google" in url_lower or "drive" in url_lower or "gdrive" in url_lower or "gmail" in url_lower or "calendar" in url_lower or "sheet" in url_lower or "doc" in url_lower:
                 env["GOOGLE_DRIVE_TOKEN"] = auth_token
                 env["GOOGLE_DRIVE_ACCESS_TOKEN"] = auth_token
                 env["GOOGLE_ACCESS_TOKEN"] = auth_token
                 env["GDRIVE_ACCESS_TOKEN"] = auth_token
+                env["GMAIL_ACCESS_TOKEN"] = auth_token
+                env["GOOGLE_CALENDAR_ACCESS_TOKEN"] = auth_token
                 try:
                     temp_cred_path = os.path.join(tempfile.gettempdir(), f"google_cred_{token_hash}.json")
                     with open(temp_cred_path, "w", encoding="utf-8") as f:
@@ -78,10 +90,6 @@ class McpSubprocessManager:
                     env["GOOGLE_APPLICATION_CREDENTIALS"] = temp_cred_path
                 except Exception as e:
                     log.error(f"Failed to create google temp credentials file: {e}")
-            else:
-                # Fallback for generic or custom MCP servers
-                env["API_KEY"] = auth_token
-                env["TOKEN"] = auth_token
 
         parts = runtime_url.split(":", 1)
         scheme = parts[0].lower()
