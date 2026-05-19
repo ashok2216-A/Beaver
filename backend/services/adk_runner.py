@@ -297,7 +297,7 @@ def _build_agent(
 
         try:
             log.info(f"Universal tool call_api_endpoint called: path='{path}', method='{method}', params='{params}'")
-            params_dict: dict = json.loads(params) if params else {}
+            params_dict: dict = json.loads(params, strict=False) if params else {}
         except json.JSONDecodeError as jde:
             log.warning(f"Failed to parse universal tool params as JSON: '{params}' | Error: {jde}")
             params_dict = {}
