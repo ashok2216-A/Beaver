@@ -262,11 +262,7 @@ function AgentsContent() {
                           <Settings2 className="mr-2 h-4 w-4" /> Configure Details
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild className="cursor-pointer">
-                        <Link href={`/dashboard/playground?id=${agent.id}`}>
-                          <Terminal className="mr-2 h-4 w-4" /> Open Playground
-                        </Link>
-                      </DropdownMenuItem>
+
                       <DropdownMenuItem asChild className="cursor-pointer">
                         <Link href={`/dashboard/agents/${agent.id}/deploy`}>
                           <Rocket className="mr-2 h-4 w-4" /> Deploy Agent
