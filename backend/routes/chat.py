@@ -21,9 +21,9 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 import uuid
 
-from database import get_db
-from models import Agent, Endpoint, Log, User, Conversation, ChatMessage
-from schemas import ChatRequest, ChatResponse, LogOut, PaginatedLogs, ConversationOut, ConversationListOut
+from database.database import get_db
+from models.models import Agent, Endpoint, Log, User, Conversation, ChatMessage
+from schemas.schemas import ChatRequest, ChatResponse, LogOut, PaginatedLogs, ConversationOut, ConversationListOut
 from utils.auth import get_current_user
 from utils.security import encrypt_secret, decrypt_secret
 
@@ -166,7 +166,7 @@ async def chat_orchestrate(
     else:
         try:
             import litellm
-            from config import get_settings
+            from config.config import get_settings
             get_settings()
             
             agents_context = []

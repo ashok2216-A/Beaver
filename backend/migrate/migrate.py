@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, text
-from config import get_settings
+from config.config import get_settings
 
 
 

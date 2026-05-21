@@ -3,9 +3,9 @@ import json
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from main import app
-from models import User, Agent
+from models.models import User, Agent
 from utils.auth import get_current_user
-from database import get_db
+from database.database import get_db
 
 client = TestClient(app)
 

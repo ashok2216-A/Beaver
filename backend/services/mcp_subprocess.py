@@ -18,6 +18,7 @@ class McpSubprocessManager:
     def __init__(self):
         self._processes: Dict[str, subprocess.Popen] = {}
         self._locks: Dict[str, asyncio.Lock] = {}
+        self._initialized: set = set()  # Track which connection_ids have been initialized
 
     def _get_lock(self, connection_id: str) -> asyncio.Lock:
         if connection_id not in self._locks:
@@ -33,27 +34,15 @@ class McpSubprocessManager:
         Returns (command_list, env_dict).
         """
         env = os.environ.copy()
-        config_arg = ""
+        
+        parts = runtime_url.split(":", 1)
+        scheme = parts[0].lower()
+        package = parts[1] if len(parts) > 1 else ""
+        
         if auth_token:
-            try:
-                config_arg = json.dumps({
-                    "googledrive": {"oauthToken": auth_token, "accessToken": auth_token, "token": auth_token},
-                    "gmail": {"oauthToken": auth_token, "accessToken": auth_token, "token": auth_token},
-                    "googlecalendar": {"oauthToken": auth_token, "accessToken": auth_token, "token": auth_token},
-                    "googlesheets": {"oauthToken": auth_token, "accessToken": auth_token, "token": auth_token},
-                    "googledocs": {"oauthToken": auth_token, "accessToken": auth_token, "token": auth_token},
-                    "google": {"oauthToken": auth_token, "accessToken": auth_token},
-                    "github": {"personalAccessToken": auth_token, "token": auth_token},
-                    "slack": {"botToken": auth_token, "token": auth_token},
-                    "notion": {"notionApiKey": auth_token, "apiKey": auth_token, "token": auth_token},
-                    "instagram": {"instagramAccessToken": auth_token, "accessToken": auth_token, "token": auth_token},
-                    "token": auth_token
-                })
-            except Exception as e:
-                log.error(f"Failed to build smithery config arg: {e}")
+            token_hash = hashlib.md5(auth_token.encode("utf-8")).hexdigest()
 
             url_lower = runtime_url.lower()
-            token_hash = hashlib.md5(auth_token.encode("utf-8")).hexdigest()
             
             # Universal token environment variables
             env["AUTH_TOKEN"] = auth_token
@@ -73,6 +62,10 @@ class McpSubprocessManager:
             elif "instagram" in url_lower:
                 env["INSTAGRAM_TOKEN"] = auth_token
                 env["INSTAGRAM_ACCESS_TOKEN"] = auth_token
+            elif "youtube" in url_lower:
+                env["YOUTUBE_API_KEY"] = auth_token
+                env["YOUTUBE_ACCESS_TOKEN"] = auth_token
+                env["YOUTUBE_TOKEN"] = auth_token
             elif "google" in url_lower or "drive" in url_lower or "gdrive" in url_lower or "gmail" in url_lower or "calendar" in url_lower or "sheet" in url_lower or "doc" in url_lower:
                 env["GOOGLE_DRIVE_TOKEN"] = auth_token
                 env["GOOGLE_DRIVE_ACCESS_TOKEN"] = auth_token
@@ -95,23 +88,12 @@ class McpSubprocessManager:
                 except Exception as e:
                     log.error(f"Failed to create google temp credentials file: {e}")
 
-        parts = runtime_url.split(":", 1)
-        scheme = parts[0].lower()
-        package = parts[1] if len(parts) > 1 else ""
-
         if scheme == "docker":
             docker_cmd = shutil.which("docker") or "docker"
             cmd = [docker_cmd, "run", "-i", "--rm"]
-            if auth_token:
-                cmd.extend(["-e", f"GITHUB_PERSONAL_ACCESS_TOKEN={auth_token}"])
-                cmd.extend(["-e", f"GITHUB_TOKEN={auth_token}"])
+            for k, v in env.items():
+                cmd.extend(["-e", f"{k}={v}"])
             cmd.append(package)
-            return cmd, env
-        elif scheme == "smithery":
-            npx_cmd = shutil.which("npx") or ("npx.cmd" if os.name == "nt" else "npx")
-            cmd = [npx_cmd, "-y", "@smithery/cli@latest", "run", package]
-            if config_arg:
-                cmd.extend(["--config", config_arg])
             return cmd, env
         elif scheme == "npx":
             npx_cmd = shutil.which("npx") or ("npx.cmd" if os.name == "nt" else "npx")
@@ -132,8 +114,12 @@ class McpSubprocessManager:
             else:
                 log.warning(f"MCP subprocess {connection_id} terminated with code {proc.returncode}. Respawning...")
                 self._processes.pop(connection_id, None)
+                self._initialized.discard(connection_id)
 
-        log.info(f"Spawning MCP Popen Subprocess [{connection_id}]: {' '.join(cmd)}")
+        # Redact the massive JSON string from logs to protect tokens
+        log_cmd = [c if not (c.startswith('{') and 'token' in c.lower()) else '[REDACTED_CONFIG_JSON]' for c in cmd]
+        log.info(f"Spawning MCP Popen Subprocess [{connection_id}]: {' '.join(log_cmd)}")
+        
         proc = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
@@ -181,7 +167,30 @@ class McpSubprocessManager:
         lock = self._get_lock(connection_id)
         async with lock:
             cmd, env = self.parse_runtime_command(runtime_url, auth_token)
-            return await asyncio.to_thread(self._sync_spawn, connection_id, cmd, env)
+            proc = await asyncio.to_thread(self._sync_spawn, connection_id, cmd, env)
+
+            # Perform MCP initialize handshake once per process lifecycle
+            if connection_id not in self._initialized:
+                try:
+                    await asyncio.wait_for(
+                        asyncio.to_thread(self._sync_send_rpc, proc, "initialize", {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {},
+                            "clientInfo": {"name": "beaver", "version": "1.0.0"}
+                        }),
+                        timeout=30.0
+                    )
+                    # Send the required initialized notification (no response expected)
+                    notif = json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n"
+                    if proc.stdin:
+                        proc.stdin.write(notif)
+                        proc.stdin.flush()
+                    self._initialized.add(connection_id)
+                    log.info(f"MCP process [{connection_id}] initialized successfully.")
+                except Exception as init_err:
+                    log.warning(f"MCP initialize handshake failed for [{connection_id}]: {init_err}")
+
+            return proc
 
     async def send_rpc_request(self, proc: subprocess.Popen, method: str, params: Optional[Dict[str, Any]] = None, timeout: float = 30.0) -> Dict[str, Any]:
         return await asyncio.wait_for(asyncio.to_thread(self._sync_send_rpc, proc, method, params), timeout=timeout)

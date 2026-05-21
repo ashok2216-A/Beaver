@@ -7,8 +7,8 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from database import Base
-from config import get_settings
+from database.database import Base
+from config.config import get_settings
 
 settings = get_settings()
 

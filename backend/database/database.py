@@ -1,11 +1,11 @@
 """
-database.py — SQLAlchemy engine, session factory, and Base.
+database.py â€” SQLAlchemy engine, session factory, and Base.
 Supports SQLite (dev) and PostgreSQL (prod) via DATABASE_URL.
 """
 import logging
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
-from config import get_settings
+from config.config import get_settings
 
 settings = get_settings()
 

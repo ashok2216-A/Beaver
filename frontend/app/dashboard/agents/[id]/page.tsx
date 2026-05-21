@@ -21,7 +21,8 @@ import {
   Terminal,
   Activity,
   Edit2,
-  Check
+  Check,
+  Cloud
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AgentAvatar } from "@/components/dashboard/agent-avatar"
@@ -497,6 +498,11 @@ export default function AgentBuilderPage() {
     return matchesSearch && matchesMethod
   })
 
+  const isIntegrationAgent = agent?.base_url?.match(/^(composio|npx|docker|smithery|mcp):/i);
+  const integrationName = agent?.base_url
+    ? agent.base_url.replace(/^(composio:|npx:(@[\w-]+\/)?(mcp-)?(server-)?|docker:|smithery:|mcp:)/i, "").replace("googlecalendar", "Google Calendar")
+    : "";
+
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Top Navigation Bar */}
@@ -566,11 +572,11 @@ export default function AgentBuilderPage() {
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">
-                  {agent?.base_url?.startsWith("smithery:") ? "Integration Capabilities" : "Endpoints"}
+                  {isIntegrationAgent ? "Integration Capabilities" : "Endpoints"}
                 </h2>
                 <p className="text-xs text-muted-foreground">{endpoints.length} tools discovered</p>
               </div>
-              {!agent?.base_url?.startsWith("smithery:") && (
+              {!isIntegrationAgent && (
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -598,7 +604,7 @@ export default function AgentBuilderPage() {
               />
             </div>
 
-            {!agent?.base_url?.startsWith("smithery:") ? (
+            {!isIntegrationAgent ? (
               <>
                 <div className="flex flex-wrap gap-1">
                   {['ALL', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => {
@@ -686,7 +692,7 @@ export default function AgentBuilderPage() {
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
             <div className="p-3 space-y-2">
               {filteredEndpoints.map(ep => {
-                const isMcpTool = agent?.base_url?.startsWith("smithery:") || ep.path.startsWith("/mcp/tools/");
+                const isMcpTool = isIntegrationAgent || ep.path.startsWith("/mcp/tools/");
                 return (
                   <div
                     key={ep.id}
@@ -753,8 +759,12 @@ export default function AgentBuilderPage() {
                       </div>
                     </div>
                     {isMcpTool ? (() => {
-                      const cleanName = ep.path.replace("/mcp/tools/", "") || ep.summary;
-                      const formattedDesc = ep.description || (ep.summary && ep.summary !== cleanName ? ep.summary : `Executes the ${cleanName.replace(/_/g, " ")} capability.`);
+                      const rawName = ep.path.replace("/mcp/tools/", "") || ep.summary;
+                      const cleanName = rawName
+                        .split('_')
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                        .join(' ');
+                      const formattedDesc = ep.description || (ep.summary && ep.summary !== rawName ? ep.summary : `Executes the ${cleanName.toLowerCase()} capability.`);
                       return (
                         <>
                           <p className="font-mono font-bold text-xs truncate text-foreground">{cleanName}</p>
@@ -1021,18 +1031,7 @@ export default function AgentBuilderPage() {
                   <p className="text-[10px] text-muted-foreground italic">Personality, rules, and constraints.</p>
                 </div>
 
-                {agent?.base_url?.startsWith("smithery:") ? (
-                  <div className="space-y-2 pt-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Integration Connection</label>
-                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-sans text-xs font-bold shadow-inner">
-                      <div className="flex items-center gap-2.5">
-                        <Check className="h-4 w-4 stroke-[3px]" />
-                        <span className="capitalize">{agent.base_url.replace("smithery:", "").replace("googlecalendar", "Google Calendar")}</span>
-                      </div>
-                      <span className="text-[10px] uppercase font-sans tracking-wider bg-emerald-500/20 px-2 py-0.5 rounded-md font-extrabold text-emerald-600 dark:text-emerald-400">Verified</span>
-                    </div>
-                  </div>
-                ) : (
+                {!isIntegrationAgent && (
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Base API URL</label>
                     <Input name="base_url" defaultValue={agent.base_url} className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs" />
@@ -1040,7 +1039,7 @@ export default function AgentBuilderPage() {
                 )}
               </div>
 
-              {!agent?.base_url?.startsWith("smithery:") && (
+              {!isIntegrationAgent && (
                 <div className="space-y-6 pt-6 border-t border-border/50">
                   <h3 className="text-[10px] font-bold uppercase tracking-widest text-primary">Authentication</h3>
                   

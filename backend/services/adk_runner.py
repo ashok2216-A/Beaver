@@ -37,7 +37,7 @@ from google.adk.tools import load_memory
 from google.adk.tools.preload_memory_tool import PreloadMemoryTool
 from google.genai import types as genai_types
 
-from config import get_settings
+from config.config import get_settings
 from services.executor import call_api
 from utils.security import decrypt_secret
 from services.dynamic_discovery import get_dynamic_discovery
@@ -329,8 +329,8 @@ def _build_agent(
             # PRO-LOGIC: Check if this endpoint exists GLOBALLY in the DB for this agent's API
             # If it does, we can offer the user a way to "Authorize" it on the fly.
             try:
-                from database import SessionLocal
-                from models import Endpoint as DBEp, Agent as DBAgent
+                from database.database import SessionLocal
+                from models.models import Endpoint as DBEp, Agent as DBAgent
                 with SessionLocal() as db:
                     # Find ANY endpoint in the DB that matches this path/method (belonging to same base_url/API)
                     # We assume base_url is a good proxy for the API identity
@@ -928,8 +928,8 @@ async def run_agent_stream(
             match = re.search(r'target_endpoint_id":\s*"(\d+)"', user_input)
             if match:
                 ep_id = int(match.group(1))
-                from database import SessionLocal
-                from models import Agent as DBAgent, Endpoint as DBEp
+                from database.database import SessionLocal
+                from models.models import Agent as DBAgent, Endpoint as DBEp
                 with SessionLocal() as db:
                     # We need to find which agent this is. 
                     # We can use the agent_name (safe_name) or look up by session

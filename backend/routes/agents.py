@@ -11,9 +11,9 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Form, s
 from sqlalchemy.orm import Session, defer
 from sqlalchemy import func, case, distinct, or_
 
-from database import get_db
-from models import Agent, Endpoint, AgentStatus, User, Log, ToolSource
-from schemas import (
+from database.database import get_db
+from models.models import Agent, Endpoint, AgentStatus, User, Log, ToolSource
+from schemas.schemas import (
     AgentCreate, AgentOut, AgentDetail, AgentUpdate,
     EndpointOut, EndpointCreate, EndpointUpdate, MessageOut,
     StatsOut, PaginatedEndpoints, HealthStatsOut, VelocityOut,
@@ -68,7 +68,7 @@ def list_templates():
         return {"templates": []}
         
     try:
-        with open(manifest_path, "r", encoding="utf-8") as f:
+        with open(manifest_path, "r", encoding="utf-8-sig") as f:
             data = json.load(f)
             log.info(f"Successfully loaded {len(data.get('templates', []))} templates from {manifest_path}")
             return data
@@ -85,13 +85,13 @@ def get_template(template_id: str):
     
     # Try loading from file first (for complex templates with custom logic)
     if os.path.exists(template_path):
-        with open(template_path, "r") as f:
+        with open(template_path, "r", encoding="utf-8-sig") as f:
             return json.load(f)
     
     # Fallback: Look it up in the manifest
     manifest_path = os.path.join(os.path.dirname(__file__), "..", "templates", "manifest.json")
     try:
-        with open(manifest_path, "r") as f:
+        with open(manifest_path, "r", encoding="utf-8-sig") as f:
             manifest = json.load(f)
             template = next((t for t in manifest.get("templates", []) if t["id"] == template_id), None)
             if template:
@@ -210,8 +210,8 @@ def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
                 provider = val
                 break
         if provider:
-            from database import SessionLocal
-            from models import UserIntegration
+            from database.database import SessionLocal
+            from models.models import UserIntegration
             try:
                 with SessionLocal() as db_session:
                     integration = db_session.query(UserIntegration).filter(
@@ -578,8 +578,12 @@ def get_endpoints(
     """Return paginated and searchable endpoints for an agent."""
     _get_agent_or_404(agent_id, user, db)
     
+    from sqlalchemy import or_, not_
     query = db.query(Endpoint).filter(Endpoint.agent_id == agent_id)
     
+    # Hide Composio meta-tools from the UI
+    query = query.filter(not_(Endpoint.summary.ilike("composio_%")))
+
     if q:
         search_filter = or_(
             Endpoint.path.ilike(f"%{q}%"),

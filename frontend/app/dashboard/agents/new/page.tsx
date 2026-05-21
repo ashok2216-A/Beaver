@@ -71,6 +71,24 @@ function NewAgentContent() {
   const [connectedTools, setConnectedTools] = useState<string[]>([]);
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
 
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  useEffect(() => {
+    try {
+      const pendingRaw = localStorage.getItem('oauth_pending_template');
+      if (pendingRaw && tabParam === "manual") {
+        const pending = JSON.parse(pendingRaw);
+        setSourceType(pending.sType);
+        setAgentName(pending.name);
+        setBaseUrl(pending.mcpUrl);
+        setMcpServerUrl(pending.mcpUrl);
+        setDescription(pending.desc);
+        setAuthType(pending.aType);
+      }
+    } catch(e) {}
+    setIsInitializing(false);
+  }, [tabParam]);
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem("beaver_connected_tools");
@@ -91,9 +109,76 @@ function NewAgentContent() {
           const data = await templatesRes.json();
           setTemplates(data.templates || []);
         }
+        let currentOauthIntegrations: any[] = [];
         if (oauthRes.ok) {
           const oauthData = await oauthRes.json();
-          setOauthIntegrations(oauthData || []);
+          currentOauthIntegrations = oauthData || [];
+          setOauthIntegrations(currentOauthIntegrations);
+        }
+
+        // Resume pending template connection after OAuth callback redirect
+        const pendingRaw = localStorage.getItem('oauth_pending_template');
+        if (pendingRaw) {
+          localStorage.removeItem('oauth_pending_template');
+          try {
+            const pending = JSON.parse(pendingRaw);
+            const { templateId, name, mcpUrl, sType, desc, aType } = pending;
+
+            // Verify OAuth was actually completed
+            if (currentOauthIntegrations.length === 0) {
+              toast.error("OAuth authorization was not completed. Please try connecting again.");
+              return;
+            }
+
+            // Immediately switch UI to Verified Integration Setup while loading
+            setAgentName(name);
+            setBaseUrl(mcpUrl);
+            setMcpServerUrl(mcpUrl);
+            setSourceType(sType);
+            setDescription(desc);
+            setAuthType(aType);
+            setTab("manual");
+
+            toast.info(`Resuming connection for "${name}"...`);
+
+            const createRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                name,
+                description: desc,
+                base_url: mcpUrl,
+                auth_type: aType,
+                auth_header: "",
+                auth_secret: "",
+                model_id: "mistral/mistral-small-latest",
+                api_spec: null,
+                source_type: sType,
+                mcp_server_url: mcpUrl
+              })
+            });
+
+            if (createRes.ok) {
+              toast.success(`Connected "${name}" successfully & OAuth completed!`);
+
+              setConnectedTools(prev => {
+                const next = [...prev, templateId];
+                try { localStorage.setItem("beaver_connected_tools", JSON.stringify(next)); } catch (e) {}
+                return next;
+              });
+
+              setTimeout(() => {
+                router.push("/dashboard/agents/new?tab=manual");
+              }, 300);
+            } else {
+              toast.error("Failed to create agent after OAuth authorization.");
+            }
+          } catch (parseErr) {
+            console.error("Failed to resume pending template:", parseErr);
+          }
         }
       } catch (err) {
         console.error("Failed to load templates or oauth", err);
@@ -119,6 +204,7 @@ function NewAgentContent() {
     if (id.includes("google") || dom.includes("google")) return "google";
     if (id.includes("slack") || dom.includes("slack")) return "slack";
     if (id.includes("instagram") || dom.includes("instagram")) return "instagram";
+    if (id.includes("youtube") || dom.includes("youtube")) return "youtube";
     return null;
   };
 
@@ -133,6 +219,7 @@ function NewAgentContent() {
     if (id === "slack_mcp") return "https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg";
     if (id === "github_mcp") return "https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg";
     if (id === "instagram") return "https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg";
+    if (id === "youtube") return "https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg";
     return `https://www.google.com/s2/favicons?sz=128&domain=${t.domain}`;
   };
 
@@ -165,12 +252,49 @@ function NewAgentContent() {
         setAuthType(aType);
         setTab("manual");
         toast.info(`Loaded configuration for connected engine "${name}".`);
+        setTimeout(() => {
+          router.push("/dashboard/agents/new?tab=manual");
+        }, 100);
         return;
+      }
+
+      // Check if this template requires OAuth and if user has an active integration
+      const oauthProvider = getProviderForTemplate(t);
+      if (oauthProvider) {
+        const hasActiveIntegration = oauthIntegrations.some(
+          (i: any) => i.provider === oauthProvider
+        );
+
+        if (!hasActiveIntegration) {
+          // Save template info so we can resume after OAuth callback
+          localStorage.setItem('oauth_return_to', `/dashboard/agents/new?tab=manual`);
+          localStorage.setItem('oauth_pending_template', JSON.stringify({
+            templateId: t.id,
+            name,
+            mcpUrl,
+            sType,
+            desc,
+            aType
+          }));
+
+          // Redirect to OAuth provider authorization page
+          toast.info(`Redirecting to ${oauthProvider} for authorization...`);
+          const connectRes = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/oauth/connect/${oauthProvider}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (!connectRes.ok) {
+            throw new Error("Failed to generate OAuth authorization URL");
+          }
+          const { auth_url } = await connectRes.json();
+          window.location.href = auth_url;
+          return;
+        }
       }
 
       toast.info(`Connecting ${detail.name} and initiating MCP discovery...`);
 
-      // Immediately create agent and trigger Smithery CLI OAuth discovery
+      // Create agent and trigger MCP discovery
       const createRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
         method: "POST",
         headers: {
@@ -350,11 +474,20 @@ function NewAgentContent() {
     }
   };
 
+  if (isInitializing) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[75vh] animate-in fade-in">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground mt-4 font-medium">Initializing workspace...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-8">
       {tab === null ? (
-        <div className="flex flex-col items-center justify-center min-h-[75vh] px-4 py-12 animate-in fade-in zoom-in-95 duration-700">
-          <div className="text-center max-w-3xl mb-16 space-y-4">
+        <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)] px-4 animate-in fade-in zoom-in-95 duration-700">
+          <div className="text-center max-w-3xl mb-12 space-y-4">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold tracking-wider uppercase shadow-xs backdrop-blur-md">
               <Sparkles className="w-3.5 h-3.5 text-primary" />
               Next-Gen Agent Architecture
@@ -509,6 +642,7 @@ function NewAgentContent() {
                                   onMouseLeave={() => setHoveredTool(null)}
                                   onClick={async (e) => {
                                     e.stopPropagation();
+                                    const oauthProvider = getProviderForTemplate(t);
                                     setConnectedTools(prev => {
                                       const next = prev.filter(item => item !== t.id);
                                       try { localStorage.setItem("beaver_connected_tools", JSON.stringify(next)); } catch (err) {}
@@ -520,7 +654,18 @@ function NewAgentContent() {
                                         method: "POST",
                                         headers: { Authorization: `Bearer ${token}` }
                                       });
+                                      // Also disconnect the OAuth provider if mapped
+                                      if (oauthProvider && oauthProvider !== t.id) {
+                                        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/oauth/disconnect/provider/${oauthProvider}`, {
+                                          method: "POST",
+                                          headers: { Authorization: `Bearer ${token}` }
+                                        });
+                                      }
                                     } catch (err) {}
+                                    // Remove provider from oauthIntegrations so reconnect triggers OAuth
+                                    if (oauthProvider) {
+                                      setOauthIntegrations(prev => prev.filter((i: any) => i.provider !== oauthProvider));
+                                    }
                                     toast.success(`Disconnected OAuth session for ${t.name}. Next connection will re-prompt authorization.`);
                                   }}
                                   className={cn(

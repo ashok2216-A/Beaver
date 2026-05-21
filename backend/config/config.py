@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     # ── Discovery ──────────────────────────────────────────────────
     firecrawl_api_key: str = ""
     rapidapi_key: str = ""
+    composio_api_key: str = ""
 
     # ── Email (SMTP) ───────────────────────────────────────────────
     email_host: str = "smtp.gmail.com"

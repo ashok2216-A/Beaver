@@ -13,9 +13,9 @@ from sqlalchemy.orm import Session
 from jose import jwt, JWTError
 import httpx
 
-from config import get_settings
-from database import get_db
-from models import User, ApiKey
+from config.config import get_settings
+from database.database import get_db
+from models.models import User, ApiKey
 
 log = logging.getLogger(__name__)
 settings = get_settings()

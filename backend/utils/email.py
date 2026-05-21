@@ -2,8 +2,8 @@ import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from models import User
-from config import get_settings
+from models.models import User
+from config.config import get_settings
 
 log = logging.getLogger(__name__)
 settings = get_settings()

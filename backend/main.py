@@ -23,8 +23,8 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from utils.limiter import limiter
 
-from config import get_settings
-from database import Base, engine
+from config.config import get_settings
+from database.database import Base, engine
 from routes import agents, chat, auth, billing, oauth
 from utils.auth import get_current_user
 

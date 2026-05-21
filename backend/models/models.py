@@ -1,5 +1,5 @@
 """
-models.py — SQLAlchemy ORM models.
+models.py â€” SQLAlchemy ORM models.
 """
 from datetime import datetime, timezone
 from sqlalchemy import (
@@ -8,10 +8,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 import enum
-from database import Base
+from database.database import Base
 
 
-# ─── Enums ────────────────────────────────────────────────────────────────────
+# â”€â”€â”€ Enums â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class AgentStatus(str, enum.Enum):
     draft = "draft"
@@ -32,7 +32,7 @@ class ToolSource(str, enum.Enum):
     mcp_sse = "mcp_sse"
 
 
-# ─── Models ───────────────────────────────────────────────────────────────────
+# â”€â”€â”€ Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class User(Base):
     __tablename__ = "users"

@@ -8,9 +8,9 @@ import stripe
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from config import get_settings
-from database import get_db
-from models import User
+from config.config import get_settings
+from database.database import get_db
+from models.models import User
 from utils.auth import get_current_user
 from utils.limiter import limiter
 

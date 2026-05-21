@@ -48,7 +48,7 @@ class DynamicDiscoveryService:
         """
         import os
         from litellm import acompletion
-        from config import get_settings
+        from config.config import get_settings
         
         settings = get_settings()
         api_key = settings.mistral_api_key or os.getenv("MISTRAL_API_KEY")
@@ -126,7 +126,7 @@ Respond ONLY with a JSON object:
         """
         import os
         from litellm import acompletion
-        from config import get_settings
+        from config.config import get_settings
         
         settings = get_settings()
         api_key = settings.mistral_api_key or os.getenv("MISTRAL_API_KEY")
