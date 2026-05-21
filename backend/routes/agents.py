@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import logging
 
-import httpx
 import yaml
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Form, status, Query
 from sqlalchemy.orm import Session, defer
@@ -578,7 +577,7 @@ def get_endpoints(
     """Return paginated and searchable endpoints for an agent."""
     _get_agent_or_404(agent_id, user, db)
     
-    from sqlalchemy import or_, not_
+    from sqlalchemy import not_
     query = db.query(Endpoint).filter(Endpoint.agent_id == agent_id)
     
     # Hide Composio meta-tools from the UI

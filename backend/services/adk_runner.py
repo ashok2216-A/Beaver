@@ -330,7 +330,7 @@ def _build_agent(
             # If it does, we can offer the user a way to "Authorize" it on the fly.
             try:
                 from database.database import SessionLocal
-                from models.models import Endpoint as DBEp, Agent as DBAgent
+                from models.models import Endpoint as DBEp
                 with SessionLocal() as db:
                     # Find ANY endpoint in the DB that matches this path/method (belonging to same base_url/API)
                     # We assume base_url is a good proxy for the API identity
@@ -452,7 +452,7 @@ def _build_agent(
                 # Turn 1: Try Intelligent Structure Repair
                 repaired = await _repair_payload_with_ai(path, method, current_payload, data, pattern_hint)
                 if repaired and repaired != current_payload:
-                    log.info(f"REPAIR SUCCESS: AI suggested structural correction. Retrying...")
+                    log.info("REPAIR SUCCESS: AI suggested structural correction. Retrying...")
                     current_payload = repaired
                     continue # Retry with repaired payload
                 else:
@@ -468,7 +468,8 @@ def _build_agent(
         
         def find_audio_in_obj(obj):
             nonlocal is_audio, audio_payload
-            if is_audio: return
+            if is_audio:
+                return
             
             if isinstance(obj, dict):
                 for v in obj.values():
@@ -510,9 +511,6 @@ def _build_agent(
         # ─── Error Handling & Self-Healing Logic ───
         # Final Error Handling & A2UI Fallback
         if status >= 400:
-            # Check how many times this specific tool has failed in this turn
-            fail_count = sum(1 for l in tool_log if l["path"] == path and l["method"] == method.upper() and l["status_code"] >= 400)
-            
             log.warning(f"Tool Error {status} from {path} after internal attempts.")
 
             hint = "The API returned an error."
@@ -978,7 +976,8 @@ async def run_agent_stream(
             for msg in history:
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
-                if not content: continue
+                if not content:
+                    continue
                 
                 adk_msg = genai_types.Content(role=role, parts=[genai_types.Part(text=content)])
                 await _session_service.add_message(

@@ -1,8 +1,6 @@
-import json
 import logging
 import re
 from typing import Dict, List, Any, Optional
-from genson import SchemaBuilder
 
 log = logging.getLogger(__name__)
 
@@ -152,8 +150,10 @@ Respond ONLY with a JSON list of strings. No explanations."""
             text = res.choices[0].message.content
             data = json.loads(text)
             # The AI might return {"options": [...]} or just [...]
-            if isinstance(data, list): return data
-            if isinstance(data, dict): return list(data.values())[0] if data.values() else []
+            if isinstance(data, list):
+                return data
+            if isinstance(data, dict):
+                return list(data.values())[0] if data.values() else []
             return []
         except Exception as e:
             log.error(f"Enum discovery failed: {e}")
@@ -217,7 +217,7 @@ Respond ONLY with a JSON list of strings. No explanations."""
         """
         a2ui = {
             "component": "form",
-            "title": f"Fix API Parameters",
+            "title": "Fix API Parameters",
             "subtitle": f"Validation issues detected at '{endpoint_path}'. Please correct the fields below:",
             "submit_label": "Retry Request",
             "children": []

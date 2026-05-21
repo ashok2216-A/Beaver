@@ -7,7 +7,6 @@ fresh credentials into the tool execution environment.
 """
 import asyncio
 from datetime import datetime, timedelta, timezone
-import json
 import logging
 from typing import Any, Optional
 import httpx
@@ -235,12 +234,12 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
                 if hasattr(sub_exc, "response"):
                     try:
                         err_msg = f"{sub_exc.response.status_code} - {sub_exc.response.text}"
-                    except:
+                    except Exception:
                         pass
         elif hasattr(exc, "response"):
             try:
                 err_msg = f"{exc.response.status_code} - {exc.response.text}"
-            except:
+            except Exception:
                 pass
                 
         log.exception(f"Composio MCP gateway error: {err_msg}")

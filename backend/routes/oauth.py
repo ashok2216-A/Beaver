@@ -5,23 +5,15 @@ Handles connecting external provider accounts (Google, GitHub, etc.),
 securely exchanging codes for tokens, encrypting them via AES-256,
 and persisting them in the UserIntegration vault.
 """
-from datetime import datetime, timedelta, timezone
-import json
 import logging
-import os
-from pathlib import Path
-import urllib.parse
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import RedirectResponse
-import httpx
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from config.config import get_settings
 from database.database import get_db
 from models.models import User, UserIntegration
-from schemas.schemas import MessageOut, UserIntegrationOut, OAuthConnectUrlOut
+from schemas.schemas import MessageOut, OAuthConnectUrlOut
 from utils.auth import get_current_user
-from utils.security import encrypt_secret, decrypt_secret
 
 log = logging.getLogger(__name__)
 

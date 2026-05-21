@@ -176,7 +176,7 @@ async def call_api(
         if auth_secret.strip().startswith("{"):
             try:
                 auth_data = json.loads(auth_secret)
-            except:
+            except Exception:
                 auth_data = {auth_header or "api_key": auth_secret}
         else:
             auth_data = {auth_header or "api_key": auth_secret}
