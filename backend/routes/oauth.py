@@ -75,10 +75,47 @@ async def connect_provider(
     raise HTTPException(status_code=501, detail="Composio API key is not configured on the server.")
 
 
-@router.get("/list", response_model=list[UserIntegrationOut])
+@router.get("/list")
 def list_integrations(user: User = Depends(get_current_user)):
-    """List all connected integrations for the current user."""
-    return user.integrations
+    """List all explicitly connected integrations for the current user."""
+    return [
+        {"id": i.id, "provider": i.provider, "source": "db"}
+        for i in user.integrations
+    ]
+
+
+@router.post("/mark-connected", response_model=MessageOut)
+def mark_connected(
+    provider: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Record that the user explicitly connected a toolkit via Composio OAuth.
+    
+    This is called after the OAuth callback succeeds so we track exactly which
+    toolkits the user connected — not all Composio accounts.
+    """
+    provider_lower = provider.lower()
+    
+    # Only insert if not already present
+    existing = db.query(UserIntegration).filter(
+        UserIntegration.user_id == user.id,
+        UserIntegration.provider == provider_lower
+    ).first()
+    
+    if not existing:
+        db.add(UserIntegration(
+            user_id=user.id,
+            provider=provider_lower,
+            access_token="composio",  # Composio manages the actual token
+            account_id=None,
+            refresh_token=None,
+            expires_at=None,
+            scopes=[],
+        ))
+        db.commit()
+    
+    return MessageOut(message=f"Marked {provider} as connected.")
 
 
 @router.delete("/disconnect/{integration_id}", response_model=MessageOut)

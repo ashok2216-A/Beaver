@@ -28,6 +28,41 @@ export default function OAuthCallbackPage({ params }: { params: Promise<{ provid
         return
       }
 
+      // Mark the specific toolkit as connected in our DB
+      // The pending template tells us which toolkit was being authorized
+      try {
+        const pendingRaw = localStorage.getItem('oauth_pending_template')
+        if (pendingRaw) {
+          const pending = JSON.parse(pendingRaw)
+          // Map template ID to the Composio toolkit name
+          const toolkitMap: Record<string, string> = {
+            'gmail': 'gmail',
+            'google_calendar': 'googlecalendar',
+            'google_drive': 'googledrive',
+            'google_sheets': 'googlesheets',
+            'google_docs': 'googledocs',
+            'github_mcp': 'github',
+            'slack_mcp': 'slack',
+            'notion': 'notion',
+            'instagram': 'instagram',
+            'youtube': 'youtube',
+            'linear': 'linear',
+            'jira': 'jira',
+          }
+          const toolkit = toolkitMap[pending.templateId] || pending.templateId
+          if (toolkit) {
+            const token = await getToken()
+            await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/oauth/mark-connected?provider=${encodeURIComponent(toolkit)}`,
+              { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+            )
+          }
+        }
+      } catch (e) {
+        // Non-critical — just log
+        console.warn('Failed to mark integration as connected:', e)
+      }
+
       // If no error, we consider it a success because Composio successfully redirected us back.
       setStatus('success')
       
@@ -39,7 +74,8 @@ export default function OAuthCallbackPage({ params }: { params: Promise<{ provid
     }
 
     processCallback()
-  }, [searchParams, router])
+  }, [searchParams, router, getToken])
+
 
   return (
     <div className="relative flex items-center justify-center min-h-[80vh] px-4 w-full">

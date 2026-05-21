@@ -124,58 +124,17 @@ function NewAgentContent() {
             const pending = JSON.parse(pendingRaw);
             const { templateId, name, mcpUrl, sType, desc, aType } = pending;
 
-            // Verify OAuth was actually completed
-            if (currentOauthIntegrations.length === 0) {
-              toast.error("OAuth authorization was not completed. Please try connecting again.");
-              return;
-            }
-
-            // Immediately switch UI to Verified Integration Setup while loading
+            // Restore state and show the configuration form
+            // Do NOT auto-create — let the user review and click "Save Integration"
             setAgentName(name);
             setBaseUrl(mcpUrl);
             setMcpServerUrl(mcpUrl);
-            setSourceType(sType);
+            setSourceType(sType || "mcp_sse");
             setDescription(desc);
             setAuthType(aType);
             setTab("manual");
 
-            toast.info(`Resuming connection for "${name}"...`);
-
-            const createRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                name,
-                description: desc,
-                base_url: mcpUrl,
-                auth_type: aType,
-                auth_header: "",
-                auth_secret: "",
-                model_id: "mistral/mistral-small-latest",
-                api_spec: null,
-                source_type: sType,
-                mcp_server_url: mcpUrl
-              })
-            });
-
-            if (createRes.ok) {
-              toast.success(`Connected "${name}" successfully & OAuth completed!`);
-
-              setConnectedTools(prev => {
-                const next = [...prev, templateId];
-                try { localStorage.setItem("beaver_connected_tools", JSON.stringify(next)); } catch (e) {}
-                return next;
-              });
-
-              setTimeout(() => {
-                router.push("/dashboard/agents/new?tab=manual");
-              }, 300);
-            } else {
-              toast.error("Failed to create agent after OAuth authorization.");
-            }
+            toast.success(`OAuth connected! Review your agent settings and click Save Integration.`);
           } catch (parseErr) {
             console.error("Failed to resume pending template:", parseErr);
           }
@@ -197,15 +156,36 @@ function NewAgentContent() {
   });
   const categories = Array.from(new Set(filteredTemplates.map((t) => t.category)));
 
-  const getProviderForTemplate = (t: Template) => {
-    const dom = (t.domain || "").toLowerCase();
+  // Returns the exact Composio toolkit name for a template (must match what Composio returns in connected accounts)
+  const getProviderForTemplate = (t: Template): string | null => {
     const id = (t.id || "").toLowerCase();
-    if (id.includes("github") || dom.includes("github")) return "github";
-    if (id.includes("google") || dom.includes("google")) return "google";
-    if (id.includes("slack") || dom.includes("slack")) return "slack";
-    if (id.includes("instagram") || dom.includes("instagram")) return "instagram";
-    if (id.includes("youtube") || dom.includes("youtube")) return "youtube";
+    if (id === "gmail") return "gmail";
+    if (id === "google_calendar") return "googlecalendar";
+    if (id === "google_drive") return "googledrive";
+    if (id === "google_sheets") return "googlesheets";
+    if (id === "google_docs") return "googledocs";
+    if (id.includes("github")) return "github";
+    if (id.includes("slack")) return "slack";
+    if (id.includes("notion")) return "notion";
+    if (id.includes("instagram")) return "instagram";
+    if (id.includes("youtube")) return "youtube";
+    if (id.includes("linear")) return "linear";
+    if (id.includes("jira")) return "jira";
+    if (id.includes("asana")) return "asana";
+    if (id.includes("trello")) return "trello";
+    if (id.includes("airtable")) return "airtable";
+    if (id.includes("hubspot")) return "hubspot";
+    if (id.includes("salesforce")) return "salesforce";
+    if (id.includes("discord")) return "discord";
     return null;
+  };
+
+  // Check if a template is connected (via localStorage OR server-side Composio active connection)
+  const isTemplateConnected = (t: Template): boolean => {
+    if (connectedTools.includes(t.id)) return true;
+    const provider = getProviderForTemplate(t);
+    if (!provider) return false;
+    return oauthIntegrations.some((i: any) => i.provider === provider);
   };
 
   const getLogoForTemplate = (t: Template) => {
@@ -239,11 +219,13 @@ function NewAgentContent() {
         name = `${name} Agent`;
       }
       const mcpUrl = detail.mcp_server_url || detail.base_url || "";
+      // Always force mcp_sse for Composio integrations — never "rest"
       const sType = detail.source_type || "mcp_sse";
       const desc = detail.description || "";
       const aType = detail.auth_type || "bearer";
 
-      if (connectedTools.includes(t.id)) {
+      // If already connected (via localStorage OR Composio active connection), load config directly
+      if (isTemplateConnected(t)) {
         setAgentName(name);
         setBaseUrl(mcpUrl);
         setMcpServerUrl(mcpUrl);
@@ -252,9 +234,6 @@ function NewAgentContent() {
         setAuthType(aType);
         setTab("manual");
         toast.info(`Loaded configuration for connected engine "${name}".`);
-        setTimeout(() => {
-          router.push("/dashboard/agents/new?tab=manual");
-        }, 100);
         return;
       }
 
@@ -267,7 +246,7 @@ function NewAgentContent() {
 
         if (!hasActiveIntegration) {
           // Save template info so we can resume after OAuth callback
-          localStorage.setItem('oauth_return_to', `/dashboard/agents/new?tab=manual`);
+          localStorage.setItem('oauth_return_to', `/dashboard/agents/new?tab=templates`);
           localStorage.setItem('oauth_pending_template', JSON.stringify({
             templateId: t.id,
             name,
@@ -320,23 +299,18 @@ function NewAgentContent() {
       }
 
       const agentData = await createRes.json();
-      setAgentName(name);
-      setBaseUrl(mcpUrl);
-      setMcpServerUrl(mcpUrl);
-      setSourceType(sType);
-      setDescription(desc);
-      setAuthType(aType);
-      setTab("manual");
-      toast.success(`Connected "${name}" successfully & OAuth completed!`);
-      
+
+      // Mark as connected in localStorage
       setConnectedTools(prev => {
         const next = [...prev, t.id];
         try { localStorage.setItem("beaver_connected_tools", JSON.stringify(next)); } catch (e) {}
         return next;
       });
 
+      // Navigate directly to the new agent's page
+      toast.success(`Connected "${name}" successfully!`);
       setTimeout(() => {
-        router.push("/dashboard/agents/new?tab=manual");
+        router.push(`/dashboard/agents/${agentData.id}`);
       }, 300);
 
     } catch (err) {
@@ -345,6 +319,7 @@ function NewAgentContent() {
       setActionLoading(null);
     }
   };
+
 
   const handleFiles = (files: FileList | null) => {
     if (!files || !files[0]) return;
@@ -611,7 +586,7 @@ function NewAgentContent() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto w-full px-2">
                         {filteredTemplates.filter((t) => t.category === cat).map((t) => {
                           const isConnecting = actionLoading === t.id;
-                          const isConnected = connectedTools.includes(t.id);
+                          const isConnected = isTemplateConnected(t);
                           const isHovered = hoveredTool === t.id;
 
                           return (
