@@ -460,17 +460,51 @@ async def chat(
             ranked_endpoints.append((score, ep.id))
 
         # Sort by score and select endpoints
-        ranked_endpoints.sort(key=lambda x: x[0], reverse=True)
-        
-        # If <= 30 endpoints total, pass ALL of them — don't risk filtering out relevant tools
-        if len(ranked_endpoints) <= 30:
+        # To avoid starving any toolkit (e.g. Gmail, YouTube) when many endpoints exist,
+        # we group tools by service category and ensure fair representation.
+        ranked_by_category = {}
+        for score, ep_id in ranked_endpoints:
+            ep_meta = next((e for e in all_metadata if e.id == ep_id), None)
+            if ep_meta:
+                path_upper = ep_meta.path.upper()
+                if "/MCP/TOOLS/" in path_upper:
+                    parts = path_upper.split("/MCP/TOOLS/")[-1].split("_")
+                    category = parts[0] if parts else "DEFAULT"
+                else:
+                    segments = [s for s in ep_meta.path.split("/") if s]
+                    category = segments[0].upper() if segments else "DEFAULT"
+            else:
+                category = "DEFAULT"
+                
+            if category not in ranked_by_category:
+                ranked_by_category[category] = []
+            ranked_by_category[category].append((score, ep_id))
+
+        if len(ranked_endpoints) <= 60:
             top_ids = [item[1] for item in ranked_endpoints]
         else:
-            # For large specs, keep top 20 PLUS any with score > 0 (up to 30)
-            top_ids = [item[1] for item in ranked_endpoints[:20]]
-            for item in ranked_endpoints[20:]:
-                if item[0] > 0 and len(top_ids) < 30:
-                    top_ids.append(item[1])
+            top_ids = []
+            MAX_TOTAL = 60
+            MIN_PER_CATEGORY = 8
+
+            # 1. Select the top N endpoints from each category to guarantee coverage
+            for cat, items in ranked_by_category.items():
+                items.sort(key=lambda x: x[0], reverse=True)
+                for score, ep_id in items[:MIN_PER_CATEGORY]:
+                    if ep_id not in top_ids:
+                        top_ids.append(ep_id)
+
+            # 2. Fill the remaining slots with globally highest-ranked remaining endpoints
+            all_remaining = []
+            for cat, items in ranked_by_category.items():
+                all_remaining.extend(items[MIN_PER_CATEGORY:])
+                
+            all_remaining.sort(key=lambda x: x[0], reverse=True)
+            for score, ep_id in all_remaining:
+                if len(top_ids) >= MAX_TOTAL:
+                    break
+                if ep_id not in top_ids:
+                    top_ids.append(ep_id)
 
         # Step 3: Fetch full details only for the most relevant endpoints
         endpoints = db.query(Endpoint).filter(Endpoint.id.in_(top_ids)).all()
@@ -512,6 +546,7 @@ async def chat(
         "session_id": session_id,
         "history": history,
         "user_id": str(user.id),
+        "agent_id": agent.id,
     }
 
     if stream:

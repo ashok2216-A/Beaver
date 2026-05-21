@@ -261,6 +261,7 @@ def _build_agent(
     audio_artifacts: list[dict], # Added for sideband audio
     custom_headers: dict[str, str] | None = None,
     user_id: str = "user",
+    agent_id: int | None = None,
 ) -> Agent:
     """
     Construct an ADK Agent with one universal API-call tool and memory tools.
@@ -323,6 +324,43 @@ def _build_agent(
              if path_matches(e["path"], path) and e["method"].upper() == method.upper()),
             None,
         )
+
+        if not ep_def:
+            # DYNAMIC AUTHORIZATION: Check if this endpoint is registered to this agent in the DB and is unlocked
+            try:
+                from database.database import SessionLocal
+                from models.models import Endpoint as DBEp
+                with SessionLocal() as db:
+                    query = db.query(DBEp).filter(
+                        DBEp.method == method.upper(),
+                        DBEp.is_locked.is_(False)
+                    )
+                    if agent_id is not None:
+                        query = query.filter(DBEp.agent_id == agent_id)
+                    else:
+                        from models.models import Agent as DBAgent
+                        db_agent = db.query(DBAgent).filter(DBAgent.name == agent_name).first()
+                        if db_agent:
+                            query = query.filter(DBEp.agent_id == db_agent.id)
+                        else:
+                            query = None
+
+                    if query:
+                        agent_match = next((e for e in query.all() if path_matches(e.path, path)), None)
+                        if agent_match:
+                            log.info(f"Dynamic Authorization: Authorized truncated endpoint {method} {path} registered to agent {agent_id or agent_name}")
+                            ep_def = {
+                                "path":         agent_match.path,
+                                "method":       agent_match.method.value if hasattr(agent_match.method, "value") else agent_match.method,
+                                "summary":      agent_match.summary,
+                                "description":  agent_match.description,
+                                "parameters":   agent_match.parameters or [],
+                                "request_body": agent_match.request_body or {},
+                                "source_type":  agent_match.source_type.value if hasattr(agent_match.source_type, "value") else agent_match.source_type,
+                                "mcp_server_url": agent_match.mcp_server_url,
+                            }
+            except Exception as e:
+                log.error(f"Error in dynamic tool authorization: {e}")
 
         if not ep_def:
             log.warning(f"SECURITY: Agent attempted to call unauthorized endpoint: {method} {path}")
@@ -908,6 +946,7 @@ async def run_agent_stream(
     history: list[dict] | None = None, # Added for session memory
     custom_headers: dict[str, str] | None = None,
     user_id: str = "user",
+    agent_id: int | None = None,
 ):
     """
     Async generator that yields JSON chunks as the agent runs.
@@ -959,6 +998,7 @@ async def run_agent_stream(
         audio_artifacts=audio_artifacts, # Pass sideband
         custom_headers=custom_headers,
         user_id=user_id,
+        agent_id=agent_id,
     )
 
     runner = Runner(
@@ -1127,6 +1167,7 @@ async def run_agent_async(
     history: list[dict] | None = None, # Added
     custom_headers: dict[str, str] | None = None,
     user_id: str = "user",
+    agent_id: int | None = None,
 ) -> dict[str, Any]:
     """Non-streaming version for backward compatibility."""
     final_text = ""
@@ -1146,6 +1187,7 @@ async def run_agent_async(
         history=history, # Pass history
         custom_headers=custom_headers,
         user_id=user_id,
+        agent_id=agent_id,
     ):
         chunk = json.loads(chunk_str)
         if chunk["type"] == "final":
