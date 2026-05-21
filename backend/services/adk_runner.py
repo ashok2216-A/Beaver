@@ -87,7 +87,8 @@ def _extract_a2ui_chunks(text: str) -> list[dict]:
             import yaml
             # Use yaml.safe_load as it is a superset of JSON and handles "Franken-JSON" (mixed YAML/JSON)
             payload = yaml.safe_load(json_str)
-        except Exception:
+        except Exception as e:  # nosec B112
+            log.debug("Failed to parse regex candidate JSON/YAML block: %s", e)
             continue
 
         if not isinstance(payload, dict) or 'a2ui' not in payload:

@@ -40,7 +40,7 @@ class McpSubprocessManager:
         package = parts[1] if len(parts) > 1 else ""
         
         if auth_token:
-            token_hash = hashlib.md5(auth_token.encode("utf-8")).hexdigest()
+            token_hash = hashlib.sha256(auth_token.encode("utf-8")).hexdigest()
 
             url_lower = runtime_url.lower()
             
@@ -79,7 +79,7 @@ class McpSubprocessManager:
                         json.dump({
                             "access_token": auth_token,
                             "refresh_token": auth_token,
-                            "token_type": "Bearer",
+                            "token_type": "Bearer",  # nosec B105
                             "scope": "https://www.googleapis.com/auth/drive",
                             "expiry_date": 9999999999999
                         }, f)
@@ -120,7 +120,7 @@ class McpSubprocessManager:
         log_cmd = [c if not (c.startswith('{') and 'token' in c.lower()) else '[REDACTED_CONFIG_JSON]' for c in cmd]
         log.info(f"Spawning MCP Popen Subprocess [{connection_id}]: {' '.join(log_cmd)}")
         
-        proc = subprocess.Popen(
+        proc = subprocess.Popen(  # nosec B603
             cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,

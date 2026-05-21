@@ -99,7 +99,7 @@ def mark_connected(
         db.add(UserIntegration(
             user_id=user.id,
             provider=provider_lower,
-            access_token="composio",  # Composio manages the actual token
+            access_token="composio",  # nosec B106 - Composio manages the actual token
             account_id=None,
             refresh_token=None,
             expires_at=None,

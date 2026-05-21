@@ -52,26 +52,26 @@ async def refresh_oauth_token_if_needed(integration: UserIntegration, db: Sessio
         dec_refresh = decrypt_secret(integration.refresh_token)
         settings = get_settings()
         
-        token_url = ""
-        client_id, client_secret = "", ""
+        token_url = ""  # nosec B105
+        client_id, client_secret = "", ""  # nosec B105
         if integration.provider == "google":
-            token_url = "https://oauth2.googleapis.com/token"
+            token_url = "https://oauth2.googleapis.com/token"  # nosec B105
             client_id = settings.oauth_google_client_id
             client_secret = settings.oauth_google_client_secret
         elif integration.provider == "youtube":
-            token_url = "https://oauth2.googleapis.com/token"
+            token_url = "https://oauth2.googleapis.com/token"  # nosec B105
             client_id = settings.oauth_google_client_id
             client_secret = settings.oauth_google_client_secret
         elif integration.provider == "github":
-            token_url = "https://github.com/login/oauth/access_token"
+            token_url = "https://github.com/login/oauth/access_token"  # nosec B105
             client_id = settings.oauth_github_client_id
             client_secret = settings.oauth_github_client_secret
         elif integration.provider == "slack":
-            token_url = "https://slack.com/api/oauth.v2.access"
+            token_url = "https://slack.com/api/oauth.v2.access"  # nosec B105
             client_id = settings.oauth_slack_client_id
             client_secret = settings.oauth_slack_client_secret
         elif integration.provider == "instagram":
-            token_url = "https://graph.facebook.com/v19.0/oauth/access_token"
+            token_url = "https://graph.facebook.com/v19.0/oauth/access_token"  # nosec B105
             client_id = settings.oauth_instagram_client_id
             client_secret = settings.oauth_instagram_client_secret
 
@@ -234,12 +234,12 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
                 if hasattr(sub_exc, "response"):
                     try:
                         err_msg = f"{sub_exc.response.status_code} - {sub_exc.response.text}"
-                    except Exception:
+                    except Exception:  # nosec B110
                         pass
         elif hasattr(exc, "response"):
             try:
                 err_msg = f"{exc.response.status_code} - {exc.response.text}"
-            except Exception:
+            except Exception:  # nosec B110
                 pass
                 
         log.exception(f"Composio MCP gateway error: {err_msg}")
@@ -256,7 +256,7 @@ async def _discover_async(mcp_server_url: str, user_id: Optional[str]) -> list[d
             provider = val
             break
 
-    auth_token = ""
+    auth_token = ""  # nosec B105
     if provider and user_id:
         try:
             with SessionLocal() as db:
@@ -373,7 +373,7 @@ async def execute_mcp_tool(
                 provider = val
                 break
 
-    auth_token = ""
+    auth_token = ""  # nosec B105
     if provider:
         try:
             with SessionLocal() as db:
