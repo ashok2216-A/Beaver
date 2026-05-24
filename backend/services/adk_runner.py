@@ -50,7 +50,226 @@ _memory_service = InMemoryMemoryService()
 APP_NAME = "api2bot-studio"
 
 
+# ─── Robust Tool Params Parser ───────────────────────────────────────────────
+
+def _parse_params_robust(params: str) -> dict:
+    """
+    Multi-strategy parser for tool call params coming from LLMs.
+
+    LLMs sometimes generate malformed JSON when string values contain
+    unescaped newlines, markdown, or special characters (e.g. long email bodies).
+
+    Strategies applied in order:
+      1. Standard json.loads with strict=False (handles single-quotes, trailing commas).
+      2. Strip markdown code fences (```json ... ```) and retry.
+      3. Use the `json-repair` library if available for structural repairs.
+      4. Regex-based key-value extractor as a last resort to salvage any fields.
+    """
+    if not params:
+        return {}
+
+    # Strategy 1: standard non-strict parse
+    try:
+        result = json.loads(params, strict=False)
+        if isinstance(result, dict):
+            return result
+    except json.JSONDecodeError:
+        pass
+
+    # Strategy 2: strip markdown code fences and retry
+    stripped = params.strip()
+    if stripped.startswith("```"):
+        fence_match = re.search(r'```(?:json)?\s*(.*?)\s*```', stripped, re.DOTALL)
+        if fence_match:
+            inner = fence_match.group(1)
+            try:
+                result = json.loads(inner, strict=False)
+                if isinstance(result, dict):
+                    return result
+            except json.JSONDecodeError:
+                pass
+
+    # Strategy 3: json-repair library (handles most LLM malformations)
+    try:
+        from json_repair import repair_json  # type: ignore[import]
+        repaired = repair_json(params, return_objects=True)
+        if isinstance(repaired, dict):
+            log.debug("_parse_params_robust: recovered params via json-repair")
+            return repaired
+    except Exception:  # nosec B110
+        pass
+
+    # Strategy 4: Regex key-value extractor fallback
+    # Extracts quoted key:value pairs from the raw string — best-effort salvage
+    try:
+        extracted: dict = {}
+        # Match "key": "value" or "key": number/bool/null patterns
+        kv_pattern = re.compile(
+            r'"([^"]+)"\s*:\s*(?:"((?:[^"\\]|\\.)*)"|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|true|false|null)',
+            re.DOTALL
+        )
+        for m in kv_pattern.finditer(params):
+            key = m.group(1)
+            if m.group(2) is not None:
+                # String value — decode escape sequences
+                val: Any = m.group(2).replace("\\n", "\n").replace("\\t", "\t").replace('\\"', '"')
+            elif m.group(3) is not None:
+                raw_num = m.group(3)
+                val = float(raw_num) if "." in raw_num or "e" in raw_num.lower() else int(raw_num)
+            else:
+                raw = m.group(0).rsplit(":", 1)[-1].strip()
+                val = {"true": True, "false": False, "null": None}.get(raw, raw)
+            extracted[key] = val
+        if extracted:
+            log.warning(
+                "Tool params were malformed JSON — recovered %d field(s) via regex fallback. "
+                "Original error likely caused by unescaped characters in a string value (e.g. email body). "
+                "Tip: instruct the LLM to always JSON-escape string values.",
+                len(extracted)
+            )
+            return extracted
+    except Exception as e:
+        log.debug("_parse_params_robust: regex fallback failed: %s", e)
+
+    log.error("_parse_params_robust: all strategies exhausted. Returning empty dict. Raw params (first 300 chars): %s", params[:300])
+    return {}
+
+
+# ─── MCP Parameter Sanitizer ────────────────────────────────────────────────
+
+# Rules applied before each MCP tool call to correct well-known LLM mistakes.
+# Key: lowercase tool name fragment that must appear in the registered tool name.
+# Value: a callable(tool_name, params) -> params that mutates/returns the fixed dict.
+_MCP_PARAM_RULES: list[tuple[str, object]] = []
+
+def _register_mcp_rule(tool_fragment: str):
+    """Decorator to register a sanitizer for MCP tools whose name contains `tool_fragment`."""
+    def decorator(fn):
+        _MCP_PARAM_RULES.append((tool_fragment.lower(), fn))
+        return fn
+    return decorator
+
+
+@_register_mcp_rule("youtube_search")
+def _fix_youtube_search_params(tool_name: str, params: dict) -> dict:
+    """
+    YouTube search.list (YOUTUBE_SEARCH_YOU_TUBE) only accepts part='snippet'.
+    LLMs frequently pass 'statistics', 'contentDetails', 'snippet,statistics', etc.
+    Only fix the value when 'part' is explicitly present with an invalid value —
+    don't inject it when absent (let the MCP server use its own default).
+    """
+    if "part" not in params:
+        return params
+    part = params["part"]
+    if isinstance(part, list):
+        params["part"] = "snippet"
+        log.debug("MCP param sanitizer: fixed list 'part' for %s -> 'snippet'", tool_name)
+    elif isinstance(part, str) and part.strip().lower() != "snippet":
+        original = part
+        # If 'snippet' is somewhere in a comma-separated list keep it, otherwise force it
+        parts = [p.strip().lower() for p in part.split(",")]
+        params["part"] = "snippet"
+        log.debug(
+            "MCP param sanitizer: fixed 'part' for %s: '%s' -> 'snippet'",
+            tool_name, original
+        )
+    return params
+
+
+def _sanitize_mcp_params(tool_name: str, params: dict) -> dict:
+    """
+    Apply all registered MCP parameter sanitization rules for the given tool.
+    Rules are matched by substring of the lowercase tool name.
+    """
+    name_lower = tool_name.lower()
+    sanitized = dict(params)  # shallow copy so original params_dict is not mutated
+    for fragment, rule_fn in _MCP_PARAM_RULES:
+        if fragment in name_lower:
+            sanitized = rule_fn(tool_name, sanitized) or sanitized
+    return sanitized
+
+
+def _mcp_tool_name(path: str) -> str:
+    """
+    Extract the bare tool name from an MCP path, regardless of whether it has
+    the /mcp/tools/ prefix.  Examples:
+      /mcp/tools/YOUTUBE_SEARCH_YOU_TUBE  ->  youtube_search_you_tube
+      /mcp/tools/YOUTUBE_SEARCH           ->  youtube_search
+      YOUTUBE_SEARCH                      ->  youtube_search
+    """
+    p = path.strip("/").lower()
+    if "mcp/tools/" in p:
+        return p.split("mcp/tools/")[-1]
+    # Raw tool name with no prefix — treat everything after the last slash as the name
+    return p.split("/")[-1]
+
+
+def _mcp_path_matches_score(template: str, actual: str) -> float:
+    """
+    Fuzzy/alias matching for MCP paths.
+
+    Handles all of these call patterns the LLM might use:
+      - Full path:  /mcp/tools/YOUTUBE_SEARCH_YOU_TUBE  vs  /mcp/tools/YOUTUBE_SEARCH
+      - Raw name:   YOUTUBE_SEARCH                      vs  /mcp/tools/YOUTUBE_SEARCH_YOU_TUBE
+      - Mixed:      /mcp/tools/YOUTUBE_SEARCH           vs  YOUTUBE_SEARCH_YOU_TUBE
+    """
+    t = template.strip("/").lower()
+    a = actual.strip("/").lower()
+
+    # Exact full-path match
+    if t == a:
+        return 100.0
+
+    # At least one of them must be an MCP tool (has mcp/tools in path OR looks like a tool name)
+    t_is_mcp = "mcp/tools" in t or "mcp" in t
+    a_is_mcp = "mcp/tools" in a or "mcp" in a or not "/" in a  # raw names have no slash
+    if not (t_is_mcp or a_is_mcp):
+        return 0.0
+
+    # Extract bare tool names, stripping any prefix
+    t_name = _mcp_tool_name(template)
+    a_name = _mcp_tool_name(actual)
+
+    if not t_name or not a_name:
+        return 0.0
+
+    # 1. Exact tool-name match after prefix stripping
+    if t_name == a_name:
+        return 95.0
+
+    # 2. Clean comparison (remove underscores/hyphens)
+    t_clean = re.sub(r'[^a-z0-9]', '', t_name)
+    a_clean = re.sub(r'[^a-z0-9]', '', a_name)
+    if t_clean == a_clean:
+        return 90.0
+
+    # 3. Word sets matching (handles swapped order)
+    t_words = set(re.split(r'[^a-z0-9]', t_name)) - {''}
+    a_words = set(re.split(r'[^a-z0-9]', a_name)) - {''}
+    if t_words == a_words:
+        return 80.0
+
+    # 4. Prefix match check (one name is a prefix of the other)
+    if t_clean.startswith(a_clean) or a_clean.startswith(t_clean):
+        ratio = min(len(t_clean), len(a_clean)) / max(len(t_clean), len(a_clean), 1)
+        return 70.0 + ratio * 10.0
+
+    # 5. Keyword overlap — require a service-prefix word in common
+    common_words = t_words.intersection(a_words)
+    if len(common_words) >= 2:
+        service_prefixes = {
+            "youtube", "googlecalendar", "google", "calendar",
+            "gmail", "github", "slack", "notion", "composio",
+        }
+        if any(prefix in common_words for prefix in service_prefixes):
+            ratio = len(common_words) / max(len(t_words), len(a_words), 1)
+            return 50.0 + ratio * 20.0
+
+    return 0.0
+
+
 # ─── A2UI block parser ───────────────────────────────────────────────────────
+
 
 def _extract_a2ui_chunks(text: str) -> list[dict]:
     """
@@ -297,12 +516,8 @@ def _build_agent(
             log.warning("Agent exceeded max API calls limit for a single turn.")
             raise RuntimeError("Agent exceeded maximum allowed tool calls (Limit 10 per turn).")
 
-        try:
-            log.info(f"Universal tool call_api_endpoint called: path='{path}', method='{method}', params='{params}'")
-            params_dict: dict = json.loads(params, strict=False) if params else {}
-        except json.JSONDecodeError as jde:
-            log.warning(f"Failed to parse universal tool params as JSON: '{params}' | Error: {jde}")
-            params_dict = {}
+        log.info(f"⚡ Universal tool call_api_endpoint called: path='{path}', method='{method}', params='{params[:200]}...' (truncated)" if params and len(params) > 200 else f"⚡ Universal tool call_api_endpoint called: path='{path}', method='{method}', params='{params}'")
+        params_dict: dict = _parse_params_robust(params)
 
         # SEC-1: Find the matching endpoint definition so executor can route params.
         # CRITICAL: If no definition is found, or if it is locked, the agent MUST NOT call the executor.
@@ -326,59 +541,155 @@ def _build_agent(
         )
 
         if not ep_def:
-            # DYNAMIC AUTHORIZATION: Check if this endpoint is registered to this agent in the DB and is unlocked
+            # Try fuzzy matching in the agent's own catalog
+            scored_candidates = []
+            for e in endpoints:
+                if e["method"].upper() == method.upper():
+                    score = _mcp_path_matches_score(e["path"], path)
+                    if score >= 70.0:
+                        scored_candidates.append((score, e))
+            if scored_candidates:
+                scored_candidates.sort(key=lambda x: x[0], reverse=True)
+                matched_ep = scored_candidates[0][1]
+                log.info(f"Fuzzy Match: Mapped path '{path}' to registered endpoint '{matched_ep['path']}' (score: {scored_candidates[0][0]:.1f})")
+                ep_def = matched_ep
+                path = matched_ep["path"]
+
+        if not ep_def:
+            # DYNAMIC AUTHORIZATION: Check if this endpoint is registered in the DB and is unlocked.
+            # IMPORTANT: We do NOT filter by method in SQL because PostgreSQL enum comparisons with
+            # plain strings (e.g. DBEp.method == "POST") can silently return 0 rows.  Instead we
+            # fetch all unlocked MCP endpoints and compare the method value safely in Python.
             try:
                 from database.database import SessionLocal
                 from models.models import Endpoint as DBEp
                 with SessionLocal() as db:
-                    query = db.query(DBEp).filter(
-                        DBEp.method == method.upper(),
-                        DBEp.is_locked.is_(False)
+                    # Scope query to MCP endpoints only (avoids full table scan of 300+ REST rows)
+                    is_likely_mcp = (
+                        "/mcp/" in path.lower()
+                        or "mcp/tools" in path.lower()
+                        or "/mcp/" not in path.lower() and "/" not in path.strip("/")
                     )
+                    if is_likely_mcp:
+                        global_matches_raw = db.query(DBEp).filter(
+                            DBEp.is_locked.is_(False),
+                            DBEp.path.like("%/mcp/%")
+                        ).all()
+                    else:
+                        global_matches_raw = db.query(DBEp).filter(
+                            DBEp.is_locked.is_(False)
+                        ).all()
+
+                    # Safe Python-side method comparison (handles enum objects and plain strings)
+                    def _method_val(e) -> str:
+                        m = e.method
+                        return (m.value if hasattr(m, "value") else str(m)).upper()
+
+                    global_matches = [e for e in global_matches_raw if _method_val(e) == method.upper()]
+                    log.debug(
+                        "Dynamic Authorization: %d unlocked %s endpoints retrieved (MCP scope=%s)",
+                        len(global_matches), method.upper(), is_likely_mcp
+                    )
+
+                    matching_eps = [e for e in global_matches if path_matches(e.path, path)]
+
+                    # Try fuzzy matching if exact/placeholder fails
+                    if not matching_eps:
+                        scored_db_candidates = []
+                        for e in global_matches:
+                            score = _mcp_path_matches_score(e.path, path)
+                            if score >= 70.0:
+                                scored_db_candidates.append((score, e))
+                        if scored_db_candidates:
+                            scored_db_candidates.sort(key=lambda x: x[0], reverse=True)
+                            matching_eps = [scored_db_candidates[0][1]]
+                            log.info(
+                                "Dynamic Authorization Fuzzy Match: Mapped path '%s' → '%s' (score: %.1f)",
+                                path, matching_eps[0].path, scored_db_candidates[0][0]
+                            )
+
+                    target_agent_id = None
                     if agent_id is not None:
-                        query = query.filter(DBEp.agent_id == agent_id)
+                        target_agent_id = agent_id
                     else:
                         from models.models import Agent as DBAgent
                         db_agent = db.query(DBAgent).filter(DBAgent.name == agent_name).first()
                         if db_agent:
-                            query = query.filter(DBEp.agent_id == db_agent.id)
-                        else:
-                            query = None
+                            target_agent_id = db_agent.id
 
-                    if query:
-                        agent_match = next((e for e in query.all() if path_matches(e.path, path)), None)
+                    # 1. Prioritize endpoints explicitly registered to this agent
+                    agent_match = None
+                    if target_agent_id is not None:
+                        agent_match = next((e for e in matching_eps if e.agent_id == target_agent_id), None)
+
+                    # 2. Fall back to shared MCP/SSE tools (not locked, global access allowed)
+                    if not agent_match:
+                        def _is_mcp_ep(e) -> bool:
+                            src = e.source_type
+                            src_val = (src.value if hasattr(src, "value") else str(src)).lower()
+                            return src_val == "mcp_sse" or (e.path and "/mcp/" in e.path.lower())
+
+                        agent_match = next((e for e in matching_eps if _is_mcp_ep(e)), None)
                         if agent_match:
-                            log.info(f"Dynamic Authorization: Authorized truncated endpoint {method} {path} registered to agent {agent_id or agent_name}")
-                            ep_def = {
-                                "path":         agent_match.path,
-                                "method":       agent_match.method.value if hasattr(agent_match.method, "value") else agent_match.method,
-                                "summary":      agent_match.summary,
-                                "description":  agent_match.description,
-                                "parameters":   agent_match.parameters or [],
-                                "request_body": agent_match.request_body or {},
-                                "source_type":  agent_match.source_type.value if hasattr(agent_match.source_type, "value") else agent_match.source_type,
-                                "mcp_server_url": agent_match.mcp_server_url,
-                            }
+                            log.info(
+                                "Dynamic Authorization: Authorized shared MCP/SSE endpoint %s %s for agent %s",
+                                method, path, agent_id or agent_name
+                            )
+
+                    if agent_match:
+                        log.info(
+                            "Dynamic Authorization: Authorized endpoint %s %s → registered path %s (agent_id=%s)",
+                            method, path, agent_match.path, agent_match.agent_id
+                        )
+                        ep_def = {
+                            "path":           agent_match.path,
+                            "method":         _method_val(agent_match),
+                            "summary":        agent_match.summary,
+                            "description":    agent_match.description,
+                            "parameters":     agent_match.parameters or [],
+                            "request_body":   agent_match.request_body or {},
+                            "source_type":    (agent_match.source_type.value
+                                               if hasattr(agent_match.source_type, "value")
+                                               else str(agent_match.source_type)),
+                            "mcp_server_url": agent_match.mcp_server_url,
+                        }
+                        path = agent_match.path
             except Exception as e:
                 log.error(f"Error in dynamic tool authorization: {e}")
 
         if not ep_def:
             log.warning(f"SECURITY: Agent attempted to call unauthorized endpoint: {method} {path}")
-            
-            # PRO-LOGIC: Check if this endpoint exists GLOBALLY in the DB for this agent's API
-            # If it does, we can offer the user a way to "Authorize" it on the fly.
+
+            # PRO-LOGIC: Check if this endpoint exists GLOBALLY in the DB.
+            # Safe Python-side method filtering — avoids PostgreSQL enum comparison bugs.
             try:
                 from database.database import SessionLocal
                 from models.models import Endpoint as DBEp
                 with SessionLocal() as db:
-                    # Find ANY endpoint in the DB that matches this path/method (belonging to same base_url/API)
-                    # We assume base_url is a good proxy for the API identity
-                    global_match = db.query(DBEp).filter(
-                        DBEp.method == method.upper(),
+                    global_match_raw = db.query(DBEp).filter(
                         DBEp.is_locked.is_(False)
                     ).all()
-                    
+
+                    def _gm_method_val(e) -> str:
+                        m = e.method
+                        return (m.value if hasattr(m, "value") else str(m)).upper()
+
+                    global_match = [e for e in global_match_raw if _gm_method_val(e) == method.upper()]
+
                     actual_match = next((e for e in global_match if path_matches(e.path, path)), None)
+                    if not actual_match:
+                        scored_global_candidates = []
+                        for e in global_match:
+                            score = _mcp_path_matches_score(e.path, path)
+                            if score >= 70.0:
+                                scored_global_candidates.append((score, e))
+                        if scored_global_candidates:
+                            scored_global_candidates.sort(key=lambda x: x[0], reverse=True)
+                            actual_match = scored_global_candidates[0][1]
+                            log.info(
+                                "Global Discovery Fuzzy Match: Mapped path '%s' → '%s' (score: %.1f)",
+                                path, actual_match.path, scored_global_candidates[0][0]
+                            )
                     
                     if actual_match:
                         # Success! We found the tool, it's just not enabled for THIS agent.
@@ -435,71 +746,73 @@ def _build_agent(
         data, status, latency = {}, 0, 0
         discovery = get_dynamic_discovery()
         
-        # Check if this is an MCP tool call
-        if ep_def.get("source_type") == "mcp_sse":
+        # Check if this is an MCP tool call (allowing variations in source_type format)
+        is_mcp = (
+            ep_def.get("source_type") == "mcp_sse"
+            or (hasattr(ep_def.get("source_type"), "value") and ep_def.get("source_type").value == "mcp_sse")
+            or (ep_def.get("path") and "/mcp/" in ep_def.get("path", "").lower())
+        )
+
+        if is_mcp:
             from services.mcp_service import execute_mcp_tool
             mcp_url = ep_def.get("mcp_server_url") or base_url
             ep_path = ep_def.get("path", "")
             tool_name = ep_path.split("/")[-1] if "/mcp/tools/" in ep_path else (ep_def.get("summary") or path.strip("/"))
-            data, status, latency = await execute_mcp_tool(
+            # Sanitize params before calling MCP — fixes well-known LLM mistakes
+            # (e.g. YouTube search.list only accepts part='snippet', not 'statistics')
+            sanitized_params = _sanitize_mcp_params(tool_name, params_dict)
+            mcp_res, status, latency = await execute_mcp_tool(
                 user_id=user_id,
                 mcp_server_url=mcp_url,
                 tool_name=tool_name,
-                arguments=params_dict,
+                arguments=sanitized_params,
             )
-            tool_log.append({
-                "path":        path,
-                "method":      method.upper(),
-                "status_code": status,
-                "latency_ms":  latency,
-                "response":    data,
-            })
-            return json.dumps({
-                "status_code": status,
-                "data": data,
-                "latency_ms": latency
-            })
-        
-        for attempt in range(MAX_INTERNAL_RETRIES):
-            data, status, latency = await call_api(
-                base_url=ep_def.get("base_url") or base_url,
-                path=path,
-                method=method,
-                endpoint_params=ep_def.get("parameters", []),
-                extracted_params=current_payload,
-                auth_type=ep_def.get("auth_type") or auth_type,
-                auth_secret=decrypt_secret(auth_secret) if ep_def.get("auth_secret") is not None else auth_secret,
-                auth_header=ep_def.get("auth_header") or auth_header,
-                custom_headers=decrypt_dict(ep_def.get("custom_headers")) if ep_def.get("custom_headers") is not None else decrypt_dict(custom_headers),
-            )
-
-            # SUCCESS: Log and return
-            if status < 400:
-                log.info(f"SUCCESS: Tool call to {method} {path} succeeded on attempt {attempt + 1}")
-                # Save this successful structure for future reference
-                discovery.save_successful_pattern(method, path, current_payload)
-                break
-
-            # FAILURE: Check if fixable via AI Repair
-            if status in (400, 422) and attempt < MAX_INTERNAL_RETRIES - 1:
-                log.info(f"Self-Healing Attempt {attempt + 1}: Repairing payload for {method} {path} ({status})")
-                
-                # Check if we have a known pattern to help the repair
-                known_pattern = discovery.get_pattern(method, path)
-                pattern_hint = f"\nKNOWN SUCCESSFUL PATTERN: {json.dumps(known_pattern)}" if known_pattern else ""
-
-                # Turn 1: Try Intelligent Structure Repair
-                repaired = await _repair_payload_with_ai(path, method, current_payload, data, pattern_hint)
-                if repaired and repaired != current_payload:
-                    log.info("REPAIR SUCCESS: AI suggested structural correction. Retrying...")
-                    current_payload = repaired
-                    continue # Retry with repaired payload
-                else:
-                    # If repair didn't change anything, we don't waste more turns
-                    break
+            # Unwrap successful response data to align with standard REST tool structure
+            if status < 400 and isinstance(mcp_res, dict) and "data" in mcp_res:
+                data = mcp_res["data"]
             else:
-                # Permanent failure or out of retries
-                break
+                data = mcp_res
+        else:
+            for attempt in range(MAX_INTERNAL_RETRIES):
+                data, status, latency = await call_api(
+                    base_url=ep_def.get("base_url") or base_url,
+                    path=path,
+                    method=method,
+                    endpoint_params=ep_def.get("parameters", []),
+                    extracted_params=current_payload,
+                    auth_type=ep_def.get("auth_type") or auth_type,
+                    auth_secret=decrypt_secret(auth_secret) if ep_def.get("auth_secret") is not None else auth_secret,
+                    auth_header=ep_def.get("auth_header") or auth_header,
+                    custom_headers=decrypt_dict(ep_def.get("custom_headers")) if ep_def.get("custom_headers") is not None else decrypt_dict(custom_headers),
+                )
+
+                # SUCCESS: Log and return
+                if status < 400:
+                    log.info(f"SUCCESS: Tool call to {method} {path} succeeded on attempt {attempt + 1}")
+                    # Save this successful structure for future reference
+                    discovery.save_successful_pattern(method, path, current_payload)
+                    break
+
+                # FAILURE: Check if fixable via AI Repair
+                if status in (400, 422) and attempt < MAX_INTERNAL_RETRIES - 1:
+                    log.info(f"Self-Healing Attempt {attempt + 1}: Repairing payload for {method} {path} ({status})")
+                    
+                    # Check if we have a known pattern to help the repair
+                    known_pattern = discovery.get_pattern(method, path)
+                    pattern_hint = f"\nKNOWN SUCCESSFUL PATTERN: {json.dumps(known_pattern)}" if known_pattern else ""
+
+                    # Turn 1: Try Intelligent Structure Repair
+                    repaired = await _repair_payload_with_ai(path, method, current_payload, data, pattern_hint)
+                    if repaired and repaired != current_payload:
+                        log.info("REPAIR SUCCESS: AI suggested structural correction. Retrying...")
+                        current_payload = repaired
+                        continue # Retry with repaired payload
+                    else:
+                        # If repair didn't change anything, we don't waste more turns
+                        break
+                else:
+                    # Permanent failure or out of retries
+                    break
 
         # Audio/Media Detection
         is_audio = False
@@ -878,6 +1191,7 @@ def _build_agent(
         f"{ep_catalogue}\n\n"
         "- SECURITY & OPERATION RULES:\n"
         "  - SEQUENTIAL OPERATIONS (CRITICAL): If a request involves multiple dependent steps (e.g., searching for a customer first to retrieve their ID, and then using that ID to look up their invoices), you MUST execute the tools sequentially. Call the lookup/search tool first. Wait for the tool's response, extract the actual ID or data, and then use that real data to call the subsequent dependent tool. NEVER attempt to call multiple dependent tools in parallel or guess/mock values for missing required parameters.\n"
+        "  - PARALLEL OPERATIONS: If a request involves executing the SAME tool for multiple independent items (e.g., checking multiple channel IDs or fetching multiple separate records), you MUST output ALL the function calls in parallel within a single response, rather than doing them one by one sequentially.\n"
         "  - AUTHENTICATION: Handled automatically. NEVER ask for or discuss API keys/tokens.\n"
         "  - CAPABILITIES: You ARE a functional agent with real-world API access. NEVER say 'I am unable to' or 'I cannot' do something if a matching endpoint is listed in your tools. If you have the tool, you HAVE the capability.\n"
         "  - SCOPE: You can ONLY call the endpoints listed above. If a user asks for something outside this scope, politely decline.\n"
@@ -975,10 +1289,27 @@ async def run_agent_stream(
                     if db_agent:
                         # Add the endpoint to the agent
                         target_ep = db.query(DBEp).filter(DBEp.id == ep_id).first()
-                        if target_ep and target_ep not in db_agent.endpoints:
-                            db_agent.endpoints.append(target_ep)
-                            db.commit()
-                            log.info(f"PERMANENT SOLUTION: Authorized endpoint {ep_id} for agent {db_agent.id}")
+                        if target_ep:
+                            # Check if the agent already has a matching endpoint
+                            exists = any(e.path.strip("/") == target_ep.path.strip("/") and e.method == target_ep.method for e in db_agent.endpoints)
+                            if not exists:
+                                cloned_ep = DBEp(
+                                    agent_id=db_agent.id,
+                                    path=target_ep.path,
+                                    method=target_ep.method,
+                                    summary=target_ep.summary,
+                                    description=target_ep.description,
+                                    parameters=target_ep.parameters,
+                                    request_body=target_ep.request_body,
+                                    is_locked=target_ep.is_locked,
+                                    source_type=target_ep.source_type,
+                                    mcp_server_url=target_ep.mcp_server_url
+                                )
+                                db.add(cloned_ep)
+                                db.commit()
+                                log.info(f"PERMANENT SOLUTION: Authorized (cloned) endpoint {ep_id} as new endpoint {cloned_ep.id} for agent {db_agent.id}")
+                            else:
+                                log.info(f"PERMANENT SOLUTION: Endpoint {ep_id} already exists for agent {db_agent.id}")
                             # Replace user_input to something friendly so the AI knows it can proceed
                             user_input = f"I have authorized the tool: {target_ep.summary or target_ep.path}. Please proceed with your task."
         except Exception as e:
@@ -1057,6 +1388,8 @@ async def run_agent_stream(
                 if event.content and event.content.parts:
                     for part in event.content.parts:
                         if hasattr(part, "text") and part.text:
+                            if getattr(part, "thought", False):
+                                continue
                             final_text += part.text
                             yield json.dumps({"type": "token", "text": part.text}) + "\n"
                 
@@ -1092,6 +1425,8 @@ async def run_agent_stream(
                         if event.content and event.content.parts:
                             for part in event.content.parts:
                                 if hasattr(part, "text") and part.text:
+                                    if getattr(part, "thought", False):
+                                        continue
                                     final_text += part.text
                                     yield json.dumps({"type": "token", "text": part.text}) + "\n"
                 return

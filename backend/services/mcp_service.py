@@ -17,100 +17,25 @@ from database.database import SessionLocal
 from models.models import UserIntegration
 from utils.security import decrypt_secret, encrypt_secret
 
+from services.mcp_registry import INTEGRATION_REGISTRY, get_integration_by_alias
+
 log = logging.getLogger(__name__)
 
-# Map MCP server identifiers to OAuth provider names
-MCP_PROVIDER_MAP = {
-    "gdrive": "google",
-    "google_drive": "google",
-    "googledrive": "google",
-    "gmail": "google",
-    "googlecalendar": "google",
-    "googlesheets": "google",
-    "googledocs": "google",
-    "github": "github",
-    "slack": "slack",
-    "notion": "notion",
-    "instagram": "instagram",
-    "youtube": "youtube",
-}
+# Map MCP server identifiers to OAuth provider names built dynamically from registry
+MCP_PROVIDER_MAP = {}
+for registry_item in INTEGRATION_REGISTRY.values():
+    for alias in registry_item["aliases"]:
+        MCP_PROVIDER_MAP[alias] = registry_item["provider_name"]
 
 
 async def refresh_oauth_token_if_needed(integration: UserIntegration, db: Session) -> str:
     """
-    Check if an OAuth access token is expired (or close to expiring).
-    If expired, use the refresh token to get a fresh access token and persist it.
-    Returns the decrypted, valid access token.
+    Since Composio manages OAuth end-to-end, the access_token field usually
+    contains the literal placeholder string "composio".
+    For custom/self-hosted integrations, this just decrypts and returns
+    whatever token is stored without attempting manual HTTP refresh.
     """
-    dec_access = decrypt_secret(integration.access_token)
-    if not integration.expires_at or not integration.refresh_token:
-        return dec_access
-
-    # Check if within 5 minutes of expiration
-    if datetime.now(timezone.utc) >= (integration.expires_at - timedelta(minutes=5)):
-        log.info(f"OAuth token for {integration.provider} expired or expiring soon. Auto-refreshing...")
-        dec_refresh = decrypt_secret(integration.refresh_token)
-        settings = get_settings()
-        
-        token_url = ""  # nosec B105
-        client_id, client_secret = "", ""  # nosec B105
-        if integration.provider == "google":
-            token_url = "https://oauth2.googleapis.com/token"  # nosec B105
-            client_id = settings.oauth_google_client_id
-            client_secret = settings.oauth_google_client_secret
-        elif integration.provider == "youtube":
-            token_url = "https://oauth2.googleapis.com/token"  # nosec B105
-            client_id = settings.oauth_google_client_id
-            client_secret = settings.oauth_google_client_secret
-        elif integration.provider == "github":
-            token_url = "https://github.com/login/oauth/access_token"  # nosec B105
-            client_id = settings.oauth_github_client_id
-            client_secret = settings.oauth_github_client_secret
-        elif integration.provider == "slack":
-            token_url = "https://slack.com/api/oauth.v2.access"  # nosec B105
-            client_id = settings.oauth_slack_client_id
-            client_secret = settings.oauth_slack_client_secret
-        elif integration.provider == "instagram":
-            token_url = "https://graph.facebook.com/v19.0/oauth/access_token"  # nosec B105
-            client_id = settings.oauth_instagram_client_id
-            client_secret = settings.oauth_instagram_client_secret
-
-        if not token_url or not client_id:
-            log.warning(f"Unable to refresh token for {integration.provider}: Missing client credentials.")
-            return dec_access
-
-        payload = {
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "refresh_token": dec_refresh,
-            "grant_type": "refresh_token",
-        }
-        
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                r = await client.post(token_url, data=payload, headers={"Accept": "application/json"})
-                if r.status_code < 400:
-                    data = r.json()
-                    new_access = data.get("access_token")
-                    new_refresh = data.get("refresh_token", dec_refresh)
-                    expires_in = data.get("expires_in")
-                    if new_access:
-                        new_expires_at = None
-                        if expires_in:
-                            new_expires_at = datetime.now(timezone.utc) + timedelta(seconds=int(expires_in))
-                        
-                        db.query(UserIntegration).filter(UserIntegration.id == integration.id).update({
-                            "access_token": encrypt_secret(new_access),
-                            "refresh_token": encrypt_secret(new_refresh),
-                            "expires_at": new_expires_at or integration.expires_at
-                        })
-                        db.commit()
-                        log.info(f"Successfully refreshed OAuth token for {integration.provider}.")
-                        return new_access
-        except Exception as e:
-            log.error(f"Error during OAuth token refresh: {e}")
-
-    return dec_access
+    return decrypt_secret(integration.access_token)
 
 
 # ── Composio Cloud MCP Gateway ──────────────────────────────────
@@ -120,23 +45,16 @@ COMPOSIO_MCP_URL = "https://connect.composio.dev/mcp"
 def normalize_mcp_url(url: str) -> str:
     url_lower = url.lower()
     
-    # Catch legacy/hardcoded npx endpoints in user databases
-    if "mcp-youtube" in url_lower:
-        return "composio:youtube"
-    if "server-github" in url_lower:
-        return "composio:github"
-        
-    if "api2bot.studio" in url_lower or "localhost:8000" in url_lower or "mcp-server" in url_lower:
-        if "google" in url_lower or "drive" in url_lower or "gdrive" in url_lower:
-            return "composio:googledrive"
-        elif "github" in url_lower:
-            return "composio:github"
-        elif "slack" in url_lower:
-            return "composio:slack"
-        elif "instagram" in url_lower:
-            return "composio:instagram"
-        elif "youtube" in url_lower:
-            return "composio:youtube"
+    # Catch legacy/hardcoded endpoints or any string match dynamically
+    matched = get_integration_by_alias(url_lower)
+    if matched:
+        composio_slug = matched.get("composio_slug")
+        if composio_slug:
+            # Check legacy indicators dynamically from the registry
+            legacy_indicators = matched.get("legacy_indicators", [])
+            
+            if any(ind in url_lower for ind in legacy_indicators):
+                return f"composio:{composio_slug}"
     return url
 
 
@@ -144,6 +62,12 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
     """
     Connect to the Composio Cloud MCP gateway using the official MCP SSE transport protocol.
     """
+    if target_toolkit:
+        # Use the centralized registry to resolve the true Composio slug
+        reg_item = get_integration_by_alias(target_toolkit)
+        if reg_item and reg_item.get("composio_slug"):
+            target_toolkit = reg_item["composio_slug"]
+
     from mcp.client.streamable_http import streamablehttp_client
     from mcp.client.session import ClientSession
     
@@ -157,8 +81,9 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
         # Create a dynamic Tool Router session for this specific user
         import httpx
         async with httpx.AsyncClient() as client:
-            # First fetch the connected accounts to build the toolkits allowlist
+            # First fetch the connected accounts to build the toolkits allowlist and IDs
             toolkits_allowlist = []
+            connected_account_ids = []
             try:
                 acc_resp = await client.get(
                     "https://backend.composio.dev/api/v3.1/connected_accounts",
@@ -168,10 +93,31 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
                 )
                 if acc_resp.status_code == 200:
                     for item in acc_resp.json().get("items", []):
-                        # Extract the slug, trying various common naming conventions in the Composio API
-                        slug = item.get("toolkit_slug") or item.get("appSlug") or item.get("toolkitSlug") or item.get("appId")
-                        if slug and slug not in toolkits_allowlist:
-                            toolkits_allowlist.append(slug)
+                        if item.get("status") == "ACTIVE":
+                            conn_id = item.get("id")
+                            
+                            # Extract the slug, trying various common naming conventions in the Composio API
+                            raw_slug = (
+                                item.get("toolkit_slug") or 
+                                item.get("appSlug") or 
+                                item.get("toolkitSlug") or 
+                                item.get("appId") or 
+                                (item.get("toolkit") or {}).get("slug")
+                            )
+                            if raw_slug:
+                                # Resolve legacy/incorrect slugs using the centralized registry
+                                reg_item = get_integration_by_alias(raw_slug)
+                                slug = reg_item.get("composio_slug") if reg_item else raw_slug
+                                
+                                # If a specific toolkit is requested, only include connections for that toolkit
+                                if target_toolkit and slug != target_toolkit:
+                                    continue
+    
+                                if conn_id:
+                                    connected_account_ids.append(conn_id)
+                                    
+                                if slug not in toolkits_allowlist:
+                                    toolkits_allowlist.append(slug)
             except Exception as e:
                 log.warning(f"Failed to fetch connected accounts for toolkits allowlist: {e}")
 
@@ -183,14 +129,53 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
             if toolkits_allowlist:
                 payload["toolkits"] = {"enable": toolkits_allowlist}
                 payload["preload"] = {"tools": "all"}
+            if connected_account_ids:
+                payload["connected_account_ids"] = connected_account_ids
 
-            session_resp = await client.post(
-                "https://backend.composio.dev/api/v3.1/tool_router/session",
-                json=payload,
-                headers={"x-api-key": api_key, "Content-Type": "application/json"},
-                timeout=timeout
-            )
-            session_resp.raise_for_status()
+            try:
+                import json
+                with open("d:/Beaver/Beaver/backend/mcp_debug.json", "w") as f:
+                    json.dump(payload, f)
+            except:
+                pass
+
+            # Retry loop for invalid toolkit slugs
+            max_retries = 3
+            for attempt in range(max_retries):
+                session_resp = await client.post(
+                    "https://backend.composio.dev/api/v3.1/tool_router/session",
+                    json=payload,
+                    headers={"x-api-key": api_key, "Content-Type": "application/json"},
+                    timeout=timeout
+                )
+                
+                if session_resp.status_code == 400:
+                    try:
+                        err_data = session_resp.json()
+                        err_slug = err_data.get("error", {}).get("slug", "")
+                        if err_slug == "ToolRouterV2_InvalidToolkitSlugs":
+                            err_msg = err_data.get("error", {}).get("message", "")
+                            # Parse invalid slugs: "Invalid toolkit slugs: code-interpreter. Please provide valid toolkit slugs."
+                            if "Invalid toolkit slugs:" in err_msg:
+                                bad_slugs_part = err_msg.split("Invalid toolkit slugs:")[1].split(".")[0].strip()
+                                bad_slugs = [s.strip() for s in bad_slugs_part.split(",")]
+                                
+                                log.warning(f"Removing invalid toolkits from allowlist and retrying: {bad_slugs}")
+                                toolkits_allowlist = [t for t in toolkits_allowlist if t not in bad_slugs]
+                                
+                                # Update payload for next attempt
+                                if toolkits_allowlist:
+                                    payload["toolkits"] = {"enable": toolkits_allowlist}
+                                else:
+                                    payload.pop("toolkits", None)
+                                    payload.pop("preload", None)
+                                continue  # Retry
+                    except Exception:
+                        pass
+                
+                session_resp.raise_for_status()
+                break  # Success
+                
             session_data = session_resp.json()
             
         mcp_data = session_data.get("mcp", {})
@@ -203,6 +188,9 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
         mcp_headers["x-api-key"] = api_key
         # Some endpoints might expect Bearer token instead
         mcp_headers["Authorization"] = f"Bearer {api_key}"
+        # Composio MCP Gateway may need X-User-Id to correctly resolve connections
+        if user_id:
+            mcp_headers["X-User-Id"] = user_id
 
         if not mcp_url:
             return {"error": {"message": "Failed to retrieve Composio MCP URL", "code": -32000}}
@@ -221,7 +209,10 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
                         return {"error": {"message": "Missing tool name", "code": -32602}}
                         
                     res = await session.call_tool(params["name"], params.get("arguments", {}))
-                    return {"result": {"content": [c.model_dump() for c in res.content]}}
+                    result_dict = {"content": [c.model_dump() for c in res.content]}
+                    if getattr(res, "isError", None) is not None:
+                        result_dict["isError"] = res.isError
+                    return {"result": result_dict}
                     
                 else:
                     return {"error": {"message": f"Unsupported method {method}", "code": -32601}}
@@ -396,16 +387,28 @@ async def execute_mcp_tool(
             err = resp["error"]
             return {"error": err.get("message", "Composio error")}, err.get("code", 500), latency
         result = resp.get("result", {})
+        
+        is_error = result.get("isError", False)
+        status_code = 400 if is_error else 200
+        
         content = result.get("content", [])
-        if isinstance(content, list) and len(content) == 1 and isinstance(content[0], dict) and content[0].get("type") == "text":
-            return {"data": content[0].get("text", "")}, 200, latency
-        return {"data": result}, 200, latency
+        if isinstance(content, list):
+            text_items = [c.get("text", "") for c in content if isinstance(c, dict) and c.get("type") == "text"]
+            if text_items and len(text_items) == len(content):
+                return {"data": "\n".join(text_items)}, status_code, latency
+            if len(content) == 1 and isinstance(content[0], dict) and content[0].get("type") == "text":
+                return {"data": content[0].get("text", "")}, status_code, latency
+        return {"data": result}, status_code, latency
 
     # ── Local subprocess (npx, docker, python) ────────────────
     if url_lower.startswith("docker:") or url_lower.startswith("npx:") or url_lower.startswith("python:"):
         from services.mcp_subprocess import subprocess_manager
         data, status = await subprocess_manager.execute_tool(f"session_{user_id}_{mcp_server_url}", mcp_server_url, tool_name, arguments, auth_token)
         latency = int((asyncio.get_event_loop().time() - start_time) * 1000)
+        
+        if status == 200 and isinstance(data, dict) and data.get("isError"):
+            status = 400
+            
         return {"data": data}, status, latency
 
     # 2. Build Standard MCP JSON-RPC Payload
@@ -446,11 +449,17 @@ async def execute_mcp_tool(
             result = resp_data.get("result", {})
             content = result.get("content", [])
             
-            # Unwrap text content if present
-            if isinstance(content, list) and len(content) == 1 and isinstance(content[0], dict) and content[0].get("type") == "text":
-                return {"data": content[0].get("text", "")}, 200, latency
+            is_error = result.get("isError", False)
+            status_code = 400 if is_error else 200
+            
+            if isinstance(content, list):
+                text_items = [c.get("text", "") for c in content if isinstance(c, dict) and c.get("type") == "text"]
+                if text_items and len(text_items) == len(content):
+                    return {"data": "\n".join(text_items)}, status_code, latency
+                if len(content) == 1 and isinstance(content[0], dict) and content[0].get("type") == "text":
+                    return {"data": content[0].get("text", "")}, status_code, latency
                 
-            return {"data": result}, 200, latency
+            return {"data": result}, status_code, latency
 
     except httpx.TimeoutException:
         latency = int((asyncio.get_event_loop().time() - start_time) * 1000)

@@ -38,7 +38,7 @@ def test_create_agent_encryption(mock_auth_free):
         "auth_secret": "super-secret-key-123"
     }
     
-    with patch("database.get_db") as mock_get_db:
+    with patch("database.database.get_db") as mock_get_db:
         mock_db_session = MagicMock()
         mock_get_db.return_value = iter([mock_db_session]) 
         app.dependency_overrides[get_db] = lambda: mock_db_session
@@ -79,7 +79,7 @@ def test_free_user_limit_enforcement(mock_auth_free):
 
 def test_pro_user_unlimited(mock_auth_pro):
     """Test that a pro user can bypass the 1-agent limit."""
-    with patch("database.get_db"):
+    with patch("database.database.get_db"):
         mock_db_session = MagicMock()
         app.dependency_overrides[get_db] = lambda: mock_db_session
         

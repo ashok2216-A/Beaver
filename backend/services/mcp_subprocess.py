@@ -3,10 +3,12 @@ import json
 import logging
 import os
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import tempfile
 import hashlib
 from typing import Any, Dict, List, Optional, Tuple
+
+from services.mcp_registry import get_integration_by_alias
 
 log = logging.getLogger(__name__)
 
@@ -50,43 +52,33 @@ class McpSubprocessManager:
             env["API_KEY"] = auth_token
             env["TOKEN"] = auth_token
 
-            if "github" in url_lower:
-                env["GITHUB_PERSONAL_ACCESS_TOKEN"] = auth_token
-                env["GITHUB_TOKEN"] = auth_token
-            elif "slack" in url_lower:
-                env["SLACK_TOKEN"] = auth_token
-                env["SLACK_BOT_TOKEN"] = auth_token
-            elif "notion" in url_lower:
-                env["NOTION_API_KEY"] = auth_token
-                env["NOTION_TOKEN"] = auth_token
-            elif "instagram" in url_lower:
-                env["INSTAGRAM_TOKEN"] = auth_token
-                env["INSTAGRAM_ACCESS_TOKEN"] = auth_token
-            elif "youtube" in url_lower:
-                env["YOUTUBE_API_KEY"] = auth_token
-                env["YOUTUBE_ACCESS_TOKEN"] = auth_token
-                env["YOUTUBE_TOKEN"] = auth_token
-            elif "google" in url_lower or "drive" in url_lower or "gdrive" in url_lower or "gmail" in url_lower or "calendar" in url_lower or "sheet" in url_lower or "doc" in url_lower:
-                env["GOOGLE_DRIVE_TOKEN"] = auth_token
-                env["GOOGLE_DRIVE_ACCESS_TOKEN"] = auth_token
-                env["GOOGLE_ACCESS_TOKEN"] = auth_token
-                env["GDRIVE_ACCESS_TOKEN"] = auth_token
-                env["GMAIL_ACCESS_TOKEN"] = auth_token
-                env["GOOGLE_CALENDAR_ACCESS_TOKEN"] = auth_token
-                try:
-                    temp_cred_path = os.path.join(tempfile.gettempdir(), f"google_cred_{token_hash}.json")
-                    with open(temp_cred_path, "w", encoding="utf-8") as f:
-                        json.dump({
-                            "access_token": auth_token,
-                            "refresh_token": auth_token,
-                            "token_type": "Bearer",  # nosec B105
-                            "scope": "https://www.googleapis.com/auth/drive",
-                            "expiry_date": 9999999999999
-                        }, f)
-                    env["GDRIVE_CREDENTIALS_PATH"] = temp_cred_path
-                    env["GOOGLE_APPLICATION_CREDENTIALS"] = temp_cred_path
-                except Exception as e:
-                    log.error(f"Failed to create google temp credentials file: {e}")
+            # Resolve matched provider dynamically
+            matched = get_integration_by_alias(url_lower)
+            if matched:
+                # Inject provider-specific environment variables dynamically
+                for var_name in matched.get("env_var_names", []):
+                    env[var_name] = auth_token
+                
+                # Check for dynamic temp JSON credentials file creation
+                temp_json_cfg = matched.get("temp_json_file")
+                if temp_json_cfg:
+                    try:
+                        filename = f"{temp_json_cfg['filename_prefix']}{token_hash}.json"
+                        temp_cred_path = os.path.join(tempfile.gettempdir(), filename)
+                        
+                        # Populate template dynamically by replacing "{auth_token}"
+                        template_data = temp_json_cfg["template"].copy()
+                        for k, v in template_data.items():
+                            if isinstance(v, str) and v == "{auth_token}":
+                                template_data[k] = auth_token
+                                
+                        with open(temp_cred_path, "w", encoding="utf-8") as f:
+                            json.dump(template_data, f)
+                            
+                        for env_var in temp_json_cfg.get("env_vars", []):
+                            env[env_var] = temp_cred_path
+                    except Exception as e:
+                        log.error(f"Failed to create dynamic temp credentials file for {matched.get('provider_name')}: {e}")
 
         if scheme == "docker":
             docker_cmd = shutil.which("docker") or "docker"
@@ -230,9 +222,17 @@ class McpSubprocessManager:
             
             result = resp.get("result", {})
             content = result.get("content", [])
-            if isinstance(content, list) and len(content) == 1 and isinstance(content[0], dict) and content[0].get("type") == "text":
-                return content[0].get("text", ""), 200
-            return result, 200
+            
+            is_error = result.get("isError", False)
+            status_code = 400 if is_error else 200
+            
+            if isinstance(content, list):
+                text_items = [c.get("text", "") for c in content if isinstance(c, dict) and c.get("type") == "text"]
+                if text_items and len(text_items) == len(content):
+                    return "\n".join(text_items), status_code
+                if len(content) == 1 and isinstance(content[0], dict) and content[0].get("type") == "text":
+                    return content[0].get("text", ""), status_code
+            return result, status_code
         except Exception as e:
             log.error(f"Error executing tool {tool_name} on {runtime_url}: {e}")
             return {"error": str(e)}, 500

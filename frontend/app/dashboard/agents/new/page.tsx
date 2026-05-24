@@ -65,27 +65,46 @@ function NewAgentContent() {
 
   const [templates, setTemplates] = useState<Template[]>([]);
   const [oauthIntegrations, setOauthIntegrations] = useState<any[]>([]);
+  const [providersRegistry, setProvidersRegistry] = useState<any>({});
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const [connectedTools, setConnectedTools] = useState<string[]>([]);
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
+  
+  // API Key Modal State
+  const [apiKeyModalProvider, setApiKeyModalProvider] = useState<Template | null>(null);
+  const [apiKeyValue, setApiKeyValue] = useState("");
+  const [submittingApiKey, setSubmittingApiKey] = useState(false);
 
   const [isInitializing, setIsInitializing] = useState(true);
 
-  useEffect(() => {
-    try {
-      const pendingRaw = localStorage.getItem('oauth_pending_template');
-      if (pendingRaw && tabParam === "manual") {
+  const resumePendingTemplate = () => {
+    const pendingRaw = localStorage.getItem('oauth_pending_template');
+    if (pendingRaw) {
+      localStorage.removeItem('oauth_pending_template');
+      try {
         const pending = JSON.parse(pendingRaw);
-        setSourceType(pending.sType);
-        setAgentName(pending.name);
-        setBaseUrl(pending.mcpUrl);
-        setMcpServerUrl(pending.mcpUrl);
-        setDescription(pending.desc);
-        setAuthType(pending.aType);
+        const { templateId, name, mcpUrl, sType, desc, aType } = pending;
+
+        // Restore state and show the configuration form
+        setAgentName(name);
+        setBaseUrl(mcpUrl);
+        setMcpServerUrl(mcpUrl);
+        setSourceType(sType || "mcp_sse");
+        setDescription(desc);
+        setAuthType(aType);
+        setTab("manual");
+
+        toast.success(`OAuth connected! Review your agent settings and click Save Integration.`);
+      } catch (parseErr) {
+        console.error("Failed to resume pending template:", parseErr);
       }
-    } catch(e) {}
+    }
+  };
+
+  useEffect(() => {
+    resumePendingTemplate();
     setIsInitializing(false);
   }, [tabParam]);
 
@@ -101,44 +120,35 @@ function NewAgentContent() {
     async function loadOauthAndTemplates() {
       try {
         const token = await getToken();
-        const [templatesRes, oauthRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/templates`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/oauth/list`, { headers: { Authorization: `Bearer ${token}` } })
+        const [templatesRes, oauthRes, providersRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/templates`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/oauth/list`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/oauth/providers`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
         ]);
+
         if (templatesRes.ok) {
           const data = await templatesRes.json();
           setTemplates(data.templates || []);
         }
-        let currentOauthIntegrations: any[] = [];
+
         if (oauthRes.ok) {
-          const oauthData = await oauthRes.json();
-          currentOauthIntegrations = oauthData || [];
-          setOauthIntegrations(currentOauthIntegrations);
+          const data = await oauthRes.json();
+          setOauthIntegrations(data || []);
+        }
+        
+        if (providersRes.ok) {
+          const data = await providersRes.json();
+          setProvidersRegistry(data || {});
         }
 
         // Resume pending template connection after OAuth callback redirect
-        const pendingRaw = localStorage.getItem('oauth_pending_template');
-        if (pendingRaw) {
-          localStorage.removeItem('oauth_pending_template');
-          try {
-            const pending = JSON.parse(pendingRaw);
-            const { templateId, name, mcpUrl, sType, desc, aType } = pending;
-
-            // Restore state and show the configuration form
-            // Do NOT auto-create — let the user review and click "Save Integration"
-            setAgentName(name);
-            setBaseUrl(mcpUrl);
-            setMcpServerUrl(mcpUrl);
-            setSourceType(sType || "mcp_sse");
-            setDescription(desc);
-            setAuthType(aType);
-            setTab("manual");
-
-            toast.success(`OAuth connected! Review your agent settings and click Save Integration.`);
-          } catch (parseErr) {
-            console.error("Failed to resume pending template:", parseErr);
-          }
-        }
+        resumePendingTemplate();
       } catch (err) {
         console.error("Failed to load templates or oauth", err);
       } finally {
@@ -156,28 +166,26 @@ function NewAgentContent() {
   });
   const categories = Array.from(new Set(filteredTemplates.map((t) => t.category)));
 
-  // Returns the exact Composio toolkit name for a template (must match what Composio returns in connected accounts)
-  const getProviderForTemplate = (t: Template): string | null => {
+  // Map template IDs to their provider strings and auth types dynamically from the backend registry
+  const getRegistryItemForTemplate = (t: Template) => {
     const id = (t.id || "").toLowerCase();
-    if (id === "gmail") return "gmail";
-    if (id === "google_calendar") return "googlecalendar";
-    if (id === "google_drive") return "googledrive";
-    if (id === "google_sheets") return "googlesheets";
-    if (id === "google_docs") return "googledocs";
-    if (id.includes("github")) return "github";
-    if (id.includes("slack")) return "slack";
-    if (id.includes("notion")) return "notion";
-    if (id.includes("instagram")) return "instagram";
-    if (id.includes("youtube")) return "youtube";
-    if (id.includes("linear")) return "linear";
-    if (id.includes("jira")) return "jira";
-    if (id.includes("asana")) return "asana";
-    if (id.includes("trello")) return "trello";
-    if (id.includes("airtable")) return "airtable";
-    if (id.includes("hubspot")) return "hubspot";
-    if (id.includes("salesforce")) return "salesforce";
-    if (id.includes("discord")) return "discord";
+    for (const key in providersRegistry) {
+      const item = providersRegistry[key];
+      if (item.aliases && item.aliases.some((alias: string) => id.includes(alias))) {
+        return item;
+      }
+    }
     return null;
+  };
+
+  const getProviderForTemplate = (t: Template): string | null => {
+    const item = getRegistryItemForTemplate(t);
+    return item ? item.provider_name : null;
+  };
+
+  const getProviderAuthType = (t: Template): 'OAUTH' | 'API_KEY' | 'NONE' => {
+    const item = getRegistryItemForTemplate(t);
+    return item?.auth_type || 'OAUTH'; // Default to OAUTH if unknown
   };
 
   // Check if a template is connected (via localStorage OR server-side Composio active connection)
@@ -239,12 +247,28 @@ function NewAgentContent() {
 
       // Check if this template requires OAuth and if user has an active integration
       const oauthProvider = getProviderForTemplate(t);
+      const authTypeForProvider = getProviderAuthType(t);
+      
       if (oauthProvider) {
         const hasActiveIntegration = oauthIntegrations.some(
           (i: any) => i.provider === oauthProvider
         );
 
         if (!hasActiveIntegration) {
+          if (authTypeForProvider === "API_KEY") {
+            // Save pending template to resume after API key is entered
+            localStorage.setItem('oauth_pending_template', JSON.stringify({
+              templateId: t.id,
+              name,
+              mcpUrl,
+              sType,
+              desc,
+              aType
+            }));
+            setApiKeyModalProvider(t);
+            return;
+          }
+
           // Save template info so we can resume after OAuth callback
           localStorage.setItem('oauth_return_to', `/dashboard/agents/new?tab=templates`);
           localStorage.setItem('oauth_pending_template', JSON.stringify({
@@ -266,7 +290,47 @@ function NewAgentContent() {
             throw new Error("Failed to generate OAuth authorization URL");
           }
           const { auth_url } = await connectRes.json();
-          window.location.href = auth_url;
+          
+          // Open OAuth in a centered popup window
+          const width = 500;
+          const height = 650;
+          const left = window.screenX + (window.innerWidth - width) / 2;
+          const top = window.screenY + (window.innerHeight - height) / 2;
+          
+          const popup = window.open(
+            auth_url,
+            'OAuth',
+            `width=${width},height=${height},left=${left},top=${top},status=yes,scrollbars=yes`
+          );
+
+          // Listen for the success message from the callback page
+          const handleMessage = (event: MessageEvent) => {
+            if (event.data === 'oauth_success') {
+              window.removeEventListener('message', handleMessage);
+              
+              // Optimistically update state so the UI button reflects the connection
+              setOauthIntegrations(prev => [...prev, { provider: oauthProvider }]);
+              setConnectedTools(prev => {
+                const next = [...prev, t.id];
+                try { localStorage.setItem("beaver_connected_tools", JSON.stringify(next)); } catch (e) {}
+                return next;
+              });
+
+              resumePendingTemplate();
+              setActionLoading(null);
+            }
+          };
+          window.addEventListener('message', handleMessage);
+
+          // Poll to stop loading state if user manually closes the popup
+          const timer = setInterval(() => {
+            if (popup && popup.closed) {
+              clearInterval(timer);
+              window.removeEventListener('message', handleMessage);
+              setActionLoading(null);
+            }
+          }, 1000);
+
           return;
         }
       }
@@ -320,6 +384,51 @@ function NewAgentContent() {
     }
   };
 
+  const handleApiKeySubmit = async () => {
+    if (!apiKeyModalProvider || !apiKeyValue.trim()) return;
+    
+    setSubmittingApiKey(true);
+    try {
+      const providerStr = getProviderForTemplate(apiKeyModalProvider);
+      const token = await getToken();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/oauth/apikey/${providerStr}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ api_key: apiKeyValue })
+      });
+      
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "Failed to connect API Key.");
+      }
+      
+      toast.success(`${apiKeyModalProvider.name} API Key saved!`);
+      
+      // Update state optimistically
+      if (providerStr) {
+        setOauthIntegrations(prev => [...prev, { provider: providerStr }]);
+      }
+      setConnectedTools(prev => {
+        const next = [...prev, apiKeyModalProvider.id];
+        try { localStorage.setItem("beaver_connected_tools", JSON.stringify(next)); } catch (e) {}
+        return next;
+      });
+
+      // Cleanup & Resume
+      setApiKeyModalProvider(null);
+      setApiKeyValue("");
+      resumePendingTemplate();
+      
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save API Key");
+    } finally {
+      setSubmittingApiKey(false);
+      setActionLoading(null);
+    }
+  };
 
   const handleFiles = (files: FileList | null) => {
     if (!files || !files[0]) return;
@@ -460,6 +569,58 @@ function NewAgentContent() {
 
   return (
     <div className="space-y-8">
+      {/* API Key Modal */}
+      {apiKeyModalProvider && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md bg-card border border-border shadow-2xl rounded-2xl p-6 relative animate-in zoom-in-95">
+            <button 
+              onClick={() => {
+                setApiKeyModalProvider(null);
+                setApiKeyValue("");
+                setActionLoading(null);
+              }}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted text-muted-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="mb-6 flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-border">
+                <img src={getLogoForTemplate(apiKeyModalProvider)} alt="Logo" className="w-7 h-7 object-contain" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">Connect {apiKeyModalProvider.name.replace(/\s+MCP$/i, "")}</h3>
+                <p className="text-xs text-muted-foreground">This integration requires an API key.</p>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/70">API Key</label>
+                <input
+                  type="password"
+                  value={apiKeyValue}
+                  onChange={(e) => setApiKeyValue(e.target.value)}
+                  placeholder="sk-..."
+                  className="w-full h-12 rounded-xl border border-border bg-background px-4 text-sm font-mono shadow-inner outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
+                  autoFocus
+                />
+              </div>
+              <Button 
+                onClick={handleApiKeySubmit}
+                disabled={submittingApiKey || !apiKeyValue.trim()}
+                className="w-full rounded-xl h-12 shadow-glow"
+              >
+                {submittingApiKey ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+                ) : (
+                  <><Check className="w-4 h-4 mr-2" /> Connect Integration</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {tab === null ? (
         <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)] px-4 animate-in fade-in zoom-in-95 duration-700">
           <div className="text-center max-w-3xl mb-12 space-y-4">

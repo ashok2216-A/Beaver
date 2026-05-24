@@ -67,9 +67,14 @@ export default function OAuthCallbackPage({ params }: { params: Promise<{ provid
       setStatus('success')
       
       setTimeout(() => {
-        const returnUrl = localStorage.getItem('oauth_return_to') || '/dashboard/agents/new?tab=templates';
-        localStorage.removeItem('oauth_return_to');
-        router.push(returnUrl);
+        if (window.opener) {
+          window.opener.postMessage('oauth_success', '*');
+          window.close();
+        } else {
+          const returnUrl = localStorage.getItem('oauth_return_to') || '/dashboard/agents/new?tab=templates';
+          localStorage.removeItem('oauth_return_to');
+          router.push(returnUrl);
+        }
       }, 1500)
     }
 
@@ -115,8 +120,10 @@ export default function OAuthCallbackPage({ params }: { params: Promise<{ provid
             {/* Connection lines simulating data transfer */}
             {status === 'processing' && (
               <>
-                <div className="absolute top-1/2 -left-12 w-8 h-[1px] bg-gradient-to-r from-transparent to-primary/50" />
-                <div className="absolute top-1/2 -right-12 w-8 h-[1px] bg-gradient-to-l from-transparent to-primary/50" />
+                <div className="absolute top-1/2 -translate-y-1/2 -left-12 w-8 h-[1px] bg-gradient-to-r from-transparent to-primary/50" />
+                <div className="absolute top-1/2 -translate-y-1/2 -right-12 w-8 h-[1px] bg-gradient-to-l from-transparent to-primary/50" />
+                <div className="absolute left-1/2 -translate-x-1/2 -top-12 h-8 w-[1px] bg-gradient-to-b from-transparent to-primary/50" />
+                <div className="absolute left-1/2 -translate-x-1/2 -bottom-12 h-8 w-[1px] bg-gradient-to-t from-transparent to-primary/50" />
               </>
             )}
           </div>

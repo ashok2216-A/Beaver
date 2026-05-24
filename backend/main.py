@@ -36,6 +36,15 @@ settings = get_settings()
 setup_logging(log_level=settings.log_level, is_prod=settings.is_production)
 log = logging.getLogger(__name__)
 
+# Patch LiteLLM to map the "error" finish reason to "stop" to suppress unmapped warning
+try:
+    import litellm.litellm_core_utils.core_helpers as litellm_helpers
+    if hasattr(litellm_helpers, "_FINISH_REASON_MAP"):
+        litellm_helpers._FINISH_REASON_MAP["error"] = "stop"
+except Exception as e:
+    log.warning(f"Failed to patch LiteLLM _FINISH_REASON_MAP: {e}")
+
+
 # ─── Lifespan ─────────────────────────────────────────────────────────────────
 
 @asynccontextmanager

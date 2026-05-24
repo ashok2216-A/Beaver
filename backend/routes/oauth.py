@@ -8,12 +8,17 @@ and persisting them in the UserIntegration vault.
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import List
 
 from config.config import get_settings
 from database.database import get_db
 from models.models import User, UserIntegration
 from schemas.schemas import MessageOut, OAuthConnectUrlOut
 from utils.auth import get_current_user
+
+class ApiKeyInput(BaseModel):
+    api_key: str
 
 log = logging.getLogger(__name__)
 
@@ -50,13 +55,13 @@ async def connect_provider(
                 if not auth_id:
                     raise ValueError(f"Composio auth config not found for {provider_lower}")
                     
-                conn = c.connected_accounts.link(user_id=str(user.id), auth_config_id=auth_id, callback_url=redirect_uri)
+                conn = c.connected_accounts.link(user_id=str(user.id), auth_config_id=auth_id, callback_url=redirect_uri, allow_multiple=True)
             else:
                 integrations = c.integrations.get(app_name=provider_lower)
                 if not integrations:
                     raise ValueError(f"Composio integration not found for {provider_lower}")
                 auth_id = integrations[0].id
-                conn = c.connected_accounts.initiate(entity_id=str(user.id), integration_id=auth_id, redirect_url=redirect_uri)
+                conn = c.connected_accounts.initiate(entity_id=str(user.id), integration_id=auth_id, redirect_url=redirect_uri, allow_multiple=True)
             
             redirect_url = getattr(conn, "redirect_url", None) or getattr(conn, "redirectUrl", None)
             return OAuthConnectUrlOut(auth_url=redirect_url)
@@ -67,6 +72,44 @@ async def connect_provider(
     raise HTTPException(status_code=501, detail="Composio API key is not configured on the server.")
 
 
+@router.post("/apikey/{provider}", response_model=MessageOut)
+def connect_apikey(
+    provider: str,
+    input: ApiKeyInput,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Save an API Key natively to bypass Composio for custom auth providers.
+    """
+    provider_lower = provider.lower()
+
+    try:
+        existing = db.query(UserIntegration).filter(
+            UserIntegration.user_id == user.id,
+            UserIntegration.provider == provider_lower
+        ).first()
+        
+        if existing:
+            existing.access_token = input.api_key
+        else:
+            db.add(UserIntegration(
+                user_id=user.id,
+                provider=provider_lower,
+                access_token=input.api_key,
+                account_id="native_api_key",
+                refresh_token=None,
+                scopes=[],
+            ))
+        db.commit()
+
+        return MessageOut(message=f"Successfully connected {provider_lower} natively using API Key.")
+
+    except Exception as e:
+        log.error(f"Failed to save native API Key for {provider_lower}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save API Key: {str(e)}")
+
+
 @router.get("/list")
 def list_integrations(user: User = Depends(get_current_user)):
     """List all explicitly connected integrations for the current user."""
@@ -74,6 +117,13 @@ def list_integrations(user: User = Depends(get_current_user)):
         {"id": i.id, "provider": i.provider, "source": "db"}
         for i in user.integrations
     ]
+
+
+@router.get("/providers")
+def list_providers():
+    """Return the central integration registry so the frontend can dynamically resolve auth types and aliases."""
+    from services.mcp_registry import INTEGRATION_REGISTRY
+    return INTEGRATION_REGISTRY
 
 
 @router.post("/mark-connected", response_model=MessageOut)
