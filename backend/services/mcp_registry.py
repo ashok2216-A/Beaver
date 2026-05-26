@@ -116,28 +116,28 @@ INTEGRATION_REGISTRY: Dict[str, Dict[str, Any]] = {
     "perplexity": {
         "provider_name": "perplexity",
         "composio_slug": "perplexityai",
-        "auth_type": "API_KEY",
+        "auth_type": "OAUTH",
         "aliases": ["perplexity", "perplexityai", "perplexity-ai"],
         "env_var_names": []
     },
     "openai": {
         "provider_name": "openai",
         "composio_slug": "openai",
-        "auth_type": "API_KEY",
+        "auth_type": "OAUTH",
         "aliases": ["openai"],
         "env_var_names": []
     },
     "anthropic": {
         "provider_name": "anthropic",
         "composio_slug": "anthropic",
-        "auth_type": "API_KEY",
+        "auth_type": "OAUTH",
         "aliases": ["anthropic"],
         "env_var_names": []
     },
     "serpapi": {
         "provider_name": "serpapi",
         "composio_slug": "serpapi",
-        "auth_type": "API_KEY",
+        "auth_type": "OAUTH",
         "aliases": ["serpapi", "serp-api"],
         "env_var_names": []
     },

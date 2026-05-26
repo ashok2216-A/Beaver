@@ -167,7 +167,7 @@ async def chat_orchestrate(
         try:
             import litellm
             from config.config import get_settings
-            get_settings()
+            settings = get_settings()
             
             agents_context = []
             for a in agents:
@@ -196,7 +196,7 @@ Conversation:
 {history_str}"""
             
             response = await litellm.acompletion(
-                model="mistral/mistral-small-latest",
+                model=settings.default_llm_model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
                 max_tokens=20,

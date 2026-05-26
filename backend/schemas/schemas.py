@@ -177,7 +177,7 @@ class AgentDetail(AgentOut):
 # ─── Chat ─────────────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=4096)
+    message: str = Field(..., min_length=1, max_length=131072)
 
 
 class ChatMessageOut(BaseModel):

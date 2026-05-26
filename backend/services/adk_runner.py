@@ -137,55 +137,66 @@ def _parse_params_robust(params: str) -> dict:
 
 # ─── MCP Parameter Sanitizer ────────────────────────────────────────────────
 
-# Rules applied before each MCP tool call to correct well-known LLM mistakes.
-# Key: lowercase tool name fragment that must appear in the registered tool name.
-# Value: a callable(tool_name, params) -> params that mutates/returns the fixed dict.
-_MCP_PARAM_RULES: list[tuple[str, object]] = []
-
-def _register_mcp_rule(tool_fragment: str):
-    """Decorator to register a sanitizer for MCP tools whose name contains `tool_fragment`."""
-    def decorator(fn):
-        _MCP_PARAM_RULES.append((tool_fragment.lower(), fn))
-        return fn
-    return decorator
-
-
-@_register_mcp_rule("youtube_search")
-def _fix_youtube_search_params(tool_name: str, params: dict) -> dict:
+def _sanitize_mcp_params(tool_name: str, params: dict, endpoint_params: list[dict] = None) -> dict:
     """
-    YouTube search.list (YOUTUBE_SEARCH_YOU_TUBE) only accepts part='snippet'.
-    LLMs frequently pass 'statistics', 'contentDetails', 'snippet,statistics', etc.
-    Only fix the value when 'part' is explicitly present with an invalid value —
-    don't inject it when absent (let the MCP server use its own default).
+    Apply generic fuzzy matching to fix LLM parameter hallucinations based on strict schema.
     """
-    if "part" not in params:
-        return params
-    part = params["part"]
-    if isinstance(part, list):
-        params["part"] = "snippet"
-        log.debug("MCP param sanitizer: fixed list 'part' for %s -> 'snippet'", tool_name)
-    elif isinstance(part, str) and part.strip().lower() != "snippet":
-        original = part
-        # If 'snippet' is somewhere in a comma-separated list keep it, otherwise force it
-        parts = [p.strip().lower() for p in part.split(",")]
-        params["part"] = "snippet"
-        log.debug(
-            "MCP param sanitizer: fixed 'part' for %s: '%s' -> 'snippet'",
-            tool_name, original
-        )
-    return params
-
-
-def _sanitize_mcp_params(tool_name: str, params: dict) -> dict:
-    """
-    Apply all registered MCP parameter sanitization rules for the given tool.
-    Rules are matched by substring of the lowercase tool name.
-    """
-    name_lower = tool_name.lower()
-    sanitized = dict(params)  # shallow copy so original params_dict is not mutated
-    for fragment, rule_fn in _MCP_PARAM_RULES:
-        if fragment in name_lower:
-            sanitized = rule_fn(tool_name, sanitized) or sanitized
+    sanitized = dict(params)
+    
+    # Apply dynamic fuzzy mapping based on strict schema
+    if endpoint_params:
+        valid_keys = {p["name"] for p in endpoint_params if isinstance(p, dict) and "name" in p}
+        if not valid_keys:
+            return sanitized
+            
+        final_params = {}
+        for key, value in sanitized.items():
+            if key in valid_keys:
+                final_params[key] = value
+                continue
+                
+            # Try fuzzy matching
+            best_match = None
+            key_lower = key.lower()
+            
+            # Common synonyms LLMs use
+            synonyms = {
+                "to": ["recipient_email", "recipient", "email"],
+                "url": ["link", "uri", "website"],
+                "body": ["text", "content", "message"],
+                "text": ["body", "content", "message"],
+                "query": ["q", "search_query", "keyword"],
+                "q": ["query", "search_query", "keyword"],
+                "code": ["code_to_execute", "script"],
+            }
+            
+            if key_lower in synonyms:
+                for valid_key in valid_keys:
+                    if valid_key.lower() in synonyms[key_lower]:
+                        best_match = valid_key
+                        break
+            
+            if not best_match:
+                # Substring match (e.g. 'code' -> 'code_to_execute')
+                for valid_key in valid_keys:
+                    if len(key_lower) > 3 and (key_lower in valid_key.lower() or valid_key.lower() in key_lower):
+                        best_match = valid_key
+                        break
+                        
+            if best_match and best_match not in final_params:
+                log.info(f"Dynamic param sanitizer: mapped '{key}' -> '{best_match}' for tool {tool_name}")
+                final_params[best_match] = value
+            else:
+                log.warning(f"Dynamic param sanitizer: dropped hallucinated param '{key}' for tool {tool_name}")
+                
+        # Inject standard required parameters if missing
+        if "user_id" in valid_keys and "user_id" not in final_params:
+            final_params["user_id"] = "me"
+        elif "userId" in valid_keys and "userId" not in final_params:
+            final_params["userId"] = "me"
+            
+        return final_params
+        
     return sanitized
 
 
@@ -259,7 +270,7 @@ def _mcp_path_matches_score(template: str, actual: str) -> float:
     if len(common_words) >= 2:
         service_prefixes = {
             "youtube", "googlecalendar", "google", "calendar",
-            "gmail", "github", "slack", "notion", "composio",
+            "gmail", "github", "slack", "notion", "composio", "serpapi"
         }
         if any(prefix in common_words for prefix in service_prefixes):
             ratio = len(common_words) / max(len(t_words), len(a_words), 1)
@@ -753,27 +764,26 @@ def _build_agent(
             or (ep_def.get("path") and "/mcp/" in ep_def.get("path", "").lower())
         )
 
-        if is_mcp:
-            from services.mcp_service import execute_mcp_tool
-            mcp_url = ep_def.get("mcp_server_url") or base_url
-            ep_path = ep_def.get("path", "")
-            tool_name = ep_path.split("/")[-1] if "/mcp/tools/" in ep_path else (ep_def.get("summary") or path.strip("/"))
-            # Sanitize params before calling MCP — fixes well-known LLM mistakes
-            # (e.g. YouTube search.list only accepts part='snippet', not 'statistics')
-            sanitized_params = _sanitize_mcp_params(tool_name, params_dict)
-            mcp_res, status, latency = await execute_mcp_tool(
-                user_id=user_id,
-                mcp_server_url=mcp_url,
-                tool_name=tool_name,
-                arguments=sanitized_params,
-            )
-            # Unwrap successful response data to align with standard REST tool structure
-            if status < 400 and isinstance(mcp_res, dict) and "data" in mcp_res:
-                data = mcp_res["data"]
+        for attempt in range(MAX_INTERNAL_RETRIES):
+            if is_mcp:
+                from services.mcp_service import execute_mcp_tool
+                mcp_url = ep_def.get("mcp_server_url") or base_url
+                ep_path = ep_def.get("path", "")
+                tool_name = ep_path.split("/")[-1] if "/mcp/tools/" in ep_path else (ep_def.get("summary") or path.strip("/"))
+                # Sanitize params before calling MCP
+                sanitized_params = _sanitize_mcp_params(tool_name, current_payload, ep_def.get("parameters"))
+                mcp_res, status, latency = await execute_mcp_tool(
+                    user_id=user_id,
+                    mcp_server_url=mcp_url,
+                    tool_name=tool_name,
+                    arguments=sanitized_params,
+                )
+                # Unwrap successful response data to align with standard REST tool structure
+                if status < 400 and isinstance(mcp_res, dict) and "data" in mcp_res:
+                    data = mcp_res["data"]
+                else:
+                    data = mcp_res
             else:
-                data = mcp_res
-        else:
-            for attempt in range(MAX_INTERNAL_RETRIES):
                 data, status, latency = await call_api(
                     base_url=ep_def.get("base_url") or base_url,
                     path=path,
@@ -786,33 +796,33 @@ def _build_agent(
                     custom_headers=decrypt_dict(ep_def.get("custom_headers")) if ep_def.get("custom_headers") is not None else decrypt_dict(custom_headers),
                 )
 
-                # SUCCESS: Log and return
-                if status < 400:
-                    log.info(f"SUCCESS: Tool call to {method} {path} succeeded on attempt {attempt + 1}")
-                    # Save this successful structure for future reference
-                    discovery.save_successful_pattern(method, path, current_payload)
-                    break
+            # SUCCESS: Log and return
+            if status < 400:
+                log.info(f"SUCCESS: Tool call to {method} {path} succeeded on attempt {attempt + 1}")
+                # Save this successful structure for future reference
+                discovery.save_successful_pattern(method, path, current_payload)
+                break
 
-                # FAILURE: Check if fixable via AI Repair
-                if status in (400, 422) and attempt < MAX_INTERNAL_RETRIES - 1:
-                    log.info(f"Self-Healing Attempt {attempt + 1}: Repairing payload for {method} {path} ({status})")
-                    
-                    # Check if we have a known pattern to help the repair
-                    known_pattern = discovery.get_pattern(method, path)
-                    pattern_hint = f"\nKNOWN SUCCESSFUL PATTERN: {json.dumps(known_pattern)}" if known_pattern else ""
+            # FAILURE: Check if fixable via AI Repair
+            if status in (400, 422) and attempt < MAX_INTERNAL_RETRIES - 1:
+                log.info(f"Self-Healing Attempt {attempt + 1}: Repairing payload for {method} {path} ({status})")
+                
+                # Check if we have a known pattern to help the repair
+                known_pattern = discovery.get_pattern(method, path)
+                pattern_hint = f"\nKNOWN SUCCESSFUL PATTERN: {json.dumps(known_pattern)}" if known_pattern else ""
 
-                    # Turn 1: Try Intelligent Structure Repair
-                    repaired = await _repair_payload_with_ai(path, method, current_payload, data, pattern_hint)
-                    if repaired and repaired != current_payload:
-                        log.info("REPAIR SUCCESS: AI suggested structural correction. Retrying...")
-                        current_payload = repaired
-                        continue # Retry with repaired payload
-                    else:
-                        # If repair didn't change anything, we don't waste more turns
-                        break
+                # Turn 1: Try Intelligent Structure Repair
+                repaired = await _repair_payload_with_ai(path, method, current_payload, data, pattern_hint)
+                if repaired and repaired != current_payload:
+                    log.info("REPAIR SUCCESS: AI suggested structural correction. Retrying...")
+                    current_payload = repaired
+                    continue # Retry with repaired payload
                 else:
-                    # Permanent failure or out of retries
+                    # If repair didn't change anything, we don't waste more turns
                     break
+            else:
+                # Permanent failure or out of retries
+                break
 
         # Audio/Media Detection
         is_audio = False
@@ -1190,6 +1200,7 @@ def _build_agent(
         "Available endpoints:\n"
         f"{ep_catalogue}\n\n"
         "- SECURITY & OPERATION RULES:\n"
+        "  - NO ITERATIVE SEARCHING (CRITICAL): You MUST NOT execute multiple sequential searches or lookups to refine your results. Once you use a search tool, formulate your final answer using ONLY the data from that single attempt. Do not loop or retry searches even if the results are incomplete.\n"
         "  - SEQUENTIAL OPERATIONS (CRITICAL): If a request involves multiple dependent steps (e.g., searching for a customer first to retrieve their ID, and then using that ID to look up their invoices), you MUST execute the tools sequentially. Call the lookup/search tool first. Wait for the tool's response, extract the actual ID or data, and then use that real data to call the subsequent dependent tool. NEVER attempt to call multiple dependent tools in parallel or guess/mock values for missing required parameters.\n"
         "  - PARALLEL OPERATIONS: If a request involves executing the SAME tool for multiple independent items (e.g., checking multiple channel IDs or fetching multiple separate records), you MUST output ALL the function calls in parallel within a single response, rather than doing them one by one sequentially.\n"
         "  - AUTHENTICATION: Handled automatically. NEVER ask for or discuss API keys/tokens.\n"
@@ -1219,9 +1230,10 @@ def _build_agent(
         for c in agent_name.lower().replace(" ", "_")
     )[:50] or "api_agent"
 
-    model_name = model or "mistral/mistral-small-latest"
-    if "gemini" in model_name.lower():
-        model_name = "mistral/mistral-small-latest"
+    settings = get_settings()
+    model_name = model or settings.default_llm_model
+    if "gemini" in model_name.lower() or "mistral" in model_name.lower():
+        model_name = settings.default_llm_model
         
     adk_model = LiteLlm(model=model_name, num_retries=3)
 
