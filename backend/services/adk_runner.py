@@ -159,22 +159,23 @@ def _sanitize_mcp_params(tool_name: str, params: dict, endpoint_params: list[dic
             best_match = None
             key_lower = key.lower()
             
-            # Common synonyms LLMs use
-            synonyms = {
-                "to": ["recipient_email", "recipient", "email"],
-                "url": ["link", "uri", "website"],
-                "body": ["text", "content", "message"],
-                "text": ["body", "content", "message"],
-                "query": ["q", "search_query", "keyword"],
-                "q": ["query", "search_query", "keyword"],
-                "code": ["code_to_execute", "script"],
-            }
+            # Equivalence classes for common LLM parameter hallucinations
+            equiv_classes = [
+                {"to", "recipient_email", "recipient", "email"},
+                {"url", "link", "uri", "website"},
+                {"body", "text", "content", "message", "html"},
+                {"query", "q", "search_query", "keyword"},
+                {"code", "code_to_execute", "script"}
+            ]
             
-            if key_lower in synonyms:
-                for valid_key in valid_keys:
-                    if valid_key.lower() in synonyms[key_lower]:
-                        best_match = valid_key
-                        break
+            for eq in equiv_classes:
+                if key_lower in eq:
+                    for valid_key in valid_keys:
+                        if valid_key.lower() in eq:
+                            best_match = valid_key
+                            break
+                if best_match:
+                    break
             
             if not best_match:
                 # Substring match (e.g. 'code' -> 'code_to_execute')
@@ -770,8 +771,14 @@ def _build_agent(
                 mcp_url = ep_def.get("mcp_server_url") or base_url
                 ep_path = ep_def.get("path", "")
                 tool_name = ep_path.split("/")[-1] if "/mcp/tools/" in ep_path else (ep_def.get("summary") or path.strip("/"))
-                # Sanitize params before calling MCP
-                sanitized_params = _sanitize_mcp_params(tool_name, current_payload, ep_def.get("parameters"))
+                # Only run the destructive fuzzy sanitizer on the initial LLM payload.
+                # If the AI Repair Engine fixed the schema structurally (e.g. nested objects), 
+                # we must trust it and NOT destructively prune its keys.
+                if attempt == 0:
+                    sanitized_params = _sanitize_mcp_params(tool_name, current_payload, ep_def.get("parameters"))
+                    current_payload = sanitized_params
+                else:
+                    sanitized_params = current_payload
                 mcp_res, status, latency = await execute_mcp_tool(
                     user_id=user_id,
                     mcp_server_url=mcp_url,
@@ -804,8 +811,10 @@ def _build_agent(
                 break
 
             # FAILURE: Check if fixable via AI Repair
-            if status in (400, 422) and attempt < MAX_INTERNAL_RETRIES - 1:
+            is_tool_not_found = isinstance(mcp_res, dict) and "not found" in str(mcp_res).lower()
+            if status in (400, 422) and attempt < MAX_INTERNAL_RETRIES - 1 and not is_tool_not_found:
                 log.info(f"Self-Healing Attempt {attempt + 1}: Repairing payload for {method} {path} ({status})")
+                log.error(f"MCP_RES error details: {mcp_res}")
                 
                 # Check if we have a known pattern to help the repair
                 known_pattern = discovery.get_pattern(method, path)
@@ -914,45 +923,66 @@ def _build_agent(
                 hint = data
 
             # FALLBACK: Generate intelligent correction form for the user
-            log.info(f"A2UI FALLBACK: Generating intelligent correction form for {status} error from {path}")
+            is_tool_not_found = isinstance(data, str) and "not found" in data.lower() or (isinstance(data, dict) and "not found" in str(data).lower())
             
-            intelligent_form = None
-            if status in (400, 422) and data:
-                try:
-                    # Pass the last attempted payload (potentially repaired) for context
-                    intelligent_form = await _generate_corrective_a2ui(status, path, method, data, current_payload)
-                except Exception as e:
-                    log.error(f"Failed to generate intelligent A2UI form: {e}")
-
-            if intelligent_form:
-                a2ui_error_form = intelligent_form
-            else:
-                # Default generic fallback form
-                a2ui_error_form = {
-                    "a2ui": {
-                        "component": "form",
-                        "title": f"Fix API Parameters ({status})",
-                        "subtitle": str(hint),
-                        "submit_label": "Retry with Corrections",
-                        "children": [
-                            {
-                                "component": "textfield",
-                                "key": "retry_endpoint",
-                                "label": "Failed Endpoint",
-                                "value": f"{method.upper()} {path}",
-                                "required": False
-                            },
-                            {
-                                "component": "textfield",
-                                "key": "user_correction",
-                                "label": "Your Correction",
-                                "placeholder": "Describe the missing fields or values",
-                                "required": True,
-                                "multiline": True
-                            }
-                        ]
+            if not is_tool_not_found:
+                log.info(f"A2UI FALLBACK: Generating intelligent correction form for {status} error from {path}")
+                
+                intelligent_form = None
+                if status in (400, 422) and data:
+                    try:
+                        # Pass the last attempted payload (potentially repaired) for context
+                        intelligent_form = await _generate_corrective_a2ui(status, path, method, data, current_payload)
+                    except Exception as e:
+                        log.error(f"Failed to generate intelligent A2UI form: {e}")
+    
+                if intelligent_form:
+                    a2ui_error_form = intelligent_form
+                else:
+                    # Default generic fallback form
+                    a2ui_error_form = {
+                        "a2ui": {
+                            "component": "form",
+                            "title": f"Fix API Parameters ({status})",
+                            "subtitle": str(hint),
+                            "submit_label": "Retry with Corrections",
+                            "children": [
+                                {
+                                    "component": "textfield",
+                                    "key": "retry_endpoint",
+                                    "label": "Failed Endpoint",
+                                    "value": f"{method.upper()} {path}",
+                                    "required": False
+                                },
+                                {
+                                    "component": "textfield",
+                                    "key": "user_correction",
+                                    "label": "Your Correction",
+                                    "placeholder": "Describe the missing fields or values",
+                                    "required": True,
+                                    "multiline": True
+                                }
+                            ]
+                        }
                     }
-                }
+                
+                tool_log.append({
+                    "path":        path,
+                    "method":      method.upper(),
+                    "status_code": status,
+                    "latency_ms":  latency,
+                    "response":    data,
+                })
+
+                return json.dumps({
+                    "status_code": status,
+                    "data": a2ui_error_form,
+                    "note": (
+                        f"CRITICAL: The API call to {method.upper()} {path} failed even after internal repair attempts. "
+                        f"You MUST show the 'a2ui' JSON block exactly as provided below so the user can help. "
+                        f"Wait for the user's correction, then RETRY the same endpoint."
+                    )
+                })
             
             tool_log.append({
                 "path":        path,
@@ -964,12 +994,7 @@ def _build_agent(
 
             return json.dumps({
                 "status_code": status,
-                "data": a2ui_error_form,
-                "note": (
-                    f"CRITICAL: The API call to {method.upper()} {path} failed even after internal repair attempts. "
-                    f"You MUST show the 'a2ui' JSON block exactly as provided below so the user can help. "
-                    f"Wait for the user's correction, then RETRY the same endpoint."
-                )
+                "data": data
             })
 
         # ─── Ephemeral RAG Pipeline ───
