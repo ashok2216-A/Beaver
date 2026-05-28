@@ -56,6 +56,7 @@ export default function PlaygroundPage() {
   const [history, setHistory] = useState<any[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(true)
   const [sessionId, setSessionId] = useState<string>("")
+  const [isLoadingConversation, setIsLoadingConversation] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const fetchHistory = async () => {
@@ -123,7 +124,8 @@ export default function PlaygroundPage() {
 
   const loadConversation = async (id: string) => {
     setSessionId(id)
-    setIsLoading(true)
+    setIsLoadingConversation(true)
+    setMessages([]) // Clear messages while loading
     try {
       const token = await getToken()
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/conversations/${id}`, {
@@ -136,7 +138,7 @@ export default function PlaygroundPage() {
     } catch (err) {
       console.error("Failed to load conversation:", err)
     } finally {
-      setIsLoading(false)
+      setIsLoadingConversation(false)
     }
   }
 
@@ -441,14 +443,21 @@ export default function PlaygroundPage() {
     )}
   </div>
 
-      {/* Full width scroll container so scrollbar stays in the corner */}
       <div 
         ref={scrollRef} 
         className="flex-1 w-full overflow-y-auto custom-scrollbar flex flex-col items-center"
       >
         <div className="w-full max-w-3xl px-4 md:px-6 pt-10 pb-40 space-y-8">
-        {messages.map((message) => {
-          const isAI = message.role === 'assistant'
+        {isLoadingConversation ? (
+          <div className="flex flex-col items-center justify-center py-32 space-y-4 animate-in fade-in duration-300">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+            <p className="text-sm text-muted-foreground font-medium animate-pulse">Loading...</p>
+          </div>
+        ) : (
+          messages.map((message) => {
+            const isAI = message.role === 'assistant'
           return (
             <div
               key={message.id}
@@ -581,7 +590,8 @@ export default function PlaygroundPage() {
               </div>
             </div>
           )
-        })}
+          })
+        )}
 
         {/* Dynamic Loading block */}
         {isLoading && (
