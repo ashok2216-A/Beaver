@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # ── LLM ───────────────────────────────────────────────────────
     gemini_api_key: str = ""
     mistral_api_key: str = ""
-    default_llm_model: str = "openrouter/openai/gpt-4o-mini"
+    default_llm_model: str = "gemini/gemini-3.1-flash-lite"
     
     # ── Discovery ──────────────────────────────────────────────────
     firecrawl_api_key: str = ""

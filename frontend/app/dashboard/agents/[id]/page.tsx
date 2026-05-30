@@ -1126,7 +1126,7 @@ export default function AgentBuilderPage() {
                     defaultValue={agent.model_id} 
                     className="w-full h-11 rounded-xl border border-border/50 bg-background/50 px-4 text-xs outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
                   >
-                    <option value="openrouter/nousresearch/hermes-3-llama-3.1-405b:free">mistral-small (Mistral)</option>
+                    <option value="gemini/gemini-3.1-flash-lite">mistral-small (Mistral)</option>
                     <option value="mistral/mistral-large-latest">mistral-large (Mistral)</option>
                     <option value="openai/gpt-4o-mini">gpt-4o-mini (OpenAI)</option>
                   </select>

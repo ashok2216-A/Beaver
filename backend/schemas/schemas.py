@@ -118,7 +118,7 @@ class AgentCreate(BaseModel):
     auth_type: str = "bearer"          # bearer | apikey | none
     auth_header: Optional[str] = None
     auth_secret: str = ""
-    model_id: Optional[str] = "openrouter/nousresearch/hermes-3-llama-3.1-405b:free"
+    model_id: Optional[str] = "gemini/gemini-3.1-flash-lite"
     custom_headers: dict[str, str] = Field(default_factory=dict)
     source_type: Optional[str] = "rest"
     mcp_server_url: Optional[str] = None

@@ -401,7 +401,7 @@ Return ONLY the JSON object. No other text.
     try:
         # We use a fast, small model for this utility task
         res = await litellm.acompletion(
-            model="openrouter/nousresearch/hermes-3-llama-3.1-405b:free",
+            model="gemini/gemini-3.1-flash-lite",
             messages=[{"role": "user", "content": prompt}],
             api_key=api_key,
             temperature=0
@@ -458,7 +458,7 @@ Corrected JSON Payload:"""
     try:
         # We use a fast model for structural repair
         res = await litellm.acompletion(
-            model="openrouter/nousresearch/hermes-3-llama-3.1-405b:free",
+            model="gemini/gemini-3.1-flash-lite",
             messages=[{"role": "user", "content": prompt}],
             api_key=api_key,
             temperature=0
@@ -1220,10 +1220,8 @@ def _build_agent(
 
     settings = get_settings()
     model_name = model or settings.default_llm_model
-    if "gemini" in model_name.lower() or "mistral" in model_name.lower():
-        model_name = settings.default_llm_model
-        
-    adk_model = LiteLlm(model=model_name, num_retries=3, max_tokens=4096)
+
+    adk_model = LiteLlm(model=model_name, num_retries=3, max_tokens=1024)
 
     async def auto_save_session_to_memory_callback(callback_context):
         """Automatically ingest the completed session into long-term memory."""
