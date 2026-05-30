@@ -19,6 +19,8 @@ class EndpointOut(BaseModel):
     parameters: list[dict[str, Any]]
     request_body: dict[str, Any]
     is_locked: bool = False
+    source_type: str = "rest"
+    mcp_server_url: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -29,6 +31,8 @@ class EndpointCreate(BaseModel):
     description: Optional[str] = ""
     parameters: Optional[list[dict[str, Any]]] = []
     request_body: Optional[dict[str, Any]] = {}
+    source_type: Optional[str] = "rest"
+    mcp_server_url: Optional[str] = None
 
 
 class EndpointUpdate(BaseModel):
@@ -38,6 +42,8 @@ class EndpointUpdate(BaseModel):
     description: Optional[str] = None
     parameters: Optional[list[dict[str, Any]]] = None
     request_body: Optional[dict[str, Any]] = None
+    source_type: Optional[str] = None
+    mcp_server_url: Optional[str] = None
 
 
 class PaginatedEndpoints(BaseModel):
@@ -80,19 +86,42 @@ class ApiKeyOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class UserIntegrationOut(BaseModel):
+    id: int
+    provider: str
+    account_id: Optional[str] = None
+    scopes: list[str] = []
+    expires_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class OAuthConnectUrlOut(BaseModel):
+    auth_url: str
+
+
+class OAuthCallbackRequest(BaseModel):
+    code: str
+    state: str
+
+
 # ─── Agent ────────────────────────────────────────────────────────────────────
 
 class AgentCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
-    description: str = Field("", max_length=150)
+    description: str = Field("", max_length=500)
     base_url: str = ""
-    api_spec: Any           # parsed OpenAPI JSON/YAML or raw string
-    system_prompt: str = Field("", max_length=500)
+    api_spec: Optional[Any] = None
+    system_prompt: str = Field("", max_length=2000)
     auth_type: str = "bearer"          # bearer | apikey | none
     auth_header: Optional[str] = None
     auth_secret: str = ""
-    model_id: str = "gemini/gemini-2.0-flash-lite"
+    model_id: Optional[str] = "openrouter/nousresearch/hermes-3-llama-3.1-405b:free"
     custom_headers: dict[str, str] = Field(default_factory=dict)
+    source_type: Optional[str] = "rest"
+    mcp_server_url: Optional[str] = None
 
     @field_validator("name")
     @classmethod
@@ -102,15 +131,17 @@ class AgentCreate(BaseModel):
 
 class AgentUpdate(BaseModel):
     name: Optional[str] = None
-    description: Optional[str] = Field(None, max_length=150)
+    description: Optional[str] = Field(None, max_length=500)
     base_url: Optional[str] = None
-    system_prompt: Optional[str] = Field(None, max_length=500)
+    system_prompt: Optional[str] = Field(None, max_length=2000)
     auth_type: Optional[str] = None
     auth_header: Optional[str] = None
     auth_secret: Optional[str] = None
     model_id: Optional[str] = None
     status: Optional[str] = None
     custom_headers: Optional[dict[str, str]] = None
+    source_type: Optional[str] = None
+    mcp_server_url: Optional[str] = None
 
 
 class AgentOut(BaseModel):
@@ -127,6 +158,8 @@ class AgentOut(BaseModel):
     is_authorized: bool = False
     endpoint_count: int = 0
     custom_headers: dict[str, str] = Field(default_factory=dict)
+    source_type: str = "rest"
+    mcp_server_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -141,39 +174,10 @@ class AgentDetail(AgentOut):
     endpoints: list[EndpointOut] = []
 
 
-# ─── File / URL ingestion ─────────────────────────────────────────────────────
-
-class IngestUrlRequest(BaseModel):
-    url: str = Field(..., min_length=5)
-    name: str = Field(..., min_length=1, max_length=120)
-    description: str = ""
-    base_url: str = ""
-    auth_type: str = "bearer"
-    auth_header: Optional[str] = None
-    auth_secret: str = ""
-    custom_headers: dict[str, str] = Field(default_factory=dict)
-
-
-class IngestPreviewRequest(BaseModel):
-    url: str = Field(..., min_length=5)
-    name: Optional[str] = None
-    description: Optional[str] = None
-    base_url: Optional[str] = None
-    auth_type: Optional[str] = "bearer"
-    auth_header: Optional[str] = None
-    auth_secret: Optional[str] = ""
-
-
-class IngestPreviewOut(BaseModel):
-    name: str
-    description: str
-    base_url: str
-
-
 # ─── Chat ─────────────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=4096)
+    message: str = Field(..., min_length=1, max_length=131072)
 
 
 class ChatMessageOut(BaseModel):
@@ -228,6 +232,8 @@ class LogOut(BaseModel):
     api_response: Optional[str] = ""
     llm_thought: Optional[str] = ""
     error: Optional[str] = ""
+    input_tokens: int = 0
+    output_tokens: int = 0
     agent_name: Optional[str] = None
     created_at: datetime
 
@@ -266,6 +272,7 @@ class HealthStatsOut(BaseModel):
     llm_success: str
     latency_ms: str
     upgrade_percentage: int
+    plan_type: str = "free"
 
 
 class DailyVelocity(BaseModel):

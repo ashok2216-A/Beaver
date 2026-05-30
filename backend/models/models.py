@@ -1,5 +1,5 @@
 """
-models.py — SQLAlchemy ORM models.
+models.py â€” SQLAlchemy ORM models.
 """
 from datetime import datetime, timezone
 from sqlalchemy import (
@@ -8,10 +8,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 import enum
-from database import Base
+from database.database import Base
 
 
-# ─── Enums ────────────────────────────────────────────────────────────────────
+# â”€â”€â”€ Enums â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class AgentStatus(str, enum.Enum):
     draft = "draft"
@@ -27,7 +27,12 @@ class HttpMethod(str, enum.Enum):
     delete = "DELETE"
 
 
-# ─── Models ───────────────────────────────────────────────────────────────────
+class ToolSource(str, enum.Enum):
+    rest = "rest"
+    mcp_sse = "mcp_sse"
+
+
+# â”€â”€â”€ Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class User(Base):
     __tablename__ = "users"
@@ -50,6 +55,7 @@ class User(Base):
     agents        = relationship("Agent", back_populates="owner", cascade="all, delete-orphan")
     api_keys      = relationship("ApiKey", back_populates="owner", cascade="all, delete-orphan")
     conversations = relationship("Conversation", back_populates="owner", cascade="all, delete-orphan")
+    integrations  = relationship("UserIntegration", back_populates="owner", cascade="all, delete-orphan")
 
 
 class ApiKey(Base):
@@ -65,6 +71,24 @@ class ApiKey(Base):
     owner = relationship("User", back_populates="api_keys")
 
 
+class UserIntegration(Base):
+    __tablename__ = "user_integrations"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    user_id       = Column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    provider      = Column(String(64), nullable=False, index=True) # e.g. "google", "github", "slack"
+    account_id    = Column(String(255), nullable=True)             # e.g. email address or username
+    access_token  = Column(Text, nullable=False)                   # Encrypted via AES-256
+    refresh_token = Column(Text, nullable=True)                    # Encrypted via AES-256
+    expires_at    = Column(DateTime(timezone=True), nullable=True)
+    scopes        = Column(JSON, default=list)
+    created_at    = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at    = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+                            onupdate=lambda: datetime.now(timezone.utc))
+
+    owner = relationship("User", back_populates="integrations")
+
+
 class Agent(Base):
     __tablename__ = "agents"
 
@@ -78,7 +102,7 @@ class Agent(Base):
     auth_type      = Column(String(32), default="bearer")  # bearer | apikey | none
     auth_header    = Column(String(100), nullable=True)    # optional custom header name (e.g. x-api-key)
     auth_secret    = Column(Text, default="")              # encrypted in prod
-    model_id       = Column(String(64), default="mistral/mistral-small-latest")
+    model_id       = Column(String(64), default="openrouter/nousresearch/hermes-3-llama-3.1-405b:free")
     custom_headers = Column(JSON, default=dict)            # e.g. {"Notion-Version": "2022-06-28"}
     status         = Column(SAEnum(AgentStatus), default=AgentStatus.draft, nullable=False)
     created_at     = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
@@ -104,6 +128,8 @@ class Endpoint(Base):
     parameters  = Column(JSON, default=list)   # list[{name, in, required, schema}]
     request_body= Column(JSON, default=dict)   # simplified body schema
     is_locked   = Column(Boolean, default=False)
+    source_type = Column(SAEnum(ToolSource), default=ToolSource.rest, nullable=False)
+    mcp_server_url = Column(String(512), nullable=True)
 
     agent = relationship("Agent", back_populates="endpoints")
 
@@ -121,6 +147,8 @@ class Log(Base):
     api_response = Column(Text, default="")
     llm_thought  = Column(Text, default="")
     error        = Column(Text, default="")
+    input_tokens = Column(Integer, default=0)
+    output_tokens= Column(Integer, default=0)
     created_at   = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     agent = relationship("Agent", back_populates="logs")

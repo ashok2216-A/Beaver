@@ -14,11 +14,43 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
         else:
             log_record['level'] = record.levelname
 
+class ColoredFormatter(logging.Formatter):
+    """
+    Pretty, terminal-colorized log formatter for local development.
+    Uses Orange for warnings, Red for errors, Green for info, Grey for debug.
+    """
+    GREY = "\033[90m"
+    GREEN = "\033[32m"
+    ORANGE = "\033[38;5;208m"
+    RED = "\033[31m"
+    BOLD_RED = "\033[1;31m"
+    RESET = "\033[0m"
+
+    LEVEL_COLORS = {
+        logging.DEBUG: GREY,
+        logging.INFO: GREEN,
+        logging.WARNING: ORANGE,
+        logging.ERROR: RED,
+        logging.CRITICAL: BOLD_RED,
+    }
+
+    def format(self, record):
+        level_color = self.LEVEL_COLORS.get(record.levelno, self.RESET)
+        orig_levelname = record.levelname
+        
+        # Pad the level name to keep output perfectly aligned
+        padded_lvl = f"{orig_levelname:<8}"
+        record.levelname = f"{level_color}{padded_lvl}{self.RESET}"
+        
+        result = super().format(record)
+        record.levelname = orig_levelname
+        return result
+
 def setup_logging(log_level="INFO", is_prod=False):
     """
     Configures logging.
     - Production: Uses Structured JSON Logging (easy for Render/Datadog to parse)
-    - Development: Uses Pretty Human-Readable Logging
+    - Development: Uses Pretty Human-Readable Terminal Logging with colors
     """
     root_logger = logging.getLogger()
     handler = logging.StreamHandler()
@@ -26,9 +58,9 @@ def setup_logging(log_level="INFO", is_prod=False):
     if is_prod:
         formatter = CustomJsonFormatter('%(timestamp)s %(level)s %(name)s %(message)s')
     else:
-        # Standard readable format for development
-        formatter = logging.Formatter(
-            fmt="%(asctime)s │ %(levelname)-8s │ %(name)s │ %(message)s",
+        # Standard readable format with colors for local development
+        formatter = ColoredFormatter(
+            fmt="%(asctime)s │ %(levelname)s │ %(name)s │ %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S"
         )
         

@@ -55,7 +55,11 @@ export function DashboardHeader() {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (globalSearch.trim()) {
-      router.push(`/dashboard/agents?query=${encodeURIComponent(globalSearch.trim())}`)
+      if (pathname.includes("/agents/new")) {
+        router.push(`/dashboard/agents/new?tab=templates&query=${encodeURIComponent(globalSearch.trim())}`)
+      } else {
+        router.push(`/dashboard/agents?query=${encodeURIComponent(globalSearch.trim())}`)
+      }
     }
   }
 
@@ -197,7 +201,7 @@ export function DashboardHeader() {
           <Input 
             value={globalSearch}
             onChange={(e) => setGlobalSearch(e.target.value)}
-            placeholder="Search agents, logs..." 
+            placeholder={pathname.includes("/agents/new") ? "Search integrations (e.g. Gmail)..." : "Search agents, logs..."} 
             className="pl-10 bg-white/40 border border-white/20 rounded-xl h-10 focus-visible:ring-1 focus-visible:ring-primary/30"
           />
         </form>

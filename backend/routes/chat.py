@@ -21,9 +21,9 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 import uuid
 
-from database import get_db
-from models import Agent, Endpoint, Log, User, Conversation, ChatMessage
-from schemas import ChatRequest, ChatResponse, LogOut, PaginatedLogs, ConversationOut, ConversationListOut
+from database.database import get_db
+from models.models import Agent, Endpoint, Log, User, Conversation, ChatMessage
+from schemas.schemas import ChatRequest, ChatResponse, LogOut, PaginatedLogs, ConversationOut, ConversationListOut
 from utils.auth import get_current_user
 from utils.security import encrypt_secret, decrypt_secret
 
@@ -153,7 +153,7 @@ async def chat_orchestrate(
     agent_ids = list(agent_map.keys())
     
     all_metadata = db.query(
-        Endpoint.id, Endpoint.path, Endpoint.method, Endpoint.summary, Endpoint.agent_id
+        Endpoint.id, Endpoint.path, Endpoint.method, Endpoint.summary, Endpoint.agent_id, Endpoint.description
     ).filter(
         Endpoint.agent_id.in_(agent_ids),
         Endpoint.is_locked.is_(False)
@@ -166,8 +166,8 @@ async def chat_orchestrate(
     else:
         try:
             import litellm
-            from config import get_settings
-            get_settings()
+            from config.config import get_settings
+            settings = get_settings()
             
             agents_context = []
             for a in agents:
@@ -196,11 +196,11 @@ Conversation:
 {history_str}"""
             
             response = await litellm.acompletion(
-                model="mistral/mistral-small-latest",
+                model=settings.default_llm_model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
                 max_tokens=20,
-                timeout=5.0
+                timeout=15.0
             )
             
             raw_ids = response.choices[0].message.content.strip()
@@ -209,7 +209,6 @@ Conversation:
             
             if valid_ids:
                 log.info(f"LLM ROUTER successfully selected Agent IDs: {valid_ids}")
-                agent = agent_map[valid_ids[0]]  # Primary agent context
                 
                 # Context-aware endpoint ranking
                 user_input = _sanitize_input(req.message).lower()
@@ -221,26 +220,49 @@ Conversation:
                 keywords = [w for w in re.findall(r'\w+', context_text) if len(w) > 2]
                 
                 valid_metadata = [ep for ep in all_metadata if ep.agent_id in valid_ids]
+                
+                # Group and score endpoints by agent to avoid starvation of any selected agent's tools
+                agent_endpoints = {aid: [] for aid in valid_ids}
+                best_agent_id = valid_ids[0]
+                max_score = -1
+                
                 for ep in valid_metadata:
                     score = 0
                     path_lower = ep.path.lower()
                     summary_lower = (ep.summary or "").lower()
+                    desc_lower = (ep.description or "").lower()
                     for kw in keywords:
                         if kw in path_lower:
                             score += 10
                         if kw in summary_lower:
                             score += 5
+                        if kw in desc_lower:
+                            score += 3
                     score += max(0, 5 - (ep.path.count('/') * 0.5))
-                # If a specific agent was selected, we should prioritize its endpoints
-                # while still allowing some global context if needed.
-                # For now, let's give the selected agent its FULL toolkit.
+                    
+                    if score > max_score:
+                        max_score = score
+                        best_agent_id = ep.agent_id
+                    
+                    if ep.agent_id in agent_endpoints:
+                        agent_endpoints[ep.agent_id].append((score, ep.id))
+                
+                # Primary agent context is the one with the highest scoring endpoint
+                agent = agent_map[best_agent_id]
+                
+                # Select the top relevant endpoints for each agent, distributing limits evenly
+                top_ep_ids = []
+                limit_per_agent = max(6, 18 // len(valid_ids))
+                for aid, eps in agent_endpoints.items():
+                    eps.sort(key=lambda x: x[0], reverse=True)
+                    top_ep_ids.extend([item[1] for item in eps[:limit_per_agent]])
+
                 endpoints = db.query(Endpoint).filter(
-                    Endpoint.agent_id == agent.id,
+                    Endpoint.id.in_(top_ep_ids),
                     Endpoint.is_locked.is_(False)
                 ).all()
                 
-                # If we need even more context (e.g. multi-agent coordination), we could add more.
-                log.info(f"Passed {len(endpoints)} tools to agent {agent.name}")
+                log.info(f"Passed {len(endpoints)} ranked tools to agent {agent.name}")
             else:
                 raise ValueError("Invalid IDs received from LLM")
                 
@@ -299,7 +321,18 @@ Conversation:
                 "auth_header":  ep_agent.auth_header,
                 "auth_secret":  ep_agent.auth_secret,
                 "custom_headers": ep_agent.custom_headers,
+                "source_type":  ep.source_type if hasattr(ep, "source_type") else "rest",
+                "mcp_server_url": ep.mcp_server_url if hasattr(ep, "mcp_server_url") else None,
             })
+
+    # Fetch history for multi-turn continuity
+    history = []
+    if session_id:
+        db_msgs = db.query(ChatMessage).filter(
+            ChatMessage.conversation_id == session_id
+        ).order_by(ChatMessage.created_at.desc()).limit(10).all()
+        for m in reversed(db_msgs):
+            history.append({"role": m.role, "content": m.content})
 
     params = {
         "user_input": _sanitize_input(req.message),
@@ -313,6 +346,8 @@ Conversation:
         "agent_name": "orchestrated_agent",
         "model": agent.model_id,
         "session_id": session_id,
+        "history": history,
+        "user_id": str(user.id),
     }
 
     from services.agent import run_agent
@@ -329,6 +364,8 @@ Conversation:
         api_response=encrypt_secret(json.dumps(result.get("api_response"), default=str)[:4096]),
         llm_thought=f"Orchestrated match targeting operational domain: {agent.name}",
         error=result.get("error", ""),
+        input_tokens=result.get("input_tokens", 0),
+        output_tokens=result.get("output_tokens", 0),
     )
     db.add(log_entry)
     db.commit()
@@ -420,12 +457,54 @@ async def chat(
             # Bonus for shorter paths (usually more root-level/common)
             score += max(0, 5 - (ep.path.count('/') * 0.5))
             
-            if score > 0 or len(all_metadata) <= 15:
-                ranked_endpoints.append((score, ep.id))
+            ranked_endpoints.append((score, ep.id))
 
-        # Sort by score and take top 15
-        ranked_endpoints.sort(key=lambda x: x[0], reverse=True)
-        top_ids = [item[1] for item in ranked_endpoints[:15]]
+        # Sort by score and select endpoints
+        # To avoid starving any toolkit (e.g. Gmail, YouTube) when many endpoints exist,
+        # we group tools by service category and ensure fair representation.
+        ranked_by_category = {}
+        for score, ep_id in ranked_endpoints:
+            ep_meta = next((e for e in all_metadata if e.id == ep_id), None)
+            if ep_meta:
+                path_upper = ep_meta.path.upper()
+                if "/MCP/TOOLS/" in path_upper:
+                    parts = path_upper.split("/MCP/TOOLS/")[-1].split("_")
+                    category = parts[0] if parts else "DEFAULT"
+                else:
+                    segments = [s for s in ep_meta.path.split("/") if s]
+                    category = segments[0].upper() if segments else "DEFAULT"
+            else:
+                category = "DEFAULT"
+                
+            if category not in ranked_by_category:
+                ranked_by_category[category] = []
+            ranked_by_category[category].append((score, ep_id))
+
+        if len(ranked_endpoints) <= 60:
+            top_ids = [item[1] for item in ranked_endpoints]
+        else:
+            top_ids = []
+            MAX_TOTAL = 60
+            MIN_PER_CATEGORY = 8
+
+            # 1. Select the top N endpoints from each category to guarantee coverage
+            for cat, items in ranked_by_category.items():
+                items.sort(key=lambda x: x[0], reverse=True)
+                for score, ep_id in items[:MIN_PER_CATEGORY]:
+                    if ep_id not in top_ids:
+                        top_ids.append(ep_id)
+
+            # 2. Fill the remaining slots with globally highest-ranked remaining endpoints
+            all_remaining = []
+            for cat, items in ranked_by_category.items():
+                all_remaining.extend(items[MIN_PER_CATEGORY:])
+                
+            all_remaining.sort(key=lambda x: x[0], reverse=True)
+            for score, ep_id in all_remaining:
+                if len(top_ids) >= MAX_TOTAL:
+                    break
+                if ep_id not in top_ids:
+                    top_ids.append(ep_id)
 
         # Step 3: Fetch full details only for the most relevant endpoints
         endpoints = db.query(Endpoint).filter(Endpoint.id.in_(top_ids)).all()
@@ -438,9 +517,20 @@ async def chat(
                 "description":  ep.description,
                 "parameters":   ep.parameters or [],
                 "request_body": ep.request_body or {},
+                "source_type":  ep.source_type if hasattr(ep, "source_type") else "rest",
+                "mcp_server_url": ep.mcp_server_url if hasattr(ep, "mcp_server_url") else None,
             }
             for ep in endpoints
         ]
+
+    # Fetch history for multi-turn continuity
+    history = []
+    if session_id:
+        db_msgs = db.query(ChatMessage).filter(
+            ChatMessage.conversation_id == session_id
+        ).order_by(ChatMessage.created_at.desc()).limit(10).all()
+        for m in reversed(db_msgs):
+            history.append({"role": m.role, "content": m.content})
 
     params = {
         "user_input": _sanitize_input(req.message),
@@ -454,6 +544,9 @@ async def chat(
         "agent_name": agent.name,
         "model": agent.model_id,
         "session_id": session_id,
+        "history": history,
+        "user_id": str(user.id),
+        "agent_id": agent.id,
     }
 
     if stream:
@@ -479,6 +572,8 @@ async def chat(
                             api_response=encrypt_secret(json.dumps(res.get("api_response"), default=str)[:4096]),
                             llm_thought=f"Auth: {agent.auth_type} | SecretLen: {len(agent.auth_secret)}",
                             error=res.get("error", ""),
+                            input_tokens=res.get("input_tokens", 0),
+                            output_tokens=res.get("output_tokens", 0),
                         )
                         db.add(log_entry)
                         db.commit()
@@ -503,6 +598,8 @@ async def chat(
         api_response=encrypt_secret(json.dumps(result.get("api_response"), default=str)[:4096]),
         llm_thought=f"Auth: {agent.auth_type} | SecretLen: {len(agent.auth_secret)}",
         error=result.get("error", ""),
+        input_tokens=result.get("input_tokens", 0),
+        output_tokens=result.get("output_tokens", 0),
     )
     db.add(log_entry)
     db.commit()

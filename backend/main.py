@@ -23,9 +23,9 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from utils.limiter import limiter
 
-from config import get_settings
-from database import Base, engine
-from routes import agents, chat, auth, billing
+from config.config import get_settings
+from database.database import Base, engine
+from routes import agents, chat, auth, billing, oauth
 from utils.auth import get_current_user
 
 from utils.logging_config import setup_logging
@@ -35,6 +35,15 @@ from utils.validate_env import validate_environment
 settings = get_settings()
 setup_logging(log_level=settings.log_level, is_prod=settings.is_production)
 log = logging.getLogger(__name__)
+
+# Patch LiteLLM to map the "error" finish reason to "stop" to suppress unmapped warning
+try:
+    import litellm.litellm_core_utils.core_helpers as litellm_helpers
+    if hasattr(litellm_helpers, "_FINISH_REASON_MAP"):
+        litellm_helpers._FINISH_REASON_MAP["error"] = "stop"
+except Exception as e:
+    log.warning(f"Failed to patch LiteLLM _FINISH_REASON_MAP: {e}")
+
 
 # ─── Lifespan ─────────────────────────────────────────────────────────────────
 
@@ -153,6 +162,12 @@ app.include_router(
 app.include_router(
     billing.router,
     prefix="/api/v1",
+)
+
+app.include_router(
+    oauth.router,
+    prefix="/api/v1",
+    dependencies=[Depends(get_current_user)]
 )
 
 

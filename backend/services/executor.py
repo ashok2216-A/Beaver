@@ -46,6 +46,12 @@ def _build_auth_headers(auth_type: str, auth_secret: str, url: str, auth_header:
     
     # Clean the secret (token)
     token = auth_secret.strip()
+
+    # SEC: If the secret is a JSON block (multi-key), we usually don't want to send it in a header
+    # unless explicitly requested via auth_header. This prevents leaking JSON keys in Bearer headers.
+    if token.startswith("{") and a_type in ("apikey", "query_key") and not auth_header:
+        return {}
+
     if token.lower().startswith("bearer "):
         token = token[7:].strip()
     elif token.lower().startswith("token "):
@@ -62,6 +68,27 @@ def _build_auth_headers(auth_type: str, auth_secret: str, url: str, auth_header:
         return {header_name: token}
 
     return {}
+
+
+def _unflatten_params(params: dict[str, Any]) -> dict[str, Any]:
+    """
+    Convert a flat dict with dot-notation keys into a nested dict.
+    e.g. {'user.name': 'Bob', 'user.age': 30} -> {'user': {'name': 'Bob', 'age': 30}}
+    """
+    result = {}
+    for key, value in params.items():
+        if "." not in key:
+            result[key] = value
+            continue
+            
+        parts = key.split(".")
+        d = result
+        for part in parts[:-1]:
+            if part not in d or not isinstance(d[part], dict):
+                d[part] = {}
+            d = d[part]
+        d[parts[-1]] = value
+    return result
 
 
 async def call_api(
@@ -143,6 +170,23 @@ async def call_api(
         else:
             body_params[name] = value
 
+    # Support Multi-Key Auth Injection (e.g. Vonage api_key + api_secret)
+    if auth_type in ("apikey", "query_key") and auth_secret:
+        auth_data = {}
+        if auth_secret.strip().startswith("{"):
+            try:
+                auth_data = json.loads(auth_secret)
+            except Exception:
+                auth_data = {auth_header or "api_key": auth_secret}
+        else:
+            auth_data = {auth_header or "api_key": auth_secret}
+
+        for k, v in auth_data.items():
+            if method_upper in ("GET", "DELETE") or auth_type == "query_key":
+                query_params[k] = v
+            else:
+                body_params[k] = v
+
     headers = {
         "User-Agent":   "api2bot-studio/1.0",
         "Content-Type": "application/json",
@@ -150,11 +194,6 @@ async def call_api(
         **_build_auth_headers(auth_type, auth_secret, url, auth_header),
     }
 
-    # Support Query Parameter Auth (e.g. ?api_key=...)
-    if (auth_type or "").lower() == "query_key" and auth_secret:
-        param_name = auth_header or "api_key"
-        query_params[param_name] = auth_secret
-    
     # Inject dynamic custom headers
     if custom_headers:
         headers.update(custom_headers)
@@ -174,13 +213,16 @@ async def call_api(
             elif method_upper == "DELETE":
                 r = await client.delete(url, params=query_params, headers=headers)
             elif method_upper in ("POST", "PUT", "PATCH"):
+                # Unflatten body params to support nested JSON structures (e.g. conversation_config.model_id)
+                final_body = _unflatten_params(body_params) if body_params else {}
+                
                 # Ensure we send an empty JSON body {} instead of None for methods that usually expect a body,
                 # as some APIs (like GitHub starring) require Content-Length: 0 or an empty body.
                 r = await client.request(
                     method_upper,
                     url,
                     params=query_params,
-                    json=body_params if body_params else {},
+                    json=final_body,
                     headers=headers,
                 )
             else:

@@ -7,7 +7,7 @@ import { useAuth } from "@clerk/nextjs"
 import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { A2InputForm } from "@/components/a2ui/components"
+import { A2InputForm, A2AudioPlayer } from "@/components/a2ui/components"
 
 interface MessageChunk {
   type: 'text' | 'a2ui'
@@ -56,6 +56,7 @@ export default function PlaygroundPage() {
   const [history, setHistory] = useState<any[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(true)
   const [sessionId, setSessionId] = useState<string>("")
+  const [isLoadingConversation, setIsLoadingConversation] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const fetchHistory = async () => {
@@ -123,7 +124,8 @@ export default function PlaygroundPage() {
 
   const loadConversation = async (id: string) => {
     setSessionId(id)
-    setIsLoading(true)
+    setIsLoadingConversation(true)
+    setMessages([]) // Clear messages while loading
     try {
       const token = await getToken()
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/conversations/${id}`, {
@@ -136,7 +138,7 @@ export default function PlaygroundPage() {
     } catch (err) {
       console.error("Failed to load conversation:", err)
     } finally {
-      setIsLoading(false)
+      setIsLoadingConversation(false)
     }
   }
 
@@ -266,7 +268,7 @@ export default function PlaygroundPage() {
     <div className="h-[calc(100vh-8.5rem)] flex overflow-hidden">
       
       {/* ChatGPT Style History Sidebar */}
-      <div className="w-64 flex flex-col bg-white/20 backdrop-blur-xl border-r border-slate-200 p-4 shrink-0 overflow-y-auto custom-scrollbar animate-in slide-in-from-left duration-300">
+      <div className="w-64 flex flex-col bg-white/20 backdrop-blur-xl border-r border-slate-200 p-4 shrink-0 animate-in slide-in-from-left duration-300">
         <h2 className="text-xl font-bold text-foreground mb-4 px-1">Playground</h2>
         <button
           onClick={() => {
@@ -285,52 +287,56 @@ export default function PlaygroundPage() {
           New Chat
         </button>
 
-        <h3 className="text-[10px] font-bold text-muted-foreground/80 mb-4 flex items-center gap-2 px-2 uppercase tracking-widest">
+        <h3 className="text-[10px] font-bold text-muted-foreground/80 mb-2 flex items-center gap-2 px-2 uppercase tracking-widest">
           Chat History
         </h3>
-        {isLoadingHistory ? (
-          <div className="flex flex-col items-center justify-center py-10">
-            <Loader2 className="w-4 h-4 animate-spin text-primary/60" />
-          </div>
-        ) : history.length === 0 ? (
-          <div className="text-[10px] text-muted-foreground/40 text-center py-10 px-2 italic">
-            No active chat threads.
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {history.map((convItem) => (
-              <div
-                key={convItem.id}
-                className={cn(
-                  "relative w-full rounded-xl border flex items-center group transition-all duration-200",
-                  sessionId === convItem.id 
-                    ? "bg-white/60 backdrop-blur-md border-slate-200 shadow-[0_4px_12px_rgba(0,0,0,0.05)]" 
-                    : "border-slate-100/50 hover:bg-white/40 hover:border-slate-200"
-                )}
-              >
-                <button
-                  onClick={() => loadConversation(convItem.id)}
-                  className="flex-1 text-left p-2.5 text-xs flex flex-col gap-1 text-muted-foreground hover:text-foreground"
+        
+        {/* Scrollable container for threads */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pr-1">
+          {isLoadingHistory ? (
+            <div className="flex flex-col items-center justify-center py-10">
+              <Loader2 className="w-4 h-4 animate-spin text-primary/60" />
+            </div>
+          ) : history.length === 0 ? (
+            <div className="text-[10px] text-muted-foreground/40 text-center py-10 px-2 italic">
+              No active chat threads.
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {history.map((convItem) => (
+                <div
+                  key={convItem.id}
+                  className={cn(
+                    "relative w-full rounded-xl border flex items-center group transition-all duration-200",
+                    sessionId === convItem.id 
+                      ? "bg-white/60 backdrop-blur-md border-slate-200 shadow-[0_4px_12px_rgba(0,0,0,0.05)]" 
+                      : "border-slate-100/50 hover:bg-white/40 hover:border-slate-200"
+                  )}
                 >
-                  <span className={cn("truncate transition-all w-[140px]", sessionId === convItem.id ? "text-primary font-bold" : "")}>
-                    {convItem.title || "Conversation"}
-                  </span>
-                  <span className="text-[9px] text-muted-foreground/40">
-                    {new Date(convItem.created_at).toLocaleDateString()}
-                  </span>
-                </button>
-                
-                <button
-                  onClick={(e) => deleteConversation(convItem.id, e)}
-                  className="p-2 mr-1 rounded-lg text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 flex items-center justify-center shrink-0"
-                  title="Delete thread"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+                  <button
+                    onClick={() => loadConversation(convItem.id)}
+                    className="flex-1 text-left p-2.5 text-xs flex flex-col gap-1 text-muted-foreground hover:text-foreground"
+                  >
+                    <span className={cn("truncate transition-all w-[140px]", sessionId === convItem.id ? "text-primary font-bold" : "")}>
+                      {convItem.title || "Conversation"}
+                    </span>
+                    <span className="text-[9px] text-muted-foreground/40">
+                      {new Date(convItem.created_at).toLocaleDateString()}
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={(e) => deleteConversation(convItem.id, e)}
+                    className="p-2 mr-1 rounded-lg text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 flex items-center justify-center shrink-0"
+                    title="Delete thread"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col items-center relative overflow-hidden">
@@ -437,14 +443,21 @@ export default function PlaygroundPage() {
     )}
   </div>
 
-      {/* Full width scroll container so scrollbar stays in the corner */}
       <div 
         ref={scrollRef} 
         className="flex-1 w-full overflow-y-auto custom-scrollbar flex flex-col items-center"
       >
         <div className="w-full max-w-3xl px-4 md:px-6 pt-10 pb-40 space-y-8">
-        {messages.map((message) => {
-          const isAI = message.role === 'assistant'
+        {isLoadingConversation ? (
+          <div className="flex flex-col items-center justify-center py-32 space-y-4 animate-in fade-in duration-300">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+            <p className="text-sm text-muted-foreground font-medium animate-pulse">Loading...</p>
+          </div>
+        ) : (
+          messages.map((message) => {
+            const isAI = message.role === 'assistant'
           return (
             <div
               key={message.id}
@@ -478,10 +491,26 @@ export default function PlaygroundPage() {
                         {message.chunks.map((chunk, chunkIdx) => (
                           <div key={chunkIdx}>
                             {chunk.type === 'a2ui' ? (
-                              <A2InputForm
-                                data={chunk.content as any}
-                                onSubmit={(msg) => handleSend(msg)}
-                              />
+                              (() => {
+                                const a2data = chunk.content as any;
+                                const comp = a2data?.a2ui?.component?.toLowerCase?.();
+                                if (comp === 'audioplayer' || comp === 'audio') {
+                                  return (
+                                    <A2AudioPlayer
+                                      label={a2data.a2ui.label}
+                                      src={a2data.a2ui.src}
+                                      data={a2data.a2ui.data}
+                                      title={a2data.a2ui.title}
+                                    />
+                                  );
+                                }
+                                return (
+                                  <A2InputForm
+                                    data={a2data}
+                                    onSubmit={(msg) => handleSend(msg)}
+                                  />
+                                );
+                              })()
                             ) : (
                               <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
@@ -495,7 +524,9 @@ export default function PlaygroundPage() {
                                   table: ({node, ...props}) => <div className="overflow-x-auto my-2 w-full"><table className="min-w-full border-collapse border border-slate-200 dark:border-white/10" {...props} /></div>,
                                   th: ({node, ...props}) => <th className="border border-slate-200 dark:border-white/10 px-3 py-1 bg-muted/30 text-left font-semibold text-xs" {...props} />,
                                   td: ({node, ...props}) => <td className="border border-slate-200 dark:border-white/10 px-3 py-1 text-xs text-slate-700 dark:text-slate-300" {...props} />,
-                                  code: ({node, ...props}) => <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono border border-black/5 dark:border-white/5" {...props} />,
+                                  code: ({node, ...props}) => <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono border border-black/5 dark:border-white/5 whitespace-pre-wrap break-words" {...props} />,
+                                  pre: ({node, ...props}) => <pre className="whitespace-pre-wrap break-words overflow-x-auto my-2" {...props} />,
+                                  a: ({node, ...props}) => <a className="text-primary hover:underline cursor-pointer font-medium" target="_blank" rel="noopener noreferrer" {...props} />,
                                 }}
                               >
                                 {String(chunk.content)}
@@ -517,7 +548,9 @@ export default function PlaygroundPage() {
                           table: ({node, ...props}) => <div className="overflow-x-auto my-2 w-full"><table className="min-w-full border-collapse border border-slate-200 dark:border-white/10" {...props} /></div>,
                           th: ({node, ...props}) => <th className="border border-slate-200 dark:border-white/10 px-3 py-1 bg-muted/30 text-left font-semibold text-xs" {...props} />,
                           td: ({node, ...props}) => <td className="border border-slate-200 dark:border-white/10 px-3 py-1 text-xs text-slate-700 dark:text-slate-300" {...props} />,
-                          code: ({node, ...props}) => <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono border border-black/5 dark:border-white/5" {...props} />,
+                          code: ({node, ...props}) => <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono border border-black/5 dark:border-white/5 whitespace-pre-wrap break-words" {...props} />,
+                          pre: ({node, ...props}) => <pre className="whitespace-pre-wrap break-words overflow-x-auto my-2" {...props} />,
+                          a: ({node, ...props}) => <a className="text-primary hover:underline cursor-pointer font-medium" target="_blank" rel="noopener noreferrer" {...props} />,
                         }}
                       >
                         {message.content}
@@ -561,7 +594,8 @@ export default function PlaygroundPage() {
               </div>
             </div>
           )
-        })}
+          })
+        )}
 
         {/* Dynamic Loading block */}
         {isLoading && (

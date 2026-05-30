@@ -1,9 +1,9 @@
 import secrets
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database import get_db
-from models import User, ApiKey
-from schemas import ApiKeyCreate, ApiKeyOut, MessageOut, UserOut, UserUpdate
+from database.database import get_db
+from models.models import User, ApiKey
+from schemas.schemas import ApiKeyCreate, ApiKeyOut, MessageOut, UserOut, UserUpdate
 from utils.auth import get_current_user, hash_key
 from utils.email import send_agent_alert
 

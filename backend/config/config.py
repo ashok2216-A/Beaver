@@ -20,11 +20,12 @@ class Settings(BaseSettings):
     # ── LLM ───────────────────────────────────────────────────────
     gemini_api_key: str = ""
     mistral_api_key: str = ""
-    gemini_model: str = "mistral/mistral-small-latest"
+    default_llm_model: str = "openrouter/openai/gpt-4o-mini"
     
     # ── Discovery ──────────────────────────────────────────────────
     firecrawl_api_key: str = ""
     rapidapi_key: str = ""
+    composio_api_key: str = ""
 
     # ── Email (SMTP) ───────────────────────────────────────────────
     email_host: str = "smtp.gmail.com"
@@ -39,6 +40,8 @@ class Settings(BaseSettings):
     admin_key: str = "" # Legacy
     secret_key: str = "change_me_in_production"
     access_token_expire_minutes: int = 60
+    
+    # OAuth is managed by Composio — no client ID/secrets needed here
 
     # ── Billing ───────────────────────────────────────────────────
     payment_provider: str = "both" # razorpay | stripe | both

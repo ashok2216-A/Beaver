@@ -1,0 +1,24 @@
+FROM python:3.11-slim
+
+# Install system dependencies, Git, and Node.js 20 (for npx MCP execution)
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy python requirements and install
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy backend codebase
+COPY backend /app/backend
+
+WORKDIR /app/backend
+
+# Exposed port will be injected by Render environment ($PORT)
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
