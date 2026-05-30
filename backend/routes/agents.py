@@ -165,7 +165,7 @@ def _ingest_spec(agent: Agent, spec: dict | str, db: Session) -> Agent:
         prompt = f"Write a single, highly concise 2-sentence description summarizing the core purpose of this API based on its endpoints: {eps_summary}. Return ONLY the plain text description. Do not include quotes or formatting."
         
         res = litellm.completion(
-            model="openrouter/nousresearch/hermes-3-llama-3.1-405b:free",
+            model="gemini/gemini-3.1-flash-lite",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=60,
             temperature=0.1
@@ -353,7 +353,7 @@ async def ingest_file(
         auth_type=auth_type,
         auth_header=auth_header,
         auth_secret=encrypt_secret(auth_secret or ""),
-        model_id="openrouter/nousresearch/hermes-3-llama-3.1-405b:free",
+        model_id="gemini/gemini-3.1-flash-lite",
         status=AgentStatus.draft,
         api_spec="",
     )

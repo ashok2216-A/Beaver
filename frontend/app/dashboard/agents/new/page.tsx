@@ -481,7 +481,7 @@ function NewAgentContent() {
             auth_type: authType,
             auth_header: authHeader,
             auth_secret: authSecret,
-            model_id: "openrouter/nousresearch/hermes-3-llama-3.1-405b:free",
+            model_id: "gemini/gemini-3.1-flash-lite",
             api_spec: apiSpec || null,
             source_type: sourceType,
             mcp_server_url: mcpServerUrl || baseUrl
