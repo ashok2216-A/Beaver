@@ -40,3 +40,5 @@ ruff==0.15.12
 resend==2.4.0
 genson>=1.3.0
 json-repair>=0.30.0
+
+composio-core==0.7.21
