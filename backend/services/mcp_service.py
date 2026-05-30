@@ -64,6 +64,8 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
 
     from mcp.client.streamable_http import streamablehttp_client
     from mcp.client.session import ClientSession
+    from database.database import SessionLocal
+    from models.models import UserIntegration
     
     settings = get_settings()
     api_key = settings.composio_api_key
@@ -119,6 +121,52 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
                     connected_account_ids = list(slug_to_conn.values())
             except Exception as e:
                 log.warning(f"Failed to fetch connected accounts for toolkits allowlist: {e}")
+
+            # Dynamic Fallback: In a single-tenant local app, if the current session has 0 accounts (e.g. cleared localStorage),
+            # try to recover by fetching the primary user ID from the database.
+            if not connected_account_ids:
+                try:
+                    db_user_id = None
+                    with SessionLocal() as db:
+                        first_integration = db.query(UserIntegration).first()
+                        if first_integration:
+                            db_user_id = first_integration.user_id
+                            
+                    if db_user_id and db_user_id != user_id:
+                        fallback_resp = await client.get(
+                            "https://backend.composio.dev/api/v3.1/connected_accounts",
+                            params={"user_ids": db_user_id},
+                            headers={"x-api-key": api_key},
+                            timeout=timeout
+                        )
+                        if fallback_resp.status_code == 200:
+                            slug_to_conn = {}
+                            for item in fallback_resp.json().get("items", []):
+                                if item.get("status") == "ACTIVE":
+                                    conn_id = item.get("id")
+                                    raw_slug = (
+                                        item.get("toolkit", {}).get("slug") or
+                                        item.get("toolkit_slug") or 
+                                        item.get("appSlug") or 
+                                        item.get("toolkitSlug") or 
+                                        item.get("appId") or 
+                                        "unknown"
+                                    )
+                                    if raw_slug:
+                                        reg_item = get_integration_by_alias(raw_slug)
+                                        slug = reg_item.get("composio_slug") if reg_item else raw_slug
+                                        if target_toolkit and slug != target_toolkit:
+                                            continue
+                                        if conn_id:
+                                            slug_to_conn[slug] = conn_id
+                                        if slug not in toolkits_allowlist:
+                                            toolkits_allowlist.append(slug)
+                            connected_account_ids = list(slug_to_conn.values())
+                            if connected_account_ids:
+                                user_id = db_user_id
+                                log.info(f"Recovered {len(connected_account_ids)} Composio accounts using DB fallback user_id {db_user_id}")
+                except Exception as e:
+                    log.warning(f"Failed DB user_id fallback for Composio: {e}")
 
             if target_toolkit and target_toolkit not in toolkits_allowlist:
                 toolkits_allowlist.append(target_toolkit)
@@ -282,52 +330,6 @@ async def _discover_async(mcp_server_url: str, user_id: Optional[str]) -> list[d
             for t in tools if isinstance(t, dict)
         ]
 
-    # ── Local subprocess (npx, docker, python) ────────────────
-    if url_lower.startswith("docker:") or url_lower.startswith("npx:") or url_lower.startswith("python:"):
-        from services.mcp_subprocess import subprocess_manager
-        try:
-            return await subprocess_manager.discover_tools(mcp_server_url, auth_token)
-        except Exception as e:
-            log.warning(f"Failed stdio subprocess tool discovery for {mcp_server_url}: {e}")
-            return []
-
-    rpc_payload = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "tools/list"
-    }
-    
-    headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
-    if user_id:
-        headers["X-User-Id"] = str(user_id)
-    if auth_token:
-        headers["X-OAuth-Token"] = auth_token
-        headers["Authorization"] = f"Bearer {auth_token}"
-
-    try:
-        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
-            r = await client.post(mcp_server_url, json=rpc_payload, headers=headers)
-            if r.status_code == 200:
-                data = r.json()
-                tools = data.get("result", {}).get("tools", [])
-                if tools:
-                    return [
-                        {
-                            "name": t.get("name", "tool"),
-                            "description": t.get("description", ""),
-                            "parameters": [
-                                {"name": k, "type": v.get("type", "string"), "required": k in t.get("inputSchema", {}).get("required", [])}
-                                for k, v in t.get("inputSchema", {}).get("properties", {}).items()
-                            ]
-                        }
-                        for t in tools if isinstance(t, dict)
-                    ]
-    except Exception as e:
-        log.warning(f"Failed to fetch dynamic tools async from {mcp_server_url}: {e}")
-
     return []
 
 
@@ -403,71 +405,4 @@ async def execute_mcp_tool(
                 return {"data": content[0].get("text", "")}, status_code, latency
         return {"data": result}, status_code, latency
 
-    # ── Local subprocess (npx, docker, python) ────────────────
-    if url_lower.startswith("docker:") or url_lower.startswith("npx:") or url_lower.startswith("python:"):
-        from services.mcp_subprocess import subprocess_manager
-        data, status = await subprocess_manager.execute_tool(f"session_{user_id}_{mcp_server_url}", mcp_server_url, tool_name, arguments, auth_token)
-        latency = int((asyncio.get_event_loop().time() - start_time) * 1000)
-        
-        if status == 200 and isinstance(data, dict) and data.get("isError"):
-            status = 400
-            
-        return {"data": data}, status, latency
-
-    # 2. Build Standard MCP JSON-RPC Payload
-    rpc_payload = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "tools/call",
-        "params": {
-            "name": tool_name,
-            "arguments": arguments
-        }
-    }
-
-    # Pass the user OAuth token securely via headers to the remote MCP Gateway
-    headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "X-User-Id": str(user_id),
-    }
-    
-    if auth_token:
-        headers["X-OAuth-Token"] = auth_token
-        headers["Authorization"] = f"Bearer {auth_token}"
-
-    log.info(f"MCP EXECUTOR: Calling {tool_name} on remote server {mcp_server_url} (Provider={provider})")
-
-    try:
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-            r = await client.post(mcp_server_url, json=rpc_payload, headers=headers)
-            latency = int((asyncio.get_event_loop().time() - start_time) * 1000)
-            
-            if r.status_code >= 400:
-                log.error(f"MCP Gateway error: {r.text}")
-                return {"error": "mcp_gateway_error", "detail": r.text}, r.status_code, latency
-
-            resp_data = r.json()
-            # Standard MCP tool response format: { "jsonrpc": "2.0", "id": 1, "result": { "content": [{ "type": "text", "text": "..." }] } }
-            result = resp_data.get("result", {})
-            content = result.get("content", [])
-            
-            is_error = result.get("isError", False)
-            status_code = 400 if is_error else 200
-            
-            if isinstance(content, list):
-                text_items = [c.get("text", "") for c in content if isinstance(c, dict) and c.get("type") == "text"]
-                if text_items and len(text_items) == len(content):
-                    return {"data": "\n".join(text_items)}, status_code, latency
-                if len(content) == 1 and isinstance(content[0], dict) and content[0].get("type") == "text":
-                    return {"data": content[0].get("text", "")}, status_code, latency
-                
-            return {"data": result}, status_code, latency
-
-    except httpx.TimeoutException:
-        latency = int((asyncio.get_event_loop().time() - start_time) * 1000)
-        return {"error": "mcp_timeout", "detail": f"MCP server at {mcp_server_url} timed out after 30s."}, 504, latency
-    except Exception as exc:
-        latency = int((asyncio.get_event_loop().time() - start_time) * 1000)
-        log.exception(f"MCP execution failed for {tool_name}")
-        return {"error": "mcp_internal_error", "detail": str(exc)}, 500, latency
+    return {"error": "Unsupported MCP protocol or unknown endpoint. Only Composio is supported."}, 400, int((asyncio.get_event_loop().time() - start_time) * 1000)
