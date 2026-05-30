@@ -524,7 +524,9 @@ export default function PlaygroundPage() {
                                   table: ({node, ...props}) => <div className="overflow-x-auto my-2 w-full"><table className="min-w-full border-collapse border border-slate-200 dark:border-white/10" {...props} /></div>,
                                   th: ({node, ...props}) => <th className="border border-slate-200 dark:border-white/10 px-3 py-1 bg-muted/30 text-left font-semibold text-xs" {...props} />,
                                   td: ({node, ...props}) => <td className="border border-slate-200 dark:border-white/10 px-3 py-1 text-xs text-slate-700 dark:text-slate-300" {...props} />,
-                                  code: ({node, ...props}) => <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono border border-black/5 dark:border-white/5" {...props} />,
+                                  code: ({node, ...props}) => <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono border border-black/5 dark:border-white/5 whitespace-pre-wrap break-words" {...props} />,
+                                  pre: ({node, ...props}) => <pre className="whitespace-pre-wrap break-words overflow-x-auto my-2" {...props} />,
+                                  a: ({node, ...props}) => <a className="text-primary hover:underline cursor-pointer font-medium" target="_blank" rel="noopener noreferrer" {...props} />,
                                 }}
                               >
                                 {String(chunk.content)}
@@ -546,7 +548,9 @@ export default function PlaygroundPage() {
                           table: ({node, ...props}) => <div className="overflow-x-auto my-2 w-full"><table className="min-w-full border-collapse border border-slate-200 dark:border-white/10" {...props} /></div>,
                           th: ({node, ...props}) => <th className="border border-slate-200 dark:border-white/10 px-3 py-1 bg-muted/30 text-left font-semibold text-xs" {...props} />,
                           td: ({node, ...props}) => <td className="border border-slate-200 dark:border-white/10 px-3 py-1 text-xs text-slate-700 dark:text-slate-300" {...props} />,
-                          code: ({node, ...props}) => <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono border border-black/5 dark:border-white/5" {...props} />,
+                          code: ({node, ...props}) => <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono border border-black/5 dark:border-white/5 whitespace-pre-wrap break-words" {...props} />,
+                          pre: ({node, ...props}) => <pre className="whitespace-pre-wrap break-words overflow-x-auto my-2" {...props} />,
+                          a: ({node, ...props}) => <a className="text-primary hover:underline cursor-pointer font-medium" target="_blank" rel="noopener noreferrer" {...props} />,
                         }}
                       >
                         {message.content}

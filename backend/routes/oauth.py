@@ -122,8 +122,8 @@ def list_integrations(user: User = Depends(get_current_user)):
 @router.get("/providers")
 def list_providers():
     """Return the central integration registry so the frontend can dynamically resolve auth types and aliases."""
-    from services.mcp_registry import INTEGRATION_REGISTRY
-    return INTEGRATION_REGISTRY
+    from services.mcp_registry import get_integration_registry
+    return get_integration_registry()
 
 
 @router.post("/mark-connected", response_model=MessageOut)

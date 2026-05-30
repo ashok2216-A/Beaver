@@ -17,15 +17,9 @@ from database.database import SessionLocal
 from models.models import UserIntegration
 from utils.security import decrypt_secret, encrypt_secret
 
-from services.mcp_registry import INTEGRATION_REGISTRY, get_integration_by_alias
+from services.mcp_registry import get_integration_by_alias, get_integration_registry
 
 log = logging.getLogger(__name__)
-
-# Map MCP server identifiers to OAuth provider names built dynamically from registry
-MCP_PROVIDER_MAP = {}
-for registry_item in INTEGRATION_REGISTRY.values():
-    for alias in registry_item["aliases"]:
-        MCP_PROVIDER_MAP[alias] = registry_item["provider_name"]
 
 
 async def refresh_oauth_token_if_needed(integration: UserIntegration, db: Session) -> str:
@@ -92,17 +86,19 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
                     timeout=timeout
                 )
                 if acc_resp.status_code == 200:
+                    slug_to_conn = {}
                     for item in acc_resp.json().get("items", []):
                         if item.get("status") == "ACTIVE":
                             conn_id = item.get("id")
                             
                             # Extract the slug, trying various common naming conventions in the Composio API
                             raw_slug = (
+                                item.get("toolkit", {}).get("slug") or
                                 item.get("toolkit_slug") or 
                                 item.get("appSlug") or 
                                 item.get("toolkitSlug") or 
                                 item.get("appId") or 
-                                (item.get("toolkit") or {}).get("slug")
+                                "unknown"
                             )
                             if raw_slug:
                                 # Resolve legacy/incorrect slugs using the centralized registry
@@ -114,10 +110,13 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
                                     continue
     
                                 if conn_id:
-                                    connected_account_ids.append(conn_id)
+                                    # Overwrite so we only keep one connection per slug
+                                    slug_to_conn[slug] = conn_id
                                     
                                 if slug not in toolkits_allowlist:
                                     toolkits_allowlist.append(slug)
+                                    
+                    connected_account_ids = list(slug_to_conn.values())
             except Exception as e:
                 log.warning(f"Failed to fetch connected accounts for toolkits allowlist: {e}")
 
@@ -242,10 +241,13 @@ async def _discover_async(mcp_server_url: str, user_id: Optional[str]) -> list[d
     url_lower = mcp_server_url.lower()
 
     provider = None
-    for key, val in MCP_PROVIDER_MAP.items():
-        if key in url_lower:
-            provider = val
-            break
+    # Special handling for legacy composio connection strings
+    if url_lower.startswith("composio:"):
+        provider = url_lower.split(":")[1]
+        
+    integration = get_integration_by_alias(url_lower)
+    if integration:
+        provider = integration.get("provider_name")
 
     auth_token = ""  # nosec B105
     if provider and user_id:
@@ -359,10 +361,11 @@ async def execute_mcp_tool(
     url_lower = mcp_server_url.lower()
     provider = provider_hint
     if not provider:
-        for key, val in MCP_PROVIDER_MAP.items():
-            if key in mcp_server_url.lower() or key in tool_name.lower():
-                provider = val
-                break
+        integration = get_integration_by_alias(mcp_server_url.lower())
+        if not integration:
+            integration = get_integration_by_alias(tool_name.lower())
+        if integration:
+            provider = integration.get("provider_name")
 
     auth_token = ""  # nosec B105
     if provider:

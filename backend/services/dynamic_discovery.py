@@ -68,7 +68,7 @@ Respond ONLY with a JSON object:
 
         try:
             res = await acompletion(
-                model="mistral/mistral-small-latest",
+                model="openrouter/nousresearch/hermes-3-llama-3.1-405b:free",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
                 response_format={ "type": "json_object" }
@@ -141,7 +141,7 @@ Respond ONLY with a JSON list of strings. No explanations."""
 
         try:
             res = await acompletion(
-                model="mistral/mistral-small-latest",
+                model="openrouter/nousresearch/hermes-3-llama-3.1-405b:free",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
                 response_format={ "type": "json_object" }

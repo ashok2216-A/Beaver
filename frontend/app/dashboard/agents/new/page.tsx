@@ -169,12 +169,23 @@ function NewAgentContent() {
   // Map template IDs to their provider strings and auth types dynamically from the backend registry
   const getRegistryItemForTemplate = (t: Template) => {
     const id = (t.id || "").toLowerCase();
+    
+    // 1. Try exact match first
     for (const key in providersRegistry) {
       const item = providersRegistry[key];
-      if (item.aliases && item.aliases.some((alias: string) => id.includes(alias))) {
+      if (item.aliases && item.aliases.includes(id)) {
         return item;
       }
     }
+    
+    // 2. Fallback to substring matching (only if it's the exact prefix or suffix to be safer)
+    for (const key in providersRegistry) {
+      const item = providersRegistry[key];
+      if (item.aliases && item.aliases.some((alias: string) => id === alias || id.replace(/_/g, "") === alias)) {
+        return item;
+      }
+    }
+    
     return null;
   };
 
@@ -335,47 +346,21 @@ function NewAgentContent() {
         }
       }
 
-      toast.info(`Connecting ${detail.name} and initiating MCP discovery...`);
-
-      // Create agent and trigger MCP discovery
-      const createRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: name,
-          description: desc,
-          base_url: mcpUrl,
-          auth_type: aType,
-          auth_header: "",
-          auth_secret: "",
-          model_id: "mistral/mistral-small-latest",
-          api_spec: null,
-          source_type: sType,
-          mcp_server_url: mcpUrl
-        })
-      });
-
-      if (!createRes.ok) {
-        throw new Error("Failed to create agent from template");
+      // Instead of auto-connecting, load the configuration into the manual form
+      // so the user can review it and provide any required authentication secrets.
+      setAgentName(name);
+      setBaseUrl(mcpUrl);
+      setMcpServerUrl(mcpUrl);
+      setSourceType(sType);
+      setDescription(desc);
+      setAuthType(aType);
+      setTab("manual");
+      
+      if (aType !== "none") {
+        toast.info(`Please provide authentication credentials for ${name} before connecting.`);
+      } else {
+        toast.info(`Review configuration for ${name} and click Save Integration.`);
       }
-
-      const agentData = await createRes.json();
-
-      // Mark as connected in localStorage
-      setConnectedTools(prev => {
-        const next = [...prev, t.id];
-        try { localStorage.setItem("beaver_connected_tools", JSON.stringify(next)); } catch (e) {}
-        return next;
-      });
-
-      // Navigate directly to the new agent's page
-      toast.success(`Connected "${name}" successfully!`);
-      setTimeout(() => {
-        router.push(`/dashboard/agents/${agentData.id}`);
-      }, 300);
 
     } catch (err) {
       toast.error("Failed to connect engine and discover tools");
@@ -496,7 +481,7 @@ function NewAgentContent() {
             auth_type: authType,
             auth_header: authHeader,
             auth_secret: authSecret,
-            model_id: "mistral/mistral-small-latest",
+            model_id: "openrouter/nousresearch/hermes-3-llama-3.1-405b:free",
             api_spec: apiSpec || null,
             source_type: sourceType,
             mcp_server_url: mcpServerUrl || baseUrl

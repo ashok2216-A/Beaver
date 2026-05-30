@@ -401,7 +401,7 @@ Return ONLY the JSON object. No other text.
     try:
         # We use a fast, small model for this utility task
         res = await litellm.acompletion(
-            model="mistral/mistral-small-latest",
+            model="openrouter/nousresearch/hermes-3-llama-3.1-405b:free",
             messages=[{"role": "user", "content": prompt}],
             api_key=api_key,
             temperature=0
@@ -458,7 +458,7 @@ Corrected JSON Payload:"""
     try:
         # We use a fast model for structural repair
         res = await litellm.acompletion(
-            model="mistral/mistral-small-latest",
+            model="openrouter/nousresearch/hermes-3-llama-3.1-405b:free",
             messages=[{"role": "user", "content": prompt}],
             api_key=api_key,
             temperature=0
@@ -812,7 +812,9 @@ def _build_agent(
 
             # FAILURE: Check if fixable via AI Repair
             is_tool_not_found = isinstance(mcp_res, dict) and "not found" in str(mcp_res).lower()
-            if status in (400, 422) and attempt < MAX_INTERNAL_RETRIES - 1 and not is_tool_not_found:
+            is_auth_error = isinstance(mcp_res, dict) and ("no active connection" in str(mcp_res).lower() or "unauthorized" in str(mcp_res).lower() or status in (401, 403))
+            
+            if status in (400, 422) and attempt < MAX_INTERNAL_RETRIES - 1 and not is_tool_not_found and not is_auth_error:
                 log.info(f"Self-Healing Attempt {attempt + 1}: Repairing payload for {method} {path} ({status})")
                 log.error(f"MCP_RES error details: {mcp_res}")
                 
@@ -922,50 +924,10 @@ def _build_agent(
             elif isinstance(data, str) and len(data) < 200:
                 hint = data
 
-            # FALLBACK: Generate intelligent correction form for the user
             is_tool_not_found = isinstance(data, str) and "not found" in data.lower() or (isinstance(data, dict) and "not found" in str(data).lower())
+            is_auth_error_fallback = isinstance(data, str) and "no active connection" in data.lower() or (isinstance(data, dict) and "no active connection" in str(data).lower())
             
-            if not is_tool_not_found:
-                log.info(f"A2UI FALLBACK: Generating intelligent correction form for {status} error from {path}")
-                
-                intelligent_form = None
-                if status in (400, 422) and data:
-                    try:
-                        # Pass the last attempted payload (potentially repaired) for context
-                        intelligent_form = await _generate_corrective_a2ui(status, path, method, data, current_payload)
-                    except Exception as e:
-                        log.error(f"Failed to generate intelligent A2UI form: {e}")
-    
-                if intelligent_form:
-                    a2ui_error_form = intelligent_form
-                else:
-                    # Default generic fallback form
-                    a2ui_error_form = {
-                        "a2ui": {
-                            "component": "form",
-                            "title": f"Fix API Parameters ({status})",
-                            "subtitle": str(hint),
-                            "submit_label": "Retry with Corrections",
-                            "children": [
-                                {
-                                    "component": "textfield",
-                                    "key": "retry_endpoint",
-                                    "label": "Failed Endpoint",
-                                    "value": f"{method.upper()} {path}",
-                                    "required": False
-                                },
-                                {
-                                    "component": "textfield",
-                                    "key": "user_correction",
-                                    "label": "Your Correction",
-                                    "placeholder": "Describe the missing fields or values",
-                                    "required": True,
-                                    "multiline": True
-                                }
-                            ]
-                        }
-                    }
-                
+            if not is_tool_not_found and not is_auth_error_fallback:
                 tool_log.append({
                     "path":        path,
                     "method":      method.upper(),
@@ -976,11 +938,12 @@ def _build_agent(
 
                 return json.dumps({
                     "status_code": status,
-                    "data": a2ui_error_form,
+                    "error_details": data,
+                    "hint": hint,
                     "note": (
-                        f"CRITICAL: The API call to {method.upper()} {path} failed even after internal repair attempts. "
-                        f"You MUST show the 'a2ui' JSON block exactly as provided below so the user can help. "
-                        f"Wait for the user's correction, then RETRY the same endpoint."
+                        f"CRITICAL: The API call to {method.upper()} {path} failed. "
+                        f"DO NOT generate any JSON forms. Instead, explain the issue to the user clearly using the error details "
+                        f"and ask them to provide the missing information or corrections directly in the chat so you can retry."
                     )
                 })
             
@@ -1260,7 +1223,7 @@ def _build_agent(
     if "gemini" in model_name.lower() or "mistral" in model_name.lower():
         model_name = settings.default_llm_model
         
-    adk_model = LiteLlm(model=model_name, num_retries=3)
+    adk_model = LiteLlm(model=model_name, num_retries=3, max_tokens=4096)
 
     async def auto_save_session_to_memory_callback(callback_context):
         """Automatically ingest the completed session into long-term memory."""
@@ -1388,6 +1351,9 @@ async def run_agent_stream(
                 if not content:
                     continue
                 
+                if role == "assistant":
+                    role = "model"
+                
                 adk_msg = genai_types.Content(role=role, parts=[genai_types.Part(text=content)])
                 await _session_service.add_message(
                     app_name=APP_NAME,
@@ -1501,7 +1467,7 @@ async def run_agent_stream(
     # Persist the assistant's response to the session for multi-turn continuity
     if final_text and session_id:
         try:
-            assistant_message = genai_types.Content(role="assistant", parts=[genai_types.Part(text=final_text)])
+            assistant_message = genai_types.Content(role="model", parts=[genai_types.Part(text=final_text)])
             # We use the low-level session service to ensure the message is stored
             # Note: The Runner usually handles the user message, but streaming responses 
             # often need manual persistence of the final consolidated text.

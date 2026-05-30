@@ -165,7 +165,7 @@ def _ingest_spec(agent: Agent, spec: dict | str, db: Session) -> Agent:
         prompt = f"Write a single, highly concise 2-sentence description summarizing the core purpose of this API based on its endpoints: {eps_summary}. Return ONLY the plain text description. Do not include quotes or formatting."
         
         res = litellm.completion(
-            model="mistral/mistral-small-latest",
+            model="openrouter/nousresearch/hermes-3-llama-3.1-405b:free",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=60,
             temperature=0.1
@@ -202,13 +202,10 @@ def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
 
     if source_type == "mcp_sse" and mcp_url:
         url_lower = mcp_url.lower()
-        provider = None
-        from services.mcp_service import MCP_PROVIDER_MAP
-        for key, val in MCP_PROVIDER_MAP.items():
-            if key in url_lower:
-                provider = val
-                break
-        if provider:
+        from services.mcp_registry import get_integration_by_alias
+        integration = get_integration_by_alias(url_lower)
+        if integration:
+            provider = integration.get("provider_name")
             from database.database import SessionLocal
             from models.models import UserIntegration
             try:
@@ -356,7 +353,7 @@ async def ingest_file(
         auth_type=auth_type,
         auth_header=auth_header,
         auth_secret=encrypt_secret(auth_secret or ""),
-        model_id="mistral/mistral-small-latest",
+        model_id="openrouter/nousresearch/hermes-3-llama-3.1-405b:free",
         status=AgentStatus.draft,
         api_spec="",
     )

@@ -52,7 +52,7 @@ async def test_shared_mcp_tool_authorization(mock_session_local):
     # Build the agent for Agent 417
     agent = _build_agent(
         agent_name="agent_417",
-        model="mistral/mistral-small-latest",
+        model="openrouter/nousresearch/hermes-3-llama-3.1-405b:free",
         system_prompt="",
         endpoints=[], # empty endpoints to trigger dynamic authorization
         base_url="https://api.example.com",
