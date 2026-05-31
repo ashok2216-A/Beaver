@@ -168,6 +168,8 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
                 except Exception as e:
                     log.warning(f"Failed DB user_id fallback for Composio: {e}")
 
+            # If the caller explicitly targets a toolkit (e.g. for creating a new connection),
+            # ALWAYS allow it in the session, even if it's not currently connected!
             if target_toolkit and target_toolkit not in toolkits_allowlist:
                 toolkits_allowlist.append(target_toolkit)
 
