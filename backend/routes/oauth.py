@@ -45,38 +45,51 @@ async def connect_provider(
     # Use Composio OAuth directly
     if settings.composio_api_key:
         try:
-            from services.mcp_service import _composio_rpc
-            import json
+            import httpx
+            import urllib.parse
             
-            # Use Composio MCP Tool to initiate connection to avoid deprecated SDK 410 errors
-            rpc_resp = await _composio_rpc(
-                'tools/call', 
-                {
-                    'name': 'COMPOSIO_MANAGE_CONNECTIONS', 
-                    'arguments': {
-                        'toolkits': [provider_lower],
-                        'reinitiate_all': True
-                    }
-                }, 
-                user_id=str(user.id),
-                target_toolkit=provider_lower
-            )
-            
-            content_text = rpc_resp.get("result", {}).get("content", [{}])[0].get("text", "{}")
-            data = json.loads(content_text)
-            
-            redirect_url = data.get("data", {}).get("results", {}).get(provider_lower, {}).get("redirect_url")
-            
-            if redirect_url:
-                import urllib.parse
-                parsed = urllib.parse.urlparse(redirect_url)
-                queries = urllib.parse.parse_qs(parsed.query)
-                queries['redirect_url'] = [redirect_uri]
-                queries['redirectUri'] = [redirect_uri]
-                redirect_url = parsed._replace(query=urllib.parse.urlencode(queries, doseq=True)).geturl()
+            async with httpx.AsyncClient() as client:
+                # 1. Fetch all auth configs to find the auth_config_id for the provider
+                configs_resp = await client.get(
+                    "https://backend.composio.dev/api/v3/auth_configs",
+                    headers={"x-api-key": settings.composio_api_key},
+                    timeout=10.0
+                )
+                configs_resp.raise_for_status()
+                
+                auth_config_id = None
+                for c in configs_resp.json().get("items", []):
+                    # Try to match the toolkit slug or name
+                    slug = c.get("toolkit", {}).get("slug", "")
+                    if slug == provider_lower or provider_lower in c.get("name", "").lower():
+                        auth_config_id = c.get("id")
+                        break
+                        
+                if not auth_config_id:
+                    raise ValueError(f"No active Composio Auth Config found for toolkit: {provider_lower}")
+                    
+                # 2. Generate a new connection link for this user with the correct callback_url
+                payload = {
+                    "auth_config_id": auth_config_id,
+                    "user_id": str(user.id),
+                    "callback_url": redirect_uri
+                }
+                
+                link_resp = await client.post(
+                    "https://backend.composio.dev/api/v3/connected_accounts/link",
+                    json=payload,
+                    headers={"x-api-key": settings.composio_api_key},
+                    timeout=10.0
+                )
+                link_resp.raise_for_status()
+                
+                link_data = link_resp.json()
+                redirect_url = link_data.get("redirect_url")
+                
+                if not redirect_url:
+                    raise ValueError(f"Failed to generate redirect_url: {link_data}")
+                    
                 return OAuthConnectUrlOut(auth_url=redirect_url)
-            else:
-                raise ValueError(f"No redirect URL returned by Composio: {content_text}")
         except Exception as e:
             log.error(f"Failed to generate Composio connection link for {provider_lower}: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to connect via Composio: {e}")

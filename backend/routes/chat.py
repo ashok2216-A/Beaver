@@ -198,7 +198,7 @@ Conversation:
             response = await litellm.acompletion(
                 model=settings.default_llm_model,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.0,
+                temperature=1.0,
                 max_tokens=20,
                 timeout=15.0
             )

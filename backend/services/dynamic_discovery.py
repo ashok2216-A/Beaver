@@ -70,7 +70,7 @@ Respond ONLY with a JSON object:
             res = await acompletion(
                 model="gemini/gemini-3.1-flash-lite",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.0,
+                temperature=1.0,
                 response_format={ "type": "json_object" }
             )
             import json
@@ -143,7 +143,7 @@ Respond ONLY with a JSON list of strings. No explanations."""
             res = await acompletion(
                 model="gemini/gemini-3.1-flash-lite",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.0,
+                temperature=1.0,
                 response_format={ "type": "json_object" }
             )
             import json

@@ -404,7 +404,7 @@ Return ONLY the JSON object. No other text.
             model="gemini/gemini-3.1-flash-lite",
             messages=[{"role": "user", "content": prompt}],
             api_key=api_key,
-            temperature=0
+            temperature=1.0
         )
         text = res.choices[0].message.content
         # Extract JSON from potential markdown markers
@@ -461,7 +461,7 @@ Corrected JSON Payload:"""
             model="gemini/gemini-3.1-flash-lite",
             messages=[{"role": "user", "content": prompt}],
             api_key=api_key,
-            temperature=0
+            temperature=1.0
         )
         text = res.choices[0].message.content
         if "```" in text:

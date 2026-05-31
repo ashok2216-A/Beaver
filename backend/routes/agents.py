@@ -168,7 +168,7 @@ def _ingest_spec(agent: Agent, spec: dict | str, db: Session) -> Agent:
             model="gemini/gemini-3.1-flash-lite",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=60,
-            temperature=0.1
+            temperature=1.0
         )
         agent.description = res.choices[0].message.content.strip().replace('"', '')
         db.add(agent)
