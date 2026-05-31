@@ -21,23 +21,29 @@ def get_integration_registry() -> Dict[str, Dict[str, Any]]:
     
     try:
         from config.config import get_settings
-        from composio import Composio
+        import requests
         
         settings = get_settings()
         if not settings.composio_api_key:
             log.warning("No composio_api_key found. Cannot fetch dynamic toolkits.")
             return {}
             
-        c = Composio(api_key=settings.composio_api_key)
-        toolkits = c.toolkits.get()
+        r = requests.get("https://backend.composio.dev/api/v3.1/toolkits", headers={"x-api-key": settings.composio_api_key}, timeout=15)
+        if r.status_code == 200:
+            toolkits = r.json().get("items", [])
+        else:
+            log.error(f"Failed to fetch toolkits from Composio API: {r.status_code} - {r.text}")
+            toolkits = []
         
         for t in toolkits:
-            slug = t.slug
-            name = t.name
+            slug = t.get("slug")
+            if not slug:
+                continue
+            name = t.get("name", "")
             
             # Map auth scheme (prefer OAUTH over API_KEY if multiple exist)
             auth_type = "NONE"
-            schemes = getattr(t, "auth_schemes", [])
+            schemes = t.get("auth_schemes", [])
             if schemes:
                 scheme_strs = [s.upper() for s in schemes]
                 if any("OAUTH" in s for s in scheme_strs):
