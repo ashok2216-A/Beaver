@@ -45,26 +45,38 @@ async def connect_provider(
     # Use Composio OAuth directly
     if settings.composio_api_key:
         try:
-            from composio import Composio
-            c = Composio(api_key=settings.composio_api_key)
+            from services.mcp_service import _composio_rpc
+            import json
             
-            # Special case mapping for providers if needed (e.g. google is standard, but you might want googledrive)
-            # We'll try the exact provider string first
-            if hasattr(c, "toolkits"):
-                auth_id = c.toolkits._get_auth_config_id(provider_lower)
-                if not auth_id:
-                    raise ValueError(f"Composio auth config not found for {provider_lower}")
-                    
-                conn = c.connected_accounts.link(user_id=str(user.id), auth_config_id=auth_id, callback_url=redirect_uri, allow_multiple=True)
+            # Use Composio MCP Tool to initiate connection to avoid deprecated SDK 410 errors
+            rpc_resp = await _composio_rpc(
+                'tools/call', 
+                {
+                    'name': 'COMPOSIO_MANAGE_CONNECTIONS', 
+                    'arguments': {
+                        'toolkits': [provider_lower],
+                        'reinitiate_all': True
+                    }
+                }, 
+                user_id=str(user.id),
+                target_toolkit=provider_lower
+            )
+            
+            content_text = rpc_resp.get("result", {}).get("content", [{}])[0].get("text", "{}")
+            data = json.loads(content_text)
+            
+            redirect_url = data.get("data", {}).get("results", {}).get(provider_lower, {}).get("redirect_url")
+            
+            if redirect_url:
+                import urllib.parse
+                parsed = urllib.parse.urlparse(redirect_url)
+                queries = urllib.parse.parse_qs(parsed.query)
+                queries['redirect_url'] = [redirect_uri]
+                queries['redirectUri'] = [redirect_uri]
+                redirect_url = parsed._replace(query=urllib.parse.urlencode(queries, doseq=True)).geturl()
+                return OAuthConnectUrlOut(auth_url=redirect_url)
             else:
-                integrations = c.integrations.get(app_name=provider_lower)
-                if not integrations:
-                    raise ValueError(f"Composio integration not found for {provider_lower}")
-                auth_id = integrations[0].id
-                conn = c.connected_accounts.initiate(entity_id=str(user.id), integration_id=auth_id, redirect_url=redirect_uri, allow_multiple=True)
-            
-            redirect_url = getattr(conn, "redirect_url", None) or getattr(conn, "redirectUrl", None)
-            return OAuthConnectUrlOut(auth_url=redirect_url)
+                raise ValueError(f"No redirect URL returned by Composio: {content_text}")
         except Exception as e:
             log.error(f"Failed to generate Composio connection link for {provider_lower}: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to connect via Composio: {e}")

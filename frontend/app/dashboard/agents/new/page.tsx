@@ -334,10 +334,25 @@ function NewAgentContent() {
           window.addEventListener('message', handleMessage);
 
           // Poll to stop loading state if user manually closes the popup
-          const timer = setInterval(() => {
+          const timer = setInterval(async () => {
             if (popup && popup.closed) {
               clearInterval(timer);
               window.removeEventListener('message', handleMessage);
+              
+              // Since Composio's MCP UI does not support auto-redirecting back to our app,
+              // we optimistically assume success when the user manually closes the "Success" window.
+              try {
+                const token = await getToken();
+                await fetch(
+                  `${process.env.NEXT_PUBLIC_API_URL}/oauth/mark-connected?provider=${encodeURIComponent(oauthProvider)}`,
+                  { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+                );
+              } catch (e) {
+                console.error("Failed to mark connection:", e);
+              }
+
+              handleMessage({ data: 'oauth_success' } as MessageEvent);
+              
               setActionLoading(null);
             }
           }, 1000);
