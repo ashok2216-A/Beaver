@@ -22,7 +22,8 @@ import {
   Activity,
   Edit2,
   Check,
-  Cloud
+  Cloud,
+  ShieldCheck
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AgentAvatar } from "@/components/dashboard/agent-avatar"
@@ -43,7 +44,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { toast } from "sonner"
 import Link from "next/link"
-import { A2InputForm, A2AudioPlayer } from "@/components/a2ui/components"
+import { A2InputForm, A2AudioPlayer, A2HumanApproval } from "@/components/a2ui/components"
 
 interface Agent {
   id: number
@@ -66,6 +67,7 @@ interface Endpoint {
   summary: string
   is_locked: boolean
   description?: string
+  requires_approval?: boolean
 }
 
 const methodColors: Record<string, string> = {
@@ -125,6 +127,7 @@ export default function AgentBuilderPage() {
   const [newMethod, setNewMethod] = useState("GET")
   const [newPath, setNewPath] = useState("")
   const [newSummary, setNewSummary] = useState("")
+  const [newRequiresApproval, setNewRequiresApproval] = useState(false)
   const [isSavingEndpoint, setIsSavingEndpoint] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(380)
   const [settingsWidth, setSettingsWidth] = useState(340)
@@ -234,7 +237,8 @@ export default function AgentBuilderPage() {
         body: JSON.stringify({
           method: newMethod,
           path: newPath,
-          summary: newSummary
+          summary: newSummary,
+          requires_approval: newRequiresApproval
         })
       })
 
@@ -247,6 +251,7 @@ export default function AgentBuilderPage() {
       setEndpoints(prev => [data, ...prev])
       setNewPath("")
       setNewSummary("")
+      setNewRequiresApproval(false)
       setIsAddEndpointOpen(false)
       toast.success("Endpoint added successfully")
     } catch (err: any) {
@@ -273,7 +278,8 @@ export default function AgentBuilderPage() {
         body: JSON.stringify({
           method: newMethod,
           path: newPath,
-          summary: newSummary
+          summary: newSummary,
+          requires_approval: newRequiresApproval
         })
       })
 
@@ -413,6 +419,23 @@ export default function AgentBuilderPage() {
       }
     } catch (err) {
       toast.error("Failed to toggle lock")
+    }
+  }
+
+  const handleToggleApproval = async (endpointId: number) => {
+    try {
+      const token = await getToken()
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${id}/endpoints/${endpointId}/toggle-approval`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setEndpoints(prev => prev.map(e => e.id === endpointId ? { ...e, requires_approval: updated.requires_approval } : e))
+        toast.success(updated.requires_approval ? "Human approval enabled" : "Human approval disabled")
+      }
+    } catch (err) {
+      toast.error("Failed to toggle approval requirement")
     }
   }
 
@@ -701,7 +724,8 @@ export default function AgentBuilderPage() {
                       setEditingEndpoint(ep)
                       setNewMethod(ep.method)
                       setNewPath(ep.path)
-                      setNewSummary(ep.summary)
+                      setNewSummary(ep.summary || "")
+                      setNewRequiresApproval(ep.requires_approval || false)
                       setIsEditEndpointOpen(true)
                     }}
                     className={cn(
@@ -748,11 +772,22 @@ export default function AgentBuilderPage() {
                           </>
                         )}
                         <button 
+                          onClick={(e) => { e.stopPropagation(); handleToggleApproval(ep.id); }}
+                          className={cn(
+                            "h-7 w-7 flex items-center justify-center rounded-lg border transition-all shadow-sm",
+                            ep.requires_approval ? "bg-amber-500/10 border-amber-500/20 text-amber-500" : "bg-background border-border text-muted-foreground hover:text-amber-500"
+                          )}
+                          title={ep.requires_approval ? "Approval Required" : "Auto-Execute"}
+                        >
+                          {ep.requires_approval ? <ShieldCheck className="h-3.5 w-3.5" /> : <Shield className="h-3.5 w-3.5" />}
+                        </button>
+                        <button 
                           onClick={(e) => { e.stopPropagation(); handleToggleLock(ep.id); }}
                           className={cn(
                             "h-7 w-7 flex items-center justify-center rounded-lg border transition-all shadow-sm",
                             ep.is_locked ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-background border-border text-muted-foreground hover:text-primary"
                           )}
+                          title={ep.is_locked ? "Locked" : "Unlocked"}
                         >
                           {ep.is_locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
                         </button>
@@ -766,18 +801,34 @@ export default function AgentBuilderPage() {
                         .join(' ');
                       const formattedDesc = ep.description || (ep.summary && ep.summary !== rawName ? ep.summary : `Executes the ${cleanName.toLowerCase()} capability.`);
                       return (
-                        <>
-                          <p className="font-mono font-bold text-xs truncate text-foreground">{cleanName}</p>
-                          <p className="text-[11px] text-muted-foreground mt-1.5 line-clamp-2 font-medium leading-relaxed">{formattedDesc}</p>
-                        </>
+                        <HoverCard openDelay={300}>
+                          <HoverCardTrigger asChild>
+                            <div className="cursor-default mt-1">
+                              <p className="font-mono font-bold text-xs truncate text-foreground">{cleanName}</p>
+                              <p className="text-[11px] text-muted-foreground mt-1.5 line-clamp-2 font-medium leading-relaxed">{formattedDesc}</p>
+                            </div>
+                          </HoverCardTrigger>
+                          <HoverCardContent side="right" align="start" className="w-80 z-[100] shadow-xl border-border/50 bg-card/95 backdrop-blur-md">
+                            <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{formattedDesc}</p>
+                          </HoverCardContent>
+                        </HoverCard>
                       );
                     })() : (
-                      <>
-                        <p className="font-mono text-[11px] truncate text-foreground/80">{ep.path}</p>
-                        {ep.summary && (
-                          <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 font-medium">{ep.summary}</p>
+                      <HoverCard openDelay={300}>
+                        <HoverCardTrigger asChild>
+                          <div className="cursor-default mt-1">
+                            <p className="font-mono text-[11px] truncate text-foreground/80">{ep.path}</p>
+                            {ep.summary && (
+                              <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 font-medium">{ep.summary}</p>
+                            )}
+                          </div>
+                        </HoverCardTrigger>
+                        {(ep.description || ep.summary) && (
+                          <HoverCardContent side="right" align="start" className="w-80 z-[100] shadow-xl border-border/50 bg-card/95 backdrop-blur-md">
+                            <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{ep.description || ep.summary}</p>
+                          </HoverCardContent>
                         )}
-                      </>
+                      </HoverCard>
                     )}
                   </div>
                 );
@@ -845,6 +896,32 @@ export default function AgentBuilderPage() {
                                           src={a2data.a2ui.src}
                                           data={a2data.a2ui.data}
                                           title={a2data.a2ui.title}
+                                        />
+                                      );
+                                    }
+                                    if (comp === 'human_approval') {
+                                      return (
+                                        <A2HumanApproval
+                                          data={a2data}
+                                          onApprove={async (actionId) => {
+                                            try {
+                                              const token = await getToken();
+                                              const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/actions/${actionId}/approve`, {
+                                                method: 'POST',
+                                                headers: { Authorization: `Bearer ${token}` }
+                                              });
+                                              const data = await res.json();
+                                            } catch(e) { console.error(e) }
+                                          }}
+                                          onReject={async (actionId) => {
+                                            try {
+                                              const token = await getToken();
+                                              await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/actions/${actionId}/reject`, {
+                                                method: 'POST',
+                                                headers: { Authorization: `Bearer ${token}` }
+                                              });
+                                            } catch(e) { console.error(e) }
+                                          }}
                                         />
                                       );
                                     }
@@ -1214,6 +1291,19 @@ export default function AgentBuilderPage() {
                   className="h-11 rounded-xl bg-background/50 border-border/50 text-xs"
                 />
               </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-background/50 border border-border/50 mt-2">
+                <div className="space-y-0.5">
+                  <label className="text-xs font-bold text-foreground">Requires Approval</label>
+                  <p className="text-[10px] text-muted-foreground">Pause execution to ask user for permission.</p>
+                </div>
+                <div 
+                  className={cn("w-10 h-6 rounded-full transition-colors cursor-pointer relative", newRequiresApproval ? "bg-primary" : "bg-muted")}
+                  onClick={() => setNewRequiresApproval(!newRequiresApproval)}
+                >
+                  <div className={cn("absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm", newRequiresApproval ? "translate-x-4" : "translate-x-0")} />
+                </div>
+              </div>
             </div>
 
             <div className="p-6 border-t border-border/50 flex gap-3 bg-muted/20">
@@ -1309,6 +1399,19 @@ export default function AgentBuilderPage() {
                   onChange={(e) => setNewSummary(e.target.value)}
                   className="h-11 rounded-xl bg-background/50 border-border/50 text-xs"
                 />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-background/50 border border-border/50 mt-2">
+                <div className="space-y-0.5">
+                  <label className="text-xs font-bold text-foreground">Requires Approval</label>
+                  <p className="text-[10px] text-muted-foreground">Pause execution to ask user for permission.</p>
+                </div>
+                <div 
+                  className={cn("w-10 h-6 rounded-full transition-colors cursor-pointer relative", newRequiresApproval ? "bg-primary" : "bg-muted")}
+                  onClick={() => setNewRequiresApproval(!newRequiresApproval)}
+                >
+                  <div className={cn("absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm", newRequiresApproval ? "translate-x-4" : "translate-x-0")} />
+                </div>
               </div>
             </div>
 

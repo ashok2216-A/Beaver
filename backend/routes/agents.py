@@ -623,6 +623,7 @@ def add_custom_endpoint(
         description=body.description.strip() if body.description else "",
         parameters=body.parameters or [],
         request_body=body.request_body or {},
+        requires_approval=body.requires_approval,
         is_locked=False
     )
     db.add(ep)
@@ -644,6 +645,24 @@ def toggle_endpoint_lock(
         raise HTTPException(status_code=404, detail="Endpoint not found")
         
     endpoint.is_locked = not endpoint.is_locked
+    db.commit()
+    db.refresh(endpoint)
+    return EndpointOut.model_validate(endpoint)
+
+
+@router.patch("/{agent_id}/endpoints/{endpoint_id}/toggle-approval", response_model=EndpointOut)
+def toggle_endpoint_approval(
+    agent_id: int, 
+    endpoint_id: int, 
+    user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    _get_agent_or_404(agent_id, user, db)
+    endpoint = db.query(Endpoint).filter(Endpoint.id == endpoint_id, Endpoint.agent_id == agent_id).first()
+    if not endpoint:
+        raise HTTPException(status_code=404, detail="Endpoint not found")
+        
+    endpoint.requires_approval = not getattr(endpoint, "requires_approval", False)
     db.commit()
     db.refresh(endpoint)
     return EndpointOut.model_validate(endpoint)

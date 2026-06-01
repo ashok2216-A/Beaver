@@ -9,6 +9,12 @@ const ICON_PATHS: Record<string, React.ReactNode> = {
   check:    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>,
   close:    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>,
   calendar: <path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/>,
+  loader: (
+    <g fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+      <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite" />
+    </g>
+  ),
 }
 
 function SvgIcon({ name, size = 16 }: { name: string; size?: number }) {
@@ -514,8 +520,16 @@ export function A2InputForm({ data, onSubmit }: A2InputFormProps) {
   }
 
   const buildMessage = () => {
-    const payload = JSON.stringify(fieldValues, null, 2)
-    return `Form submission:\n\`\`\`json\n${payload}\n\`\`\``
+    const parts = Object.entries(fieldValues)
+      .filter(([, v]) => v !== '' && v !== undefined)
+      .map(([k, v]) => {
+        const keyName = k.replace(/_/g, ' ');
+        const capKey = keyName.charAt(0).toUpperCase() + keyName.slice(1);
+        return `${capKey}: ${v}`;
+      })
+    
+    if (parts.length === 0) return "Submitted empty form.";
+    return `Form submission:\n\n${parts.join('\n')}`
   }
 
   const handleSubmit = () => {
@@ -604,3 +618,117 @@ export function A2InputForm({ data, onSubmit }: A2InputFormProps) {
     </div>
   )
 }
+
+interface A2HumanApprovalProps {
+  data: { a2ui: { action_id: string; tool_name: string; params: any } }
+  onApprove: (actionId: string) => Promise<void> | void
+  onReject: (actionId: string) => Promise<void> | void
+}
+
+
+export function A2HumanApproval({ data, onApprove, onReject }: A2HumanApprovalProps) {
+  const { action_id, tool_name, params } = data.a2ui;
+  const [status, setStatus] = useState<'pending' | 'approved' | 'executed' | 'rejected'>('pending');
+
+  const handleApprove = async () => {
+    setStatus('approved');
+    await onApprove(action_id);
+    setStatus('executed');
+  };
+
+  const handleReject = async () => {
+    setStatus('rejected');
+    await onReject(action_id);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px 4px', background: 'transparent', width: '100%' }}>
+      <div style={{ fontSize: '18px', fontWeight: 800, color: 'inherit', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#f59e0b">
+          <path d="M12 2L1 21h22L12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/>
+        </svg>
+        Action Requires Approval
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', background: 'rgba(0,0,0,0.02)', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.05)' }}>
+        {Object.entries(params || {}).map(([key, value]) => (
+          <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {key.replace(/_/g, ' ')}
+            </span>
+            <span style={{ fontSize: '13px', color: '#0f172a', fontWeight: 500, wordBreak: 'break-word' }}>
+              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+            </span>
+          </div>
+        ))}
+      </div>
+      
+      {status === 'pending' ? (
+        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+          <button 
+            type="button" 
+            style={{ 
+              padding: '6px 16px', 
+              borderRadius: '99px', 
+              background: '#10b981', 
+              color: 'white', 
+              border: 'none',
+              fontSize: '12px', 
+              fontWeight: 700, 
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'opacity 0.2s',
+              boxShadow: '0 2px 4px rgba(16,185,129,0.2)'
+            }}
+            onClick={handleApprove}
+            onMouseOver={(e) => e.currentTarget.style.opacity = '0.8'}
+            onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            <SvgIcon name="check" size={12} /> Approve
+          </button>
+          <button 
+            type="button" 
+            style={{ 
+              padding: '6px 16px', 
+              borderRadius: '99px', 
+              background: 'transparent', 
+              color: '#64748b', 
+              border: '1px solid #e2e8f0',
+              fontSize: '12px', 
+              fontWeight: 700, 
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.2s'
+            }}
+            onClick={handleReject}
+            onMouseOver={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#fecaca'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+          >
+            <SvgIcon name="close" size={12} /> Reject
+          </button>
+        </div>
+      ) : (
+        <div style={{ marginTop: '8px', fontSize: '13px', fontWeight: 'bold', color: status === 'executed' ? '#10b981' : status === 'approved' ? '#f59e0b' : '#ef4444', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {status === 'approved' ? (
+            <>
+              <SvgIcon name="loader" size={16} /> Executing Action...
+            </>
+          ) : status === 'executed' ? (
+            <>
+              <SvgIcon name="check" size={16} /> Action Executed
+            </>
+          ) : (
+            <>
+              <SvgIcon name="close" size={16} /> Action Rejected
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+

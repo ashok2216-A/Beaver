@@ -18,6 +18,11 @@ class AgentStatus(str, enum.Enum):
     live = "live"
     paused = "paused"
 
+class ActionStatus(str, enum.Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
 
 class HttpMethod(str, enum.Enum):
     get = "GET"
@@ -128,6 +133,7 @@ class Endpoint(Base):
     parameters  = Column(JSON, default=list)   # list[{name, in, required, schema}]
     request_body= Column(JSON, default=dict)   # simplified body schema
     is_locked   = Column(Boolean, default=False)
+    requires_approval = Column(Boolean, default=False)
     source_type = Column(SAEnum(ToolSource), default=ToolSource.rest, nullable=False)
     mcp_server_url = Column(String(512), nullable=True)
 
@@ -176,3 +182,19 @@ class ChatMessage(Base):
     created_at      = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     conversation = relationship("Conversation", back_populates="messages")
+
+
+class PendingAction(Base):
+    __tablename__ = "pending_actions"
+
+    id              = Column(String(255), primary_key=True)
+    conversation_id = Column(String(255), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=True, index=True)
+    agent_id        = Column(Integer, ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True)
+    tool_path       = Column(String(512), nullable=False)
+    tool_method     = Column(String(10), nullable=False)
+    params          = Column(JSON, default=dict)
+    status          = Column(SAEnum(ActionStatus), default=ActionStatus.PENDING, nullable=False)
+    created_at      = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+
+    conversation    = relationship("Conversation")
+    agent           = relationship("Agent")

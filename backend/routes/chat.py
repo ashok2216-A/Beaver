@@ -323,6 +323,7 @@ Conversation:
                 "custom_headers": ep_agent.custom_headers,
                 "source_type":  ep.source_type if hasattr(ep, "source_type") else "rest",
                 "mcp_server_url": ep.mcp_server_url if hasattr(ep, "mcp_server_url") else None,
+                "requires_approval": ep.requires_approval if hasattr(ep, "requires_approval") else False,
             })
 
     # Fetch history for multi-turn continuity
@@ -348,6 +349,7 @@ Conversation:
         "session_id": session_id,
         "history": history,
         "user_id": str(user.id),
+        "agent_id": agent.id,
     }
 
     from services.agent import run_agent
@@ -519,6 +521,7 @@ async def chat(
                 "request_body": ep.request_body or {},
                 "source_type":  ep.source_type if hasattr(ep, "source_type") else "rest",
                 "mcp_server_url": ep.mcp_server_url if hasattr(ep, "mcp_server_url") else None,
+                "requires_approval": ep.requires_approval if hasattr(ep, "requires_approval") else False,
             }
             for ep in endpoints
         ]

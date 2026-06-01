@@ -19,6 +19,7 @@ class EndpointOut(BaseModel):
     parameters: list[dict[str, Any]]
     request_body: dict[str, Any]
     is_locked: bool = False
+    requires_approval: bool = False
     source_type: str = "rest"
     mcp_server_url: Optional[str] = None
 
@@ -31,6 +32,7 @@ class EndpointCreate(BaseModel):
     description: Optional[str] = ""
     parameters: Optional[list[dict[str, Any]]] = []
     request_body: Optional[dict[str, Any]] = {}
+    requires_approval: bool = False
     source_type: Optional[str] = "rest"
     mcp_server_url: Optional[str] = None
 
@@ -42,6 +44,7 @@ class EndpointUpdate(BaseModel):
     description: Optional[str] = None
     parameters: Optional[list[dict[str, Any]]] = None
     request_body: Optional[dict[str, Any]] = None
+    requires_approval: Optional[bool] = None
     source_type: Optional[str] = None
     mcp_server_url: Optional[str] = None
 

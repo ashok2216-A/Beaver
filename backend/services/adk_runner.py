@@ -493,6 +493,7 @@ def _build_agent(
     custom_headers: dict[str, str] | None = None,
     user_id: str = "user",
     agent_id: int | None = None,
+    session_id: str | None = None,
 ) -> Agent:
     """
     Construct an ADK Agent with one universal API-call tool and memory tools.
@@ -660,6 +661,7 @@ def _build_agent(
                             "description":    agent_match.description,
                             "parameters":     agent_match.parameters or [],
                             "request_body":   agent_match.request_body or {},
+                            "requires_approval": agent_match.requires_approval,
                             "source_type":    (agent_match.source_type.value
                                                if hasattr(agent_match.source_type, "value")
                                                else str(agent_match.source_type)),
@@ -751,6 +753,49 @@ def _build_agent(
                 "error": "locked_endpoint",
                 "detail": f"The endpoint {method} {path} is currently locked by the administrator."
             })
+
+        # HITL: Check if this tool requires human approval
+        if ep_def.get("requires_approval"):
+            log.info(f"HITL: Endpoint {method} {path} requires human approval.")
+            try:
+                from database.database import SessionLocal
+                from models.models import PendingAction, ActionStatus
+                import uuid
+                with SessionLocal() as db:
+                    action_id = str(uuid.uuid4())
+                    
+                    # Verify conversation exists before setting FK to prevent ForeignKeyViolation
+                    from models.models import Conversation
+                    conv_exists = db.query(Conversation.id).filter(Conversation.id == session_id).first() is not None
+                    
+                    pending_action = PendingAction(
+                        id=action_id,
+                        conversation_id=session_id if conv_exists else None,
+                        agent_id=agent_id,
+                        tool_path=path,
+                        tool_method=method,
+                        params=params_dict,
+                        status=ActionStatus.PENDING
+                    )
+                    db.add(pending_action)
+                    db.commit()
+                    
+                    return json.dumps({
+                        "a2ui": {
+                            "component": "human_approval",
+                            "action_id": action_id,
+                            "tool_name": ep_def.get("summary") or f"{method} {path}",
+                            "params": params_dict
+                        },
+                        "note": "CRITICAL: The action has been paused for human approval. You MUST output the exact 'a2ui' JSON block above to the user using the ```a2ui code block format, and stop your turn. DO NOT say the action was completed."
+                    })
+            except Exception as e:
+                log.error(f"Failed to create PendingAction: {e}")
+                return json.dumps({
+                    "status_code": 500,
+                    "error": "hitl_failure",
+                    "detail": f"Could not create pending action for {method} {path}."
+                })
 
         # Autonomous Retry & Repair Loop (Self-Healing)
         MAX_INTERNAL_RETRIES = 3
@@ -1172,7 +1217,7 @@ def _build_agent(
         "- LABELS & DESCRIPTIONS: Use the schema 'description' as the 'placeholder' and the parameter name (converted to Title Case) as the 'label'.\n"
         "- DOT-NOTATION (MANDATORY): For nested objects, you MUST use the exact dot-notation keys provided in the parameter list (e.g. 'settings.mode').\n"
         "- VISUAL RENDERING: If an API response contains image URLs, you MUST use the 'image' component to display them. Do not just link to them in a table.\n"
-        "- A2UI SUBMISSIONS: When a user submits a form, you will receive a JSON message. Extract these values and immediately use them to EXECUTE or RETRY the tool call.\n"
+        "- A2UI SUBMISSIONS: When a user submits a form, you will receive a message with the form values. Extract these values and immediately use them to EXECUTE or RETRY the tool call.\n"
         "- NO AD-HOC FIELDS: NEVER invent fields that are not present in the tool specification.\n"
         "- AFTER the A2UI block, you may add a very brief explanatory sentence.\"\n"
     )
@@ -1198,7 +1243,7 @@ def _build_agent(
         "  - SAFETY: For destructive operations (DELETE, refund, cancel) always require explicit user confirmation before proceeding.\n"
         "  - SELF-HEALING: If an API call fails with a validation error (400 or 422), the system will give you the error details. You MUST analyze the error and attempt to fix your parameters in a follow-up tool call. You only get one retry before the user is asked to help.\n"
         "  - LONG-TERM MEMORY: You have access to memories from past conversations. The `PreloadMemoryTool` automatically retrieves relevant context at the start of the turn. If you need to search for something specific that wasn't automatically loaded, use the `load_memory` tool. Use these to remember user preferences, names, and past interactions.\n"
-        "  - UX & USER EXPERIENCE: If an endpoint call fails twice or requires a user-level fix (like 403 Forbidden), NEVER dump raw technical JSON keys. Use the provided A2UI form exactly as returned by the tool."
+        "  - UX & USER EXPERIENCE: If an endpoint call returns an A2UI component (like an input form or a human_approval request), you MUST output that EXACT A2UI JSON block to the user using the ```a2ui code block format. Do not execute any further actions until the user responds."
         f"{a2ui_instruction}"
     )
 
@@ -1328,6 +1373,7 @@ async def run_agent_stream(
         custom_headers=custom_headers,
         user_id=user_id,
         agent_id=agent_id,
+        session_id=session_id,
     )
 
     runner = Runner(
