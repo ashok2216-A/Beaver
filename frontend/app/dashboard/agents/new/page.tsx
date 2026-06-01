@@ -181,7 +181,7 @@ function NewAgentContent() {
     // 2. Fallback to substring matching (only if it's the exact prefix or suffix to be safer)
     for (const key in providersRegistry) {
       const item = providersRegistry[key];
-      if (item.aliases && item.aliases.some((alias: string) => id === alias || id.replace(/_/g, "") === alias)) {
+      if (item.aliases && item.aliases.some((alias: string) => id.startsWith(alias + "_") || id.endsWith("_" + alias))) {
         return item;
       }
     }
@@ -266,7 +266,7 @@ function NewAgentContent() {
         );
 
         if (!hasActiveIntegration) {
-          if (authTypeForProvider === "API_KEY") {
+          if (authTypeForProvider === "API_KEY" && !mcpUrl.startsWith("composio:")) {
             // Save pending template to resume after API key is entered
             localStorage.setItem('oauth_pending_template', JSON.stringify({
               templateId: t.id,

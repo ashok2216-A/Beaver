@@ -115,4 +115,10 @@ def get_integration_by_alias(alias: str) -> Optional[Dict[str, Any]]:
             if a == alias_lower or a == alias_clean:
                 return item
                 
+    # 3. Fallback to prefix/suffix matching (e.g., github_mcp -> github)
+    for item in registry.values():
+        for a in item["aliases"]:
+            if alias_lower.startswith(f"{a}_") or alias_lower.endswith(f"_{a}"):
+                return item
+                
     return None

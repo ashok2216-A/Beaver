@@ -294,7 +294,7 @@ export function HeroSection() {
 
             {/* CTAs */}
             <div
-              className={`flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 transition-all duration-1000 delay-200 ${
+              className={`flex flex-col sm:flex-row items-center justify-center gap-4 mb-10 transition-all duration-1000 delay-200 ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
             >
@@ -316,6 +316,34 @@ export function HeroSection() {
                 <Play className="w-4 h-4 mr-2" />
                 View 60s Demo
               </Button>
+            </div>
+
+            {/* Integrations Social Proof */}
+            <div
+              className={`flex items-center justify-center gap-3 transition-all duration-1000 delay-300 ${
+                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
+            >
+              <div className="flex -space-x-1 items-center">
+                <div className="w-7 h-7 rounded-full bg-transparent flex items-center justify-center overflow-hidden z-[5]">
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg" alt="Gmail" className="w-5 h-5 object-contain drop-shadow-sm" />
+                </div>
+                <div className="w-7 h-7 rounded-full bg-transparent flex items-center justify-center overflow-hidden z-[4]">
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg" alt="Instagram" className="w-5 h-5 object-contain drop-shadow-sm" />
+                </div>
+                <div className="w-7 h-7 rounded-full bg-transparent flex items-center justify-center overflow-hidden z-[3]">
+                  <img src="https://www.vectorlogo.zone/logos/slack/slack-icon.svg" alt="Slack" className="w-5 h-5 object-contain drop-shadow-sm" />
+                </div>
+                <div className="w-7 h-7 rounded-full bg-transparent flex items-center justify-center overflow-hidden z-[2]">
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub" className="w-5 h-5 object-contain drop-shadow-sm filter brightness-0 invert opacity-90" />
+                </div>
+                <div className="w-7 h-7 rounded-full bg-transparent flex items-center justify-center overflow-hidden z-[1]">
+                  <img src="https://www.vectorlogo.zone/logos/hubspot/hubspot-icon.svg" alt="Hubspot" className="w-5 h-5 object-contain drop-shadow-sm" />
+                </div>
+              </div>
+              <span className="text-white/80 text-[14px] font-medium tracking-tight">
+                100+ integrations
+              </span>
             </div>
 
       </div>

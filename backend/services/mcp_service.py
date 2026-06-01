@@ -39,16 +39,15 @@ COMPOSIO_MCP_URL = "https://connect.composio.dev/mcp"
 def normalize_mcp_url(url: str) -> str:
     url_lower = url.lower()
     
-    # Catch legacy/hardcoded endpoints or any string match dynamically
+    if url_lower.startswith("composio:"):
+        return url_lower
+        
     matched = get_integration_by_alias(url_lower)
     if matched:
         composio_slug = matched.get("composio_slug")
         if composio_slug:
-            # Check legacy indicators dynamically from the registry
-            legacy_indicators = matched.get("legacy_indicators", [])
+            return f"composio:{composio_slug}"
             
-            if any(ind in url_lower for ind in legacy_indicators):
-                return f"composio:{composio_slug}"
     return url
 
 
@@ -80,6 +79,7 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
             # First fetch the connected accounts to build the toolkits allowlist and IDs
             toolkits_allowlist = []
             connected_account_ids = []
+            auth_configs_dict = {}
             try:
                 acc_resp = await client.get(
                     "https://backend.composio.dev/api/v3.1/connected_accounts",
@@ -115,6 +115,9 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
                                     # Overwrite so we only keep one connection per slug
                                     slug_to_conn[slug] = conn_id
                                     
+                                auth_config_id = item.get("auth_config", {}).get("id")
+                                if auth_config_id:
+                                    auth_configs_dict[slug] = auth_config_id
                                 if slug not in toolkits_allowlist:
                                     toolkits_allowlist.append(slug)
                                     
@@ -159,6 +162,10 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
                                             continue
                                         if conn_id:
                                             slug_to_conn[slug] = conn_id
+                                            
+                                        auth_config_id = item.get("auth_config", {}).get("id")
+                                        if auth_config_id:
+                                            auth_configs_dict[slug] = auth_config_id
                                         if slug not in toolkits_allowlist:
                                             toolkits_allowlist.append(slug)
                             connected_account_ids = list(slug_to_conn.values())
@@ -180,6 +187,8 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
                 payload["preload"] = {"tools": "all"}
             if connected_account_ids:
                 payload["connected_account_ids"] = connected_account_ids
+            if auth_configs_dict:
+                payload["auth_configs"] = auth_configs_dict
 
             try:
                 import json

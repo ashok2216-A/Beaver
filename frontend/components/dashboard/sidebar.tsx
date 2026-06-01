@@ -27,6 +27,7 @@ const navigation = [
   { name: "Create Agent", href: "/dashboard/agents/new", icon: Plus },
   { name: "Agents", href: "/dashboard/agents", icon: Cpu },
   { name: "Playground", href: "/dashboard/playground", icon: Sparkles },
+  { name: "Developer", href: "/dashboard/developer", icon: Code2 },
   { name: "API Keys", href: "/dashboard/api-keys", icon: Fingerprint },
   { name: "Analytics", href: "/dashboard/analytics", icon: Activity },
   { name: "Logs", href: "/dashboard/logs", icon: Terminal },
