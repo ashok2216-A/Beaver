@@ -151,7 +151,9 @@ export function CustomAuth() {
 
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight mb-2">Welcome to Beaver</h1>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight mb-2">
+            Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600">Beaver</span>
+          </h1>
           <p className="text-[15px] text-slate-500 dark:text-slate-400">Log in or register with your email</p>
         </div>
 
