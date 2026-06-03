@@ -1,4 +1,5 @@
 'use client'
+import { Loader } from "@/components/ui/loader";
 
 import React, { useState, useRef, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -13,7 +14,6 @@ import {
   Search, 
   Lock, 
   Unlock,
-  Loader2,
   Database,
   Shield,
   Trash2,
@@ -506,7 +506,7 @@ export default function AgentBuilderPage() {
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <Loader className="w-10 h-10 animate-spin text-primary" />
         <p className="text-xs font-bold uppercase tracking-widest opacity-40">Loading Builder...</p>
       </div>
     </div>
@@ -1046,7 +1046,7 @@ export default function AgentBuilderPage() {
                   disabled={isSending || !input.trim()}
                   className="h-10 w-10 rounded-xl shadow-glow shrink-0"
                 >
-                  {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {isSending ? <Loader className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
               <p className="text-[10px] text-center mt-3 text-muted-foreground uppercase tracking-widest font-bold">
@@ -1074,7 +1074,7 @@ export default function AgentBuilderPage() {
               <Settings2 className="h-4 w-4 text-primary" />
               <h2 className="text-sm font-bold">Agent Settings</h2>
             </div>
-            {isSaving && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+            {isSaving && <Loader className="h-4 w-4 animate-spin text-primary" />}
           </div>
           
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">

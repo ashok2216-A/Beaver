@@ -1,8 +1,9 @@
 'use client'
+import { Loader } from "@/components/ui/loader";
 
 import { useEffect, useState, Suspense } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { Sparkles, Briefcase, Plus, Loader2, Trash2, Users } from "lucide-react"
+import { Sparkles, Briefcase, Plus, Trash2, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@clerk/nextjs"
 import { toast } from "sonner"
@@ -136,7 +137,7 @@ function AgentTeamsContent() {
   }
 
   return (
-    <div className="space-y-8 relative max-w-[90%]">
+    <div className="space-y-8 relative w-full">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Workforce</h1>
@@ -152,7 +153,7 @@ function AgentTeamsContent() {
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Loader className="w-8 h-8 animate-spin text-primary" />
         </div>
       ) : teams.length === 0 ? (
         <Card className="rounded-3xl bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-sm overflow-hidden">
@@ -267,7 +268,7 @@ function AgentTeamsContent() {
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="ghost" onClick={() => setIsCreateModalOpen(false)} className="rounded-xl">Cancel</Button>
                 <Button type="submit" variant="hero" disabled={isSubmitting} className="rounded-xl font-bold px-6 shadow-glow">
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Build Workforce"}
+                  {isSubmitting ? <Loader className="w-4 h-4 animate-spin" /> : "Build Workforce"}
                 </Button>
               </div>
             </form>
@@ -280,7 +281,7 @@ function AgentTeamsContent() {
 
 export default function AgentTeamsPage() {
   return (
-    <Suspense fallback={<div className="p-10 flex justify-center"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+    <Suspense fallback={<div className="p-10 flex justify-center"><Loader className="w-8 h-8 animate-spin" /></div>}>
       <AgentTeamsContent />
     </Suspense>
   )

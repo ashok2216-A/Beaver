@@ -55,6 +55,14 @@ class User(Base):
     email_notifications = Column(Boolean, default=True, nullable=False)
     weekly_reports      = Column(Boolean, default=False, nullable=False)
     
+    # Onboarding fields
+    account_type         = Column(String(32), nullable=True) # individual | business
+    company_name         = Column(String(255), nullable=True)
+    company_size         = Column(String(64), nullable=True)
+    department           = Column(String(64), nullable=True)
+    role                 = Column(String(64), nullable=True)
+    onboarding_completed = Column(Boolean, default=False, nullable=False)
+    
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     agents        = relationship("Agent", back_populates="owner", cascade="all, delete-orphan")

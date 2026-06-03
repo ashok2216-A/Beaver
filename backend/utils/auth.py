@@ -10,6 +10,7 @@ from typing import Optional, Any
 from fastapi import HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from jose import jwt, JWTError
 import httpx
 
@@ -171,21 +172,28 @@ async def get_current_user(
                 except Exception as e:
                     log.warning(f"Failed to fetch user {clerk_id} from Clerk API: {e}")
 
-            if not user:
-                log.info(f"Hydrating new user from Clerk: {clerk_id}")
-                user = User(
-                    id=clerk_id,
-                    email=email,
-                    plan_type="free",
-                    subscription_status="active"
-                )
-                db.add(user)
-            else:
-                log.info(f"Backfilling missing email for user: {clerk_id}")
-                user.email = email
-                
-            db.commit()
-            db.refresh(user)
+            try:
+                if not user:
+                    log.info(f"Hydrating new user from Clerk: {clerk_id}")
+                    user = User(
+                        id=clerk_id,
+                        email=email,
+                        plan_type="free",
+                        subscription_status="active"
+                    )
+                    db.add(user)
+                else:
+                    log.info(f"Backfilling missing email for user: {clerk_id}")
+                    user.email = email
+                    
+                db.commit()
+                db.refresh(user)
+            except IntegrityError:
+                db.rollback()
+                log.info(f"Concurrent user creation detected for {clerk_id}, fetching from DB instead")
+                user = db.query(User).filter(User.id == clerk_id).first()
+                if not user:
+                    raise
 
         return user
 

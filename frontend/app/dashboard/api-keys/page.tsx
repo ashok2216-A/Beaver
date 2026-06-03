@@ -1,4 +1,5 @@
 'use client'
+import { Loader } from "@/components/ui/loader";
 
 import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -10,7 +11,6 @@ import {
   Copy, 
   Check, 
   AlertTriangle,
-  Loader2,
   Lock,
   ChevronRight,
   ShieldCheck
@@ -143,7 +143,7 @@ export default function ApiKeysPage() {
                 disabled={isCreating || !newKeyName.trim()}
                 className="h-14 px-8 rounded-2xl bg-foreground text-background hover:bg-foreground/90 font-bold transition-all shadow-sm"
               >
-                {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                {isCreating ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                 Generate Key
               </Button>
             </form>

@@ -1,4 +1,5 @@
 'use client'
+import { Loader } from "@/components/ui/loader";
 
 import { useEffect, useState, Suspense } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -16,8 +17,7 @@ import {
   Activity,
   AlertTriangle,
   CheckSquare,
-  Square,
-  Loader2
+  Square
 } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
@@ -466,7 +466,7 @@ function AgentsContent() {
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="ghost" onClick={() => setIsBulkDeleting(false)} disabled={isBulkProcessing} className="rounded-xl">Cancel</Button>
               <Button variant="destructive" onClick={handleBulkDelete} disabled={isBulkProcessing} className="rounded-xl font-bold px-6 shadow-glow-sm bg-rose-500 hover:bg-rose-600 text-white">
-                {isBulkProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : `Delete ${selectedIds.length} Agents`}
+                {isBulkProcessing ? <Loader className="h-4 w-4 animate-spin" /> : `Delete ${selectedIds.length} Agents`}
               </Button>
             </div>
           </div>

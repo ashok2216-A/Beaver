@@ -1,8 +1,9 @@
 'use client'
+import { Loader } from "@/components/ui/loader";
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Sparkles, Loader2, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2, Terminal, Activity, Edit, Search, Paperclip, Mic, AtSign, ArrowUp } from "lucide-react"
+import { Sparkles, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2, Terminal, Activity, Edit, Search, Paperclip, Mic, AtSign, ArrowUp } from "lucide-react"
 import { useAuth, useUser } from "@clerk/nextjs"
 import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
@@ -277,7 +278,7 @@ export default function PlaygroundPage() {
     <div className="h-[calc(100vh-4rem)] -m-6 flex overflow-hidden">
       
       {/* V0 Style History Sidebar */}
-      <div className="w-64 flex flex-col bg-[#fafafa]/50 dark:bg-[#0a0a0a]/50 backdrop-blur-md border-r border-slate-200 dark:border-slate-800 p-4 shrink-0 animate-in slide-in-from-left duration-300">
+      <div className="w-64 flex flex-col bg-transparent border-r border-slate-200 dark:border-slate-800 p-4 shrink-0 animate-in slide-in-from-left duration-300">
         
         <button
           onClick={() => {
@@ -313,7 +314,7 @@ export default function PlaygroundPage() {
         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pr-1">
           {isLoadingHistory ? (
             <div className="flex flex-col items-center justify-center py-10">
-              <Loader2 className="w-4 h-4 animate-spin text-primary/60" />
+              <Loader className="w-4 h-4 animate-spin text-primary/60" />
             </div>
           ) : history.length === 0 ? (
             <div className="text-[10px] text-muted-foreground/40 text-center py-10 px-2 italic">
@@ -361,7 +362,7 @@ export default function PlaygroundPage() {
         className="flex-1 w-full overflow-y-auto custom-scrollbar flex flex-col items-center relative"
       >
         {messages.length === 0 && !isLoadingConversation && (
-          <div className="flex-1 flex flex-col items-center justify-center w-full max-w-3xl px-4 animate-in fade-in duration-500 pb-44 mt-10">
+          <div className="flex-1 flex flex-col items-center justify-center w-full max-w-3xl px-4 animate-in fade-in duration-500 pb-[35vh] mt-4">
             
             {/* Enhanced Multi-color Glow Matching Landing Page */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] pointer-events-none opacity-60 dark:opacity-40 flex items-center justify-center">
@@ -389,7 +390,7 @@ export default function PlaygroundPage() {
         {isLoadingConversation ? (
           <div className="flex flex-col items-center justify-center py-32 space-y-4 animate-in fade-in duration-300">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <Loader className="w-6 h-6 animate-spin text-primary" />
             </div>
             <p className="text-sm text-muted-foreground font-medium animate-pulse">Loading...</p>
           </div>
@@ -578,7 +579,7 @@ export default function PlaygroundPage() {
               />
             </div>
             <div className="rounded-2xl px-5 py-3.5 bg-muted/20 border border-white/5 flex items-center gap-3 animate-in fade-in duration-200">
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+              <Loader className="h-3.5 w-3.5 animate-spin text-primary" />
               <span className="text-xs text-muted-foreground italic">Thinking...</span>
             </div>
           </div>
@@ -682,23 +683,43 @@ export default function PlaygroundPage() {
         {messages.length === 0 && !isLoadingConversation && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full mt-4 pb-2">
             {[
-              { icon: <Terminal className="w-4 h-4 text-emerald-500" />, title: "Debug Code", desc: "Find errors in my Python script" },
-              { icon: <Search className="w-4 h-4 text-blue-500" />, title: "Analyze Data", desc: "Summarize the latest CSV upload" },
-              { icon: <Sparkles className="w-4 h-4 text-purple-500" />, title: "Brainstorm", desc: "Ideas for a new marketing campaign" }
+              { 
+                icon: <Terminal className="w-4 h-4 text-emerald-500" />, 
+                title: "Debug Code", 
+                desc: "Find errors in my Python script and optimize it for performance.",
+                tag: "Engineering"
+              },
+              { 
+                icon: <Search className="w-4 h-4 text-blue-500" />, 
+                title: "Analyze Data", 
+                desc: "Summarize the latest CSV upload and identify key metrics.",
+                tag: "Data Science"
+              },
+              { 
+                icon: <Sparkles className="w-4 h-4 text-purple-500" />, 
+                title: "Brainstorm", 
+                desc: "Generate creative ideas for our upcoming Q4 marketing campaign.",
+                tag: "Marketing"
+              }
             ].map((suggestion, idx) => (
               <button 
                 key={idx}
                 onClick={() => {
                   setInput(suggestion.desc)
                 }}
-                className="flex flex-col items-start gap-1 p-3 rounded-2xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/60 dark:border-slate-800/60 shadow-sm hover:shadow-md hover:bg-white dark:hover:bg-slate-900 hover:-translate-y-0.5 transition-all duration-300 text-left group"
+                className="flex flex-col items-start gap-2 p-3.5 rounded-2xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/60 dark:border-slate-800/60 shadow-sm hover:shadow-md hover:bg-white dark:hover:bg-slate-900 hover:-translate-y-0.5 transition-all duration-300 text-left group"
               >
-                <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 group-hover:scale-110 transition-transform mb-1">
-                  {suggestion.icon}
+                <div className="flex items-center justify-between w-full">
+                  <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 group-hover:scale-110 transition-transform">
+                    {suggestion.icon}
+                  </div>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60 bg-muted/50 px-2 py-0.5 rounded-full">
+                    {suggestion.tag}
+                  </span>
                 </div>
-                <div>
-                  <h3 className="text-xs font-semibold text-slate-800 dark:text-slate-200">{suggestion.title}</h3>
-                  <p className="text-[10px] text-muted-foreground leading-tight mt-0.5 line-clamp-1">{suggestion.desc}</p>
+                <div className="mt-1">
+                  <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{suggestion.title}</h3>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed mt-1 line-clamp-2">{suggestion.desc}</p>
                 </div>
               </button>
             ))}

@@ -1,10 +1,11 @@
 'use client'
+import { Loader } from "@/components/ui/loader";
 
 import { useEffect, useState, use } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react"
+import {  CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function OAuthCallbackPage({ params }: { params: Promise<{ provider: string }> }) {
@@ -112,7 +113,7 @@ export default function OAuthCallbackPage({ params }: { params: Promise<{ provid
                   <div className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent translate-y-full" />
                 </div>
               )}
-              {status === 'processing' && <Loader2 className="w-8 h-8 text-primary animate-spin z-10" />}
+              {status === 'processing' && <Loader className="w-8 h-8 text-primary animate-spin z-10" />}
               {status === 'success' && <CheckCircle2 className="w-8 h-8 text-emerald-500 z-10" />}
               {status === 'error' && <AlertCircle className="w-8 h-8 text-rose-500 z-10" />}
             </div>
