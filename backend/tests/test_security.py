@@ -37,6 +37,7 @@ async def test_shared_mcp_tool_authorization(mock_session_local):
     mock_db_mcp_endpoint.path = "/mcp/tools/YOUTUBE_SEARCH_YOU_TUBE"
     mock_db_mcp_endpoint.method = "POST"
     mock_db_mcp_endpoint.is_locked = False
+    mock_db_mcp_endpoint.requires_approval = False
     mock_db_mcp_endpoint.summary = "Search YouTube"
     mock_db_mcp_endpoint.description = "Searches for YouTube videos"
     mock_db_mcp_endpoint.parameters = []
