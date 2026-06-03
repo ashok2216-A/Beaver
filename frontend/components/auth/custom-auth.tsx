@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useClerk } from '@clerk/nextjs'
+import { useClerk, useAuth } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
@@ -32,9 +32,16 @@ const CornerPlus = ({ className }: { className?: string }) => (
 
 export function CustomAuth() {
   const { client, setActive, loaded } = useClerk()
+  const { isSignedIn, isLoaded: authLoaded } = useAuth()
   const signIn = client?.signIn
   const signUp = client?.signUp
   const router = useRouter()
+  
+  React.useEffect(() => {
+    if (authLoaded && isSignedIn) {
+      router.push('/dashboard')
+    }
+  }, [authLoaded, isSignedIn, router])
   
   const [email, setEmail] = React.useState('')
   const [otp, setOtp] = React.useState('')
