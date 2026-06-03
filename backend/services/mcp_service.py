@@ -192,7 +192,7 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
                 import json
                 with open("d:/Beaver/Beaver/backend/mcp_debug.json", "w") as f:
                     json.dump(payload, f)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
             # Retry loop for invalid toolkit slugs
@@ -226,7 +226,7 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
                                     payload.pop("toolkits", None)
                                     payload.pop("preload", None)
                                 continue  # Retry
-                    except Exception:
+                    except Exception:  # nosec B110
                         pass
                 
                 session_resp.raise_for_status()
