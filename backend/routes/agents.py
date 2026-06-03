@@ -8,7 +8,7 @@ import logging
 import yaml
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Form, status, Query
 from sqlalchemy.orm import Session, defer
-from sqlalchemy import func, case, distinct, or_
+from sqlalchemy import func, case, or_
 
 from database.database import get_db
 from models.models import Agent, Endpoint, AgentStatus, User, Log, ToolSource

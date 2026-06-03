@@ -6,18 +6,16 @@ Automatically integrates with our OAuth token vault to inject decrypted,
 fresh credentials into the tool execution environment.
 """
 import asyncio
-from datetime import datetime, timedelta, timezone
 import logging
 from typing import Any, Optional
-import httpx
 from sqlalchemy.orm import Session
 
 from config.config import get_settings
 from database.database import SessionLocal
 from models.models import UserIntegration
-from utils.security import decrypt_secret, encrypt_secret
+from utils.security import decrypt_secret
 
-from services.mcp_registry import get_integration_by_alias, get_integration_registry
+from services.mcp_registry import get_integration_by_alias
 
 log = logging.getLogger(__name__)
 
@@ -194,7 +192,7 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
                 import json
                 with open("d:/Beaver/Beaver/backend/mcp_debug.json", "w") as f:
                     json.dump(payload, f)
-            except:
+            except Exception:
                 pass
 
             # Retry loop for invalid toolkit slugs
@@ -308,7 +306,6 @@ async def _discover_async(mcp_server_url: str, user_id: Optional[str]) -> list[d
     if integration:
         provider = integration.get("provider_name")
 
-    auth_token = ""  # nosec B105
     if provider and user_id:
         try:
             with SessionLocal() as db:
@@ -317,7 +314,7 @@ async def _discover_async(mcp_server_url: str, user_id: Optional[str]) -> list[d
                     UserIntegration.provider == provider.lower()
                 ).first()
                 if integration:
-                    auth_token = await refresh_oauth_token_if_needed(integration, db)
+                    _ = await refresh_oauth_token_if_needed(integration, db)
         except Exception as e:
             log.error(f"Failed to fetch integration token in discovery: {e}")
 
@@ -380,7 +377,6 @@ async def execute_mcp_tool(
         if integration:
             provider = integration.get("provider_name")
 
-    auth_token = ""  # nosec B105
     if provider:
         try:
             with SessionLocal() as db:
@@ -390,7 +386,7 @@ async def execute_mcp_tool(
                 ).first()
                 
                 if integration:
-                    auth_token = await refresh_oauth_token_if_needed(integration, db)
+                    _ = await refresh_oauth_token_if_needed(integration, db)
         except Exception as e:
             log.error(f"Failed to fetch integration token for MCP: {e}")
 

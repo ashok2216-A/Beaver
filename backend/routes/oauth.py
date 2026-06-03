@@ -9,7 +9,6 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import List
 
 from config.config import get_settings
 from database.database import get_db
@@ -46,7 +45,6 @@ async def connect_provider(
     if settings.composio_api_key:
         try:
             import httpx
-            import urllib.parse
             
             async with httpx.AsyncClient() as client:
                 # 1. Fetch all auth configs to find the auth_config_id for the provider

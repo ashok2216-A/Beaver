@@ -234,7 +234,7 @@ def _mcp_path_matches_score(template: str, actual: str) -> float:
 
     # At least one of them must be an MCP tool (has mcp/tools in path OR looks like a tool name)
     t_is_mcp = "mcp/tools" in t or "mcp" in t
-    a_is_mcp = "mcp/tools" in a or "mcp" in a or not "/" in a  # raw names have no slash
+    a_is_mcp = "mcp/tools" in a or "mcp" in a or "/" not in a  # raw names have no slash
     if not (t_is_mcp or a_is_mcp):
         return 0.0
 

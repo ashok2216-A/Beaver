@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from database.database import get_db
 from models.models import PendingAction, ActionStatus, User, Endpoint
 from utils.auth import get_current_user
-import json
 import logging
 
 log = logging.getLogger(__name__)
