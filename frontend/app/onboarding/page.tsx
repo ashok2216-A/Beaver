@@ -315,7 +315,7 @@ export default function OnboardingPage() {
           {step === 6 && (
             <div className="w-full min-h-[50vh] flex flex-col items-center md:items-start justify-center px-4 md:px-12 mt-8 relative">
               {showWelcome ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-1000">
+                <div className="absolute inset-0 flex flex-col items-center justify-center -translate-y-12 animate-in fade-in zoom-in-95 duration-1000">
                   <h1 className="text-5xl md:text-7xl font-medium tracking-tighter text-slate-900 dark:text-white text-center mb-6">
                     Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600 font-bold">Beaver</span>
                   </h1>
