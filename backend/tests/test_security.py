@@ -84,5 +84,6 @@ async def test_shared_mcp_tool_authorization(mock_session_local):
         import json
         result = json.loads(result_str)
         assert result["status_code"] == 200
-        assert result["data"] == {"result": "success"}
+        import json
+        assert json.loads(result["data"]) == {"result": "success"}
         assert mock_execute.called
