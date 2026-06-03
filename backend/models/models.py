@@ -18,6 +18,11 @@ class AgentStatus(str, enum.Enum):
     live = "live"
     paused = "paused"
 
+class ActionStatus(str, enum.Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
 
 class HttpMethod(str, enum.Enum):
     get = "GET"
@@ -49,6 +54,14 @@ class User(Base):
     # User Preferences
     email_notifications = Column(Boolean, default=True, nullable=False)
     weekly_reports      = Column(Boolean, default=False, nullable=False)
+    
+    # Onboarding fields
+    account_type         = Column(String(32), nullable=True) # individual | business
+    company_name         = Column(String(255), nullable=True)
+    company_size         = Column(String(64), nullable=True)
+    department           = Column(String(64), nullable=True)
+    role                 = Column(String(64), nullable=True)
+    onboarding_completed = Column(Boolean, default=False, nullable=False)
     
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
@@ -128,6 +141,7 @@ class Endpoint(Base):
     parameters  = Column(JSON, default=list)   # list[{name, in, required, schema}]
     request_body= Column(JSON, default=dict)   # simplified body schema
     is_locked   = Column(Boolean, default=False)
+    requires_approval = Column(Boolean, default=False)
     source_type = Column(SAEnum(ToolSource), default=ToolSource.rest, nullable=False)
     mcp_server_url = Column(String(512), nullable=True)
 
@@ -176,3 +190,46 @@ class ChatMessage(Base):
     created_at      = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     conversation = relationship("Conversation", back_populates="messages")
+
+
+class PendingAction(Base):
+    __tablename__ = "pending_actions"
+
+    id              = Column(String(255), primary_key=True)
+    conversation_id = Column(String(255), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=True, index=True)
+    agent_id        = Column(Integer, ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True)
+    tool_path       = Column(String(512), nullable=False)
+    tool_method     = Column(String(10), nullable=False)
+    params          = Column(JSON, default=dict)
+    status          = Column(SAEnum(ActionStatus), default=ActionStatus.PENDING, nullable=False)
+    created_at      = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+
+    conversation    = relationship("Conversation")
+    agent           = relationship("Agent")
+
+
+class AgentTeam(Base):
+    __tablename__ = "agent_teams"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    owner_id    = Column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name        = Column(String(120), nullable=False)
+    description = Column(Text, default="")
+    category    = Column(String(64), default="AI Workforce")
+    price       = Column(String(32), default="$0.00")
+    created_at  = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+
+    owner       = relationship("User")
+    members     = relationship("AgentTeamMember", back_populates="team", cascade="all, delete-orphan")
+
+
+class AgentTeamMember(Base):
+    __tablename__ = "agent_team_members"
+
+    id          = Column(Integer, primary_key=True)
+    team_id     = Column(Integer, ForeignKey("agent_teams.id", ondelete="CASCADE"), nullable=False, index=True)
+    agent_id    = Column(Integer, ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at  = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    team        = relationship("AgentTeam", back_populates="members")
+    agent       = relationship("Agent")

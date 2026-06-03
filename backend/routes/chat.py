@@ -127,11 +127,12 @@ async def chat_orchestrate(
     request: Request,
     req: ChatRequest,
     session_id: Optional[str] = Query(None, description="Chat session ID"),
+    team_id: Optional[int] = Query(None, description="Optional team ID to restrict orchestration"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Intelligently routes requests across the entire active agent ecosystem.
+    Intelligently routes requests across the entire active agent ecosystem or a specific team.
     """
     if session_id:
         conv = db.query(Conversation).filter(Conversation.id == session_id, Conversation.user_id == user.id).first()
@@ -145,9 +146,16 @@ async def chat_orchestrate(
         db.add(user_msg)
         db.commit()
 
-    agents = db.query(Agent).filter(Agent.owner_id == user.id).all()
+    if team_id:
+        from models.models import AgentTeamMember
+        agent_members = db.query(AgentTeamMember).filter(AgentTeamMember.team_id == team_id).all()
+        team_agent_ids = [m.agent_id for m in agent_members]
+        agents = db.query(Agent).filter(Agent.owner_id == user.id, Agent.id.in_(team_agent_ids)).all()
+    else:
+        agents = db.query(Agent).filter(Agent.owner_id == user.id).all()
+        
     if not agents:
-        raise HTTPException(status_code=422, detail="No agents created yet.")
+        raise HTTPException(status_code=422, detail="No agents created yet, or team is empty.")
 
     agent_map = {a.id: a for a in agents}
     agent_ids = list(agent_map.keys())
@@ -198,7 +206,7 @@ Conversation:
             response = await litellm.acompletion(
                 model=settings.default_llm_model,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.0,
+                temperature=1.0,
                 max_tokens=20,
                 timeout=15.0
             )
@@ -323,6 +331,7 @@ Conversation:
                 "custom_headers": ep_agent.custom_headers,
                 "source_type":  ep.source_type if hasattr(ep, "source_type") else "rest",
                 "mcp_server_url": ep.mcp_server_url if hasattr(ep, "mcp_server_url") else None,
+                "requires_approval": ep.requires_approval if hasattr(ep, "requires_approval") else False,
             })
 
     # Fetch history for multi-turn continuity
@@ -348,6 +357,7 @@ Conversation:
         "session_id": session_id,
         "history": history,
         "user_id": str(user.id),
+        "agent_id": agent.id,
     }
 
     from services.agent import run_agent
@@ -375,13 +385,20 @@ Conversation:
         db.add(assistant_msg)
         db.commit()
 
+    agent_name_out = "Master Agent"
+    if team_id:
+        from models.models import AgentTeam
+        team_obj = db.query(AgentTeam).filter(AgentTeam.id == team_id).first()
+        if team_obj:
+            agent_name_out = team_obj.name
+
     return {
         "answer": result.get("answer"),
         "chunks": result.get("chunks"),
         "endpoint": matched,
         "status_code": result.get("status_code", 0),
         "latency_ms": result.get("latency_ms"),
-        "agent_name": agent.name,
+        "agent_name": agent_name_out,
         "conversation_id": session_id
     }
 
@@ -519,6 +536,7 @@ async def chat(
                 "request_body": ep.request_body or {},
                 "source_type":  ep.source_type if hasattr(ep, "source_type") else "rest",
                 "mcp_server_url": ep.mcp_server_url if hasattr(ep, "mcp_server_url") else None,
+                "requires_approval": ep.requires_approval if hasattr(ep, "requires_approval") else False,
             }
             for ep in endpoints
         ]

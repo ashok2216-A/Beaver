@@ -8,7 +8,6 @@ import {
   Sparkles,
   ArrowRight,
   Check,
-  Loader2,
   Globe,
   Search,
   ArrowLeft,
@@ -22,6 +21,7 @@ import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { Loader } from "@/components/ui/loader";
 
 interface Template {
   id: string;
@@ -169,11 +169,12 @@ function NewAgentContent() {
   // Map template IDs to their provider strings and auth types dynamically from the backend registry
   const getRegistryItemForTemplate = (t: Template) => {
     const id = (t.id || "").toLowerCase();
+    const cleanId = id.replace(/[-_]/g, "");
     
     // 1. Try exact match first
     for (const key in providersRegistry) {
       const item = providersRegistry[key];
-      if (item.aliases && item.aliases.includes(id)) {
+      if (item.aliases && (item.aliases.includes(id) || item.aliases.includes(cleanId))) {
         return item;
       }
     }
@@ -181,7 +182,7 @@ function NewAgentContent() {
     // 2. Fallback to substring matching (only if it's the exact prefix or suffix to be safer)
     for (const key in providersRegistry) {
       const item = providersRegistry[key];
-      if (item.aliases && item.aliases.some((alias: string) => id === alias || id.replace(/_/g, "") === alias)) {
+      if (item.aliases && item.aliases.some((alias: string) => id.startsWith(alias + "_") || id.endsWith("_" + alias) || cleanId.startsWith(alias) || cleanId.endsWith(alias))) {
         return item;
       }
     }
@@ -266,7 +267,26 @@ function NewAgentContent() {
         );
 
         if (!hasActiveIntegration) {
-          if (authTypeForProvider === "API_KEY") {
+          if (authTypeForProvider === "NONE") {
+            setAgentName(name);
+            setBaseUrl(mcpUrl);
+            setMcpServerUrl(mcpUrl);
+            setSourceType(sType);
+            setDescription(desc);
+            setAuthType(aType);
+            setTab("manual");
+            toast.info(`Review configuration for ${name} and click Save Integration.`);
+            
+            setConnectedTools(prev => {
+              if (prev.includes(t.id)) return prev;
+              const next = [...prev, t.id];
+              try { localStorage.setItem("beaver_connected_tools", JSON.stringify(next)); } catch (e) {}
+              return next;
+            });
+            return;
+          }
+
+          if (authTypeForProvider === "API_KEY" && !mcpUrl.startsWith("composio:")) {
             // Save pending template to resume after API key is entered
             localStorage.setItem('oauth_pending_template', JSON.stringify({
               templateId: t.id,
@@ -561,7 +581,7 @@ function NewAgentContent() {
   if (isInitializing) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[75vh] animate-in fade-in">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader className="h-8 w-8 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground mt-4 font-medium">Initializing workspace...</p>
       </div>
     );
@@ -611,7 +631,7 @@ function NewAgentContent() {
                 className="w-full rounded-xl h-12 shadow-glow"
               >
                 {submittingApiKey ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+                  <><Loader className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
                 ) : (
                   <><Check className="w-4 h-4 mr-2" /> Connect Integration</>
                 )}
@@ -725,7 +745,7 @@ function NewAgentContent() {
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 max-h-[65vh] overflow-y-auto pr-4 custom-scrollbar">
                 {isLoadingTemplates ? (
                   <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <Loader className="h-8 w-8 animate-spin text-primary" />
                     <p className="text-sm text-muted-foreground">Loading template marketplace...</p>
                   </div>
                 ) : filteredTemplates.length === 0 ? (
@@ -823,7 +843,7 @@ function NewAgentContent() {
                                 </button>
                               ) : isConnecting ? (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/50 text-white font-medium text-xs shadow-sm whitespace-nowrap">
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Connecting
+                                  <Loader className="w-3.5 h-3.5 animate-spin" /> Connecting
                                 </span>
                               ) : (
                                 <span className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs shadow-sm transition-all group-hover:shadow-blue-500/25 whitespace-nowrap cursor-pointer">
@@ -1015,7 +1035,7 @@ function NewAgentContent() {
               <div className="mt-10 transition-all animate-in fade-in zoom-in-95 bg-slate-500/5 rounded-3xl p-8 border border-slate-200/50 backdrop-blur-sm">
                 <div className="flex items-center justify-between text-sm mb-4">
                   <span className="font-bold flex items-center gap-3 text-slate-700">
-                    <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                    <Loader className="h-5 w-5 animate-spin text-slate-400" />
                     Generating your agent engine…
                   </span>
                   <span className="font-mono text-slate-900 font-bold">{progress}%</span>
@@ -1046,7 +1066,7 @@ function NewAgentContent() {
                 >
                   {generating ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader className="mr-2 h-4 w-4 animate-spin" />
                       Working...
                     </>
                   ) : sourceType === "mcp_sse" ? (
@@ -1073,7 +1093,7 @@ function NewAgentContent() {
 
 export default function NewAgentPage() {
   return (
-    <Suspense fallback={<div className="py-20 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+    <Suspense fallback={<div className="py-20 flex justify-center"><Loader className="h-8 w-8 animate-spin text-primary" /></div>}>
       <NewAgentContent />
     </Suspense>
   );

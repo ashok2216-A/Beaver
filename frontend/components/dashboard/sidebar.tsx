@@ -18,16 +18,20 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
-  Plus
+  Plus,
+  Users,
+  MessageCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
   { name: "Create Agent", href: "/dashboard/agents/new", icon: Plus },
-  { name: "Agents", href: "/dashboard/agents", icon: Cpu },
-  { name: "Playground", href: "/dashboard/playground", icon: Sparkles },
+  { name: "Agents", href: "/dashboard/agents", icon: Sparkles },
+  { name: "Workforce", href: "/dashboard/workforce", icon: Users },
+  { name: "Chat", href: "/dashboard/playground", icon: MessageCircle },
   { name: "API Keys", href: "/dashboard/api-keys", icon: Fingerprint },
+  { name: "Developer", href: "/dashboard/developer", icon: Code2 },
   { name: "Analytics", href: "/dashboard/analytics", icon: Activity },
   { name: "Logs", href: "/dashboard/logs", icon: Terminal },
 ]

@@ -1,4 +1,5 @@
 'use client'
+import { Loader } from "@/components/ui/loader";
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -10,7 +11,6 @@ import {
   Code2, 
   Check, 
   ArrowLeft, 
-  Loader2, 
   Copy,
   ExternalLink,
   ShieldCheck,
@@ -53,7 +53,7 @@ export default function DeployPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-[calc(100vh-10rem)]">
-      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <Loader className="w-8 h-8 animate-spin text-primary" />
     </div>
   )
 
@@ -202,7 +202,7 @@ axios.post(url, data, { headers })
             agent.status === 'live' ? "bg-emerald-500 shadow-emerald-500/20" : "bg-primary shadow-primary/20"
           )}>
             {isRedeploying ? (
-              <Loader2 className="h-8 w-8 animate-spin" />
+              <Loader className="h-8 w-8 animate-spin" />
             ) : agent.status === 'live' ? (
               <ShieldCheck className="h-8 w-8" />
             ) : (
@@ -235,7 +235,7 @@ axios.post(url, data, { headers })
             onClick={handleRedeploy}
           >
             {isRedeploying ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              <Loader className="mr-2 h-5 w-5 animate-spin" />
             ) : (
               <Zap className="mr-2 h-5 w-5" />
             )}

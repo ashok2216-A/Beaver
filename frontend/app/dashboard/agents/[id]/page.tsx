@@ -1,4 +1,5 @@
 'use client'
+import { Loader } from "@/components/ui/loader";
 
 import React, { useState, useRef, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -13,7 +14,6 @@ import {
   Search, 
   Lock, 
   Unlock,
-  Loader2,
   Database,
   Shield,
   Trash2,
@@ -22,7 +22,8 @@ import {
   Activity,
   Edit2,
   Check,
-  Cloud
+  Cloud,
+  ShieldCheck
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AgentAvatar } from "@/components/dashboard/agent-avatar"
@@ -43,7 +44,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { toast } from "sonner"
 import Link from "next/link"
-import { A2InputForm, A2AudioPlayer } from "@/components/a2ui/components"
+import { A2InputForm, A2AudioPlayer, A2HumanApproval } from "@/components/a2ui/components"
 
 interface Agent {
   id: number
@@ -66,6 +67,7 @@ interface Endpoint {
   summary: string
   is_locked: boolean
   description?: string
+  requires_approval?: boolean
 }
 
 const methodColors: Record<string, string> = {
@@ -125,6 +127,7 @@ export default function AgentBuilderPage() {
   const [newMethod, setNewMethod] = useState("GET")
   const [newPath, setNewPath] = useState("")
   const [newSummary, setNewSummary] = useState("")
+  const [newRequiresApproval, setNewRequiresApproval] = useState(false)
   const [isSavingEndpoint, setIsSavingEndpoint] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(380)
   const [settingsWidth, setSettingsWidth] = useState(340)
@@ -234,7 +237,8 @@ export default function AgentBuilderPage() {
         body: JSON.stringify({
           method: newMethod,
           path: newPath,
-          summary: newSummary
+          summary: newSummary,
+          requires_approval: newRequiresApproval
         })
       })
 
@@ -247,6 +251,7 @@ export default function AgentBuilderPage() {
       setEndpoints(prev => [data, ...prev])
       setNewPath("")
       setNewSummary("")
+      setNewRequiresApproval(false)
       setIsAddEndpointOpen(false)
       toast.success("Endpoint added successfully")
     } catch (err: any) {
@@ -273,7 +278,8 @@ export default function AgentBuilderPage() {
         body: JSON.stringify({
           method: newMethod,
           path: newPath,
-          summary: newSummary
+          summary: newSummary,
+          requires_approval: newRequiresApproval
         })
       })
 
@@ -416,6 +422,23 @@ export default function AgentBuilderPage() {
     }
   }
 
+  const handleToggleApproval = async (endpointId: number) => {
+    try {
+      const token = await getToken()
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${id}/endpoints/${endpointId}/toggle-approval`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setEndpoints(prev => prev.map(e => e.id === endpointId ? { ...e, requires_approval: updated.requires_approval } : e))
+        toast.success(updated.requires_approval ? "Human approval enabled" : "Human approval disabled")
+      }
+    } catch (err) {
+      toast.error("Failed to toggle approval requirement")
+    }
+  }
+
   const handleBulkLock = async (lock: boolean) => {
     const action = lock ? 'lock-all' : 'unlock-all'
     const confirmMsg = `${lock ? 'Lock' : 'Unlock'} all ${selectedMethod === 'ALL' ? '' : selectedMethod} endpoints?`
@@ -483,7 +506,7 @@ export default function AgentBuilderPage() {
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <Loader className="w-10 h-10 animate-spin text-primary" />
         <p className="text-xs font-bold uppercase tracking-widest opacity-40">Loading Builder...</p>
       </div>
     </div>
@@ -701,7 +724,8 @@ export default function AgentBuilderPage() {
                       setEditingEndpoint(ep)
                       setNewMethod(ep.method)
                       setNewPath(ep.path)
-                      setNewSummary(ep.summary)
+                      setNewSummary(ep.summary || "")
+                      setNewRequiresApproval(ep.requires_approval || false)
                       setIsEditEndpointOpen(true)
                     }}
                     className={cn(
@@ -748,11 +772,22 @@ export default function AgentBuilderPage() {
                           </>
                         )}
                         <button 
+                          onClick={(e) => { e.stopPropagation(); handleToggleApproval(ep.id); }}
+                          className={cn(
+                            "h-7 w-7 flex items-center justify-center rounded-lg border transition-all shadow-sm",
+                            ep.requires_approval ? "bg-amber-500/10 border-amber-500/20 text-amber-500" : "bg-background border-border text-muted-foreground hover:text-amber-500"
+                          )}
+                          title={ep.requires_approval ? "Approval Required" : "Auto-Execute"}
+                        >
+                          {ep.requires_approval ? <ShieldCheck className="h-3.5 w-3.5" /> : <Shield className="h-3.5 w-3.5" />}
+                        </button>
+                        <button 
                           onClick={(e) => { e.stopPropagation(); handleToggleLock(ep.id); }}
                           className={cn(
                             "h-7 w-7 flex items-center justify-center rounded-lg border transition-all shadow-sm",
                             ep.is_locked ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-background border-border text-muted-foreground hover:text-primary"
                           )}
+                          title={ep.is_locked ? "Locked" : "Unlocked"}
                         >
                           {ep.is_locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
                         </button>
@@ -766,18 +801,34 @@ export default function AgentBuilderPage() {
                         .join(' ');
                       const formattedDesc = ep.description || (ep.summary && ep.summary !== rawName ? ep.summary : `Executes the ${cleanName.toLowerCase()} capability.`);
                       return (
-                        <>
-                          <p className="font-mono font-bold text-xs truncate text-foreground">{cleanName}</p>
-                          <p className="text-[11px] text-muted-foreground mt-1.5 line-clamp-2 font-medium leading-relaxed">{formattedDesc}</p>
-                        </>
+                        <HoverCard openDelay={300}>
+                          <HoverCardTrigger asChild>
+                            <div className="cursor-default mt-1">
+                              <p className="font-mono font-bold text-xs truncate text-foreground">{cleanName}</p>
+                              <p className="text-[11px] text-muted-foreground mt-1.5 line-clamp-2 font-medium leading-relaxed">{formattedDesc}</p>
+                            </div>
+                          </HoverCardTrigger>
+                          <HoverCardContent side="right" align="start" className="w-80 z-[100] shadow-xl border-border/50 bg-card/95 backdrop-blur-md">
+                            <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{formattedDesc}</p>
+                          </HoverCardContent>
+                        </HoverCard>
                       );
                     })() : (
-                      <>
-                        <p className="font-mono text-[11px] truncate text-foreground/80">{ep.path}</p>
-                        {ep.summary && (
-                          <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 font-medium">{ep.summary}</p>
+                      <HoverCard openDelay={300}>
+                        <HoverCardTrigger asChild>
+                          <div className="cursor-default mt-1">
+                            <p className="font-mono text-[11px] truncate text-foreground/80">{ep.path}</p>
+                            {ep.summary && (
+                              <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 font-medium">{ep.summary}</p>
+                            )}
+                          </div>
+                        </HoverCardTrigger>
+                        {(ep.description || ep.summary) && (
+                          <HoverCardContent side="right" align="start" className="w-80 z-[100] shadow-xl border-border/50 bg-card/95 backdrop-blur-md">
+                            <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{ep.description || ep.summary}</p>
+                          </HoverCardContent>
                         )}
-                      </>
+                      </HoverCard>
                     )}
                   </div>
                 );
@@ -816,8 +867,12 @@ export default function AgentBuilderPage() {
                       <User className="h-5 w-5 text-slate-600 drop-shadow-sm" />
                     </div>
                   ) : (
-                    <div className="shrink-0">
-                      <AgentAvatar id={Number(id)} size="md" />
+                    <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-border/50 shadow-sm bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50">
+                      <img 
+                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(agent.name)}`} 
+                        alt="Avatar" 
+                        className="w-full h-full object-cover" 
+                      />
                     </div>
                   )}
                   <div className={cn(
@@ -845,6 +900,32 @@ export default function AgentBuilderPage() {
                                           src={a2data.a2ui.src}
                                           data={a2data.a2ui.data}
                                           title={a2data.a2ui.title}
+                                        />
+                                      );
+                                    }
+                                    if (comp === 'human_approval') {
+                                      return (
+                                        <A2HumanApproval
+                                          data={a2data}
+                                          onApprove={async (actionId) => {
+                                            try {
+                                              const token = await getToken();
+                                              const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/actions/${actionId}/approve`, {
+                                                method: 'POST',
+                                                headers: { Authorization: `Bearer ${token}` }
+                                              });
+                                              const data = await res.json();
+                                            } catch(e) { console.error(e) }
+                                          }}
+                                          onReject={async (actionId) => {
+                                            try {
+                                              const token = await getToken();
+                                              await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/actions/${actionId}/reject`, {
+                                                method: 'POST',
+                                                headers: { Authorization: `Bearer ${token}` }
+                                              });
+                                            } catch(e) { console.error(e) }
+                                          }}
                                         />
                                       );
                                     }
@@ -929,8 +1010,12 @@ export default function AgentBuilderPage() {
               ))}
               {isSending && messages[messages.length-1].role === 'user' && (
                 <div className="flex gap-4 animate-pulse">
-                  <div className="shrink-0">
-                    <AgentAvatar id={Number(id)} size="md" />
+                  <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-border/50 shadow-sm bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50">
+                    <img 
+                      src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(agent.name)}`} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover" 
+                    />
                   </div>
                   <div className="bg-white/60 dark:bg-white/10 border border-border/50 rounded-3xl rounded-tl-sm px-4 py-2 backdrop-blur-md shadow-sm">
                     <span className="text-xs text-muted-foreground animate-pulse italic">Thinking...</span>
@@ -961,7 +1046,7 @@ export default function AgentBuilderPage() {
                   disabled={isSending || !input.trim()}
                   className="h-10 w-10 rounded-xl shadow-glow shrink-0"
                 >
-                  {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {isSending ? <Loader className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
               <p className="text-[10px] text-center mt-3 text-muted-foreground uppercase tracking-widest font-bold">
@@ -989,7 +1074,7 @@ export default function AgentBuilderPage() {
               <Settings2 className="h-4 w-4 text-primary" />
               <h2 className="text-sm font-bold">Agent Settings</h2>
             </div>
-            {isSaving && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+            {isSaving && <Loader className="h-4 w-4 animate-spin text-primary" />}
           </div>
           
           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
@@ -1214,6 +1299,19 @@ export default function AgentBuilderPage() {
                   className="h-11 rounded-xl bg-background/50 border-border/50 text-xs"
                 />
               </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-background/50 border border-border/50 mt-2">
+                <div className="space-y-0.5">
+                  <label className="text-xs font-bold text-foreground">Requires Approval</label>
+                  <p className="text-[10px] text-muted-foreground">Pause execution to ask user for permission.</p>
+                </div>
+                <div 
+                  className={cn("w-10 h-6 rounded-full transition-colors cursor-pointer relative", newRequiresApproval ? "bg-primary" : "bg-muted")}
+                  onClick={() => setNewRequiresApproval(!newRequiresApproval)}
+                >
+                  <div className={cn("absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm", newRequiresApproval ? "translate-x-4" : "translate-x-0")} />
+                </div>
+              </div>
             </div>
 
             <div className="p-6 border-t border-border/50 flex gap-3 bg-muted/20">
@@ -1309,6 +1407,19 @@ export default function AgentBuilderPage() {
                   onChange={(e) => setNewSummary(e.target.value)}
                   className="h-11 rounded-xl bg-background/50 border-border/50 text-xs"
                 />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-background/50 border border-border/50 mt-2">
+                <div className="space-y-0.5">
+                  <label className="text-xs font-bold text-foreground">Requires Approval</label>
+                  <p className="text-[10px] text-muted-foreground">Pause execution to ask user for permission.</p>
+                </div>
+                <div 
+                  className={cn("w-10 h-6 rounded-full transition-colors cursor-pointer relative", newRequiresApproval ? "bg-primary" : "bg-muted")}
+                  onClick={() => setNewRequiresApproval(!newRequiresApproval)}
+                >
+                  <div className={cn("absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm", newRequiresApproval ? "translate-x-4" : "translate-x-0")} />
+                </div>
               </div>
             </div>
 

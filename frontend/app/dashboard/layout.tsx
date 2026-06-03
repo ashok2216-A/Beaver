@@ -1,11 +1,14 @@
 "use client"
+import { Loader } from "@/components/ui/loader";
 
-import { useState } from "react"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { DashboardHeader } from "@/components/dashboard/header"
 import { cn } from "@/lib/utils"
 
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { useAuth } from "@clerk/nextjs"
+import { useEffect, useState } from "react"
+import { Loader2 } from "lucide-react"
 
 export default function DashboardLayout({
   children,
@@ -13,10 +16,48 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true)
   const pathname = usePathname()
+  const router = useRouter()
+  const { getToken, isLoaded, isSignedIn } = useAuth()
+
+  useEffect(() => {
+    async function checkOnboarding() {
+      if (!isLoaded) return
+      if (!isSignedIn) {
+        setIsCheckingOnboarding(false)
+        return
+      }
+      try {
+        const token = await getToken()
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (!data.onboarding_completed) {
+            router.push('/onboarding')
+            return
+          }
+        }
+      } catch (e) {
+        console.error("Failed to check onboarding status", e)
+      }
+      setIsCheckingOnboarding(false)
+    }
+    checkOnboarding()
+  }, [isLoaded, isSignedIn, getToken, router])
 
   // Hide sidebar/header ONLY on the agent builder (IDE) page
   const isBuilderPage = pathname.match(/\/dashboard\/agents\/\d+$/)
+
+  if (isCheckingOnboarding) {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-[#f8fafc]">
+        <Loader className="w-8 h-8 animate-spin text-indigo-500" />
+      </div>
+    )
+  }
 
   if (isBuilderPage) {
     return (

@@ -21,6 +21,16 @@ def update_me(data: UserUpdate, user: User = Depends(get_current_user), db: Sess
         user.email_notifications = data.email_notifications
     if data.weekly_reports is not None:
         user.weekly_reports = data.weekly_reports
+    if data.company_name is not None:
+        user.company_name = data.company_name
+    if data.company_size is not None:
+        user.company_size = data.company_size
+    if data.department is not None:
+        user.department = data.department
+    if data.role is not None:
+        user.role = data.role
+    if data.onboarding_completed is not None:
+        user.onboarding_completed = data.onboarding_completed
     
     db.add(user)
     db.commit()

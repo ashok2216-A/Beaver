@@ -19,6 +19,7 @@ class EndpointOut(BaseModel):
     parameters: list[dict[str, Any]]
     request_body: dict[str, Any]
     is_locked: bool = False
+    requires_approval: bool = False
     source_type: str = "rest"
     mcp_server_url: Optional[str] = None
 
@@ -31,6 +32,7 @@ class EndpointCreate(BaseModel):
     description: Optional[str] = ""
     parameters: Optional[list[dict[str, Any]]] = []
     request_body: Optional[dict[str, Any]] = {}
+    requires_approval: bool = False
     source_type: Optional[str] = "rest"
     mcp_server_url: Optional[str] = None
 
@@ -42,6 +44,7 @@ class EndpointUpdate(BaseModel):
     description: Optional[str] = None
     parameters: Optional[list[dict[str, Any]]] = None
     request_body: Optional[dict[str, Any]] = None
+    requires_approval: Optional[bool] = None
     source_type: Optional[str] = None
     mcp_server_url: Optional[str] = None
 
@@ -62,6 +65,12 @@ class UserOut(BaseModel):
     subscription_status: str = "incomplete"
     email_notifications: bool = True
     weekly_reports: bool = False
+    account_type: Optional[str] = None
+    company_name: Optional[str] = None
+    company_size: Optional[str] = None
+    department: Optional[str] = None
+    role: Optional[str] = None
+    onboarding_completed: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -70,6 +79,12 @@ class UserOut(BaseModel):
 class UserUpdate(BaseModel):
     email_notifications: Optional[bool] = None
     weekly_reports: Optional[bool] = None
+    account_type: Optional[str] = None
+    company_name: Optional[str] = None
+    company_size: Optional[str] = None
+    department: Optional[str] = None
+    role: Optional[str] = None
+    onboarding_completed: Optional[bool] = None
 
 
 class ApiKeyCreate(BaseModel):

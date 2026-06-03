@@ -1,4 +1,5 @@
 'use client'
+import { Loader } from "@/components/ui/loader";
 
 import { useEffect, useState, Suspense } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -16,14 +17,12 @@ import {
   Activity,
   AlertTriangle,
   CheckSquare,
-  Square,
-  Loader2
+  Square
 } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
 import { cn, addNotification, getAgentColor } from "@/lib/utils"
-import { AgentAvatar } from "@/components/dashboard/agent-avatar"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
@@ -238,8 +237,12 @@ function AgentsContent() {
 
               <CardContent className="pt-4 px-6 pb-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div className={cn("group-hover:scale-110 transition-transform duration-300", selectedIds.includes(agent.id) ? "ml-8" : "ml-0")}>
-                    <AgentAvatar id={agent.id} size="lg" />
+                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm overflow-hidden border border-white/50 dark:border-white/10 group-hover:scale-110 transition-transform duration-300 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50", selectedIds.includes(agent.id) ? "ml-8" : "ml-0")}>
+                    <img 
+                      src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(agent.name)}`} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover" 
+                    />
                   </div>
                   
                   <DropdownMenu>
@@ -463,7 +466,7 @@ function AgentsContent() {
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="ghost" onClick={() => setIsBulkDeleting(false)} disabled={isBulkProcessing} className="rounded-xl">Cancel</Button>
               <Button variant="destructive" onClick={handleBulkDelete} disabled={isBulkProcessing} className="rounded-xl font-bold px-6 shadow-glow-sm bg-rose-500 hover:bg-rose-600 text-white">
-                {isBulkProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : `Delete ${selectedIds.length} Agents`}
+                {isBulkProcessing ? <Loader className="h-4 w-4 animate-spin" /> : `Delete ${selectedIds.length} Agents`}
               </Button>
             </div>
           </div>
