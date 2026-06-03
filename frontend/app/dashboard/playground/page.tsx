@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Sparkles, Loader2, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2, Terminal, Activity } from "lucide-react"
-import { useAuth } from "@clerk/nextjs"
+import { Sparkles, Loader2, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2, Terminal, Activity, Edit, Search, Paperclip, Mic, AtSign, ArrowUp } from "lucide-react"
+import { useAuth, useUser } from "@clerk/nextjs"
 import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -37,18 +37,13 @@ interface Agent {
 
 export default function PlaygroundPage() {
   const { getToken } = useAuth()
+  const { user } = useUser()
   const [agents, setAgents] = useState<Agent[]>([])
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isOrchestratorMode, setIsOrchestratorMode] = useState(true)
   
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: 'Hello! I\'m your AI Core Assistant. Select an active agent endpoint above, or enable Multi-Agent Orchestration to automate tool execution across your entire fleet.'
-    }
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
   
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -57,6 +52,7 @@ export default function PlaygroundPage() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(true)
   const [sessionId, setSessionId] = useState<string>("")
   const [isLoadingConversation, setIsLoadingConversation] = useState(false)
+  const [userTier, setUserTier] = useState<'free' | 'pro'>('free')
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const fetchHistory = async () => {
@@ -84,7 +80,7 @@ export default function PlaygroundPage() {
     async function fetchAgents() {
       try {
         const token = await getToken()
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agent-teams`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         if (res.ok) {
@@ -104,6 +100,25 @@ export default function PlaygroundPage() {
   }, [getToken])
 
   useEffect(() => {
+    const updateTier = () => {
+      const cachedTier = localStorage.getItem("beaver_user_tier")
+      if (cachedTier === 'pro') {
+        setUserTier('pro')
+      } else {
+        setUserTier('free')
+      }
+    }
+    updateTier()
+    window.addEventListener("storage", updateTier)
+    // Fallback polling in case it doesn't trigger across components correctly
+    const interval = setInterval(updateTier, 2000)
+    return () => {
+      window.removeEventListener("storage", updateTier)
+      clearInterval(interval)
+    }
+  }, [])
+
+  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
@@ -113,13 +128,7 @@ export default function PlaygroundPage() {
     setSelectedAgent(agent)
     setIsDropdownOpen(false)
     setIsOrchestratorMode(false)
-    setMessages([
-      {
-        id: `welcome_${agent.id}`,
-        role: 'assistant',
-        content: `Switched to **${agent.name}**.`
-      }
-    ])
+    setMessages([])
   }
 
   const loadConversation = async (id: string) => {
@@ -216,7 +225,7 @@ export default function PlaygroundPage() {
 
       const endpointUrl = isOrchestratorMode 
         ? `${process.env.NEXT_PUBLIC_API_URL}/chat/orchestrate?session_id=${activeSessionId}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/chat/${selectedAgent?.id}?session_id=${activeSessionId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/chat/orchestrate?session_id=${activeSessionId}&team_id=${selectedAgent?.id}`
 
       const res = await fetch(endpointUrl, {
         method: 'POST',
@@ -265,30 +274,39 @@ export default function PlaygroundPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-8.5rem)] flex overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] -m-6 flex overflow-hidden">
       
-      {/* ChatGPT Style History Sidebar */}
-      <div className="w-64 flex flex-col bg-white/20 backdrop-blur-xl border-r border-slate-200 p-4 shrink-0 animate-in slide-in-from-left duration-300">
-        <h2 className="text-xl font-bold text-foreground mb-4 px-1">Playground</h2>
+      {/* V0 Style History Sidebar */}
+      <div className="w-64 flex flex-col bg-[#fafafa]/50 dark:bg-[#0a0a0a]/50 backdrop-blur-md border-r border-slate-200 dark:border-slate-800 p-4 shrink-0 animate-in slide-in-from-left duration-300">
+        
         <button
           onClick={() => {
             setSessionId("")
-            setMessages([
-              {
-                id: 'welcome_agent',
-                role: 'assistant',
-                content: `🧠 **Neural Path Reset.** Ready for a fresh mission.`
-              }
-            ])
+            setMessages([])
           }}
-          className="mb-4 w-full flex items-center justify-center gap-2 text-xs py-2.5 px-3 rounded-xl bg-slate-950 text-white border border-slate-900 font-bold hover:bg-slate-900 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:translate-y-0.5 transition-all duration-200"
+          className="w-full flex items-center justify-between text-[13px] py-2 px-2 rounded-lg text-foreground hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors mb-2"
         >
-          <Plus className="w-3.5 h-3.5" />
-          New Chat
+          <div className="flex items-center gap-2">
+            <Edit className="w-4 h-4" />
+            <span>New chat</span>
+          </div>
         </button>
 
-        <h3 className="text-[10px] font-bold text-muted-foreground/80 mb-2 flex items-center gap-2 px-2 uppercase tracking-widest">
-          Chat History
+        <div className="relative mb-6 mt-1">
+          <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input 
+            placeholder="Search" 
+            className="w-full h-8 pl-8 pr-12 bg-transparent border-none text-[13px] outline-none placeholder:text-muted-foreground"
+            disabled
+          />
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <kbd className="px-1.5 py-0.5 text-[10px] bg-slate-200 dark:bg-slate-800 rounded text-muted-foreground font-sans">Ctrl</kbd>
+            <kbd className="px-1.5 py-0.5 text-[10px] bg-slate-200 dark:bg-slate-800 rounded text-muted-foreground font-sans">K</kbd>
+          </div>
+        </div>
+
+        <h3 className="text-[11px] font-medium text-muted-foreground mb-2 px-2">
+          Chats
         </h3>
         
         {/* Scrollable container for threads */}
@@ -302,26 +320,23 @@ export default function PlaygroundPage() {
               No active chat threads.
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {history.map((convItem) => (
                 <div
                   key={convItem.id}
                   className={cn(
-                    "relative w-full rounded-xl border flex items-center group transition-all duration-200",
+                    "relative w-full rounded-md flex items-center group transition-all duration-200 cursor-pointer",
                     sessionId === convItem.id 
-                      ? "bg-white/60 backdrop-blur-md border-slate-200 shadow-[0_4px_12px_rgba(0,0,0,0.05)]" 
-                      : "border-slate-100/50 hover:bg-white/40 hover:border-slate-200"
+                      ? "bg-slate-200/60 dark:bg-slate-800/60" 
+                      : "hover:bg-slate-200/40 dark:hover:bg-slate-800/40"
                   )}
                 >
                   <button
                     onClick={() => loadConversation(convItem.id)}
-                    className="flex-1 text-left p-2.5 text-xs flex flex-col gap-1 text-muted-foreground hover:text-foreground"
+                    className="flex-1 text-left p-2 pl-3 text-[13px] flex items-center gap-2 text-slate-700 dark:text-slate-300"
                   >
-                    <span className={cn("truncate transition-all w-[140px]", sessionId === convItem.id ? "text-primary font-bold" : "")}>
+                    <span className="truncate flex-1">
                       {convItem.title || "Conversation"}
-                    </span>
-                    <span className="text-[9px] text-muted-foreground/40">
-                      {new Date(convItem.created_at).toLocaleDateString()}
                     </span>
                   </button>
                   
@@ -339,115 +354,38 @@ export default function PlaygroundPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center relative overflow-hidden">
+      <div className="flex-1 flex flex-col items-center relative overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)] [background-size:24px_24px]">
       
-      {/* Top Floating Dropdown Menu */}
-      <div className="z-20 sticky top-0 mt-2 bg-white/40 backdrop-blur-xl border border-white/50 py-2 px-4 rounded-full flex items-center gap-4 shadow-lg">
-        <button
-          onClick={() => {
-            setIsOrchestratorMode(!isOrchestratorMode)
-            if (!isOrchestratorMode) {
-              setMessages([
-                {
-                  id: 'orchestration_mode',
-                  role: 'assistant',
-                  content: '✨ **Unified Orchestration Active.** I am now cross-referencing all connected agent tools to fulfill your complex instructions.'
-                }
-              ])
-            } else {
-              setMessages([
-                {
-                  id: 'orchestration_mode_off',
-                  role: 'assistant',
-                  content: '🎯 **Standard Toolkit Mode Engaged.** Responses will adapt securely to your selected agent.'
-                }
-              ])
-            }
-          }}
-          className={cn("text-xs px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 border transition-all duration-300",
-            isOrchestratorMode 
-              ? "bg-gradient-to-r from-[#eca8d6]/30 via-[#a78bfa]/30 to-[#67e8f9]/30 border border-[#a78bfa]/40 text-slate-800 dark:text-white shadow-[0_0_15px_rgba(168,85,247,0.2)]"
-              : "bg-muted border-transparent hover:border-white/10 text-muted-foreground"
-          )}
-        >
-          <Sparkles className={cn("w-3.5 h-3.5", isOrchestratorMode ? "text-slate-800 dark:text-white animate-pulse" : "text-muted-foreground")} />
-          <span>
-            Master Agent
-          </span>
-        </button>
-
-        {!isOrchestratorMode && (
-          <>
-            <div className="w-[1px] h-4 bg-white/10" />
-            {isLoadingAgents ? (
-              <span className="text-xs text-muted-foreground flex items-center gap-2 px-3 py-1">
-                <Loader2 className="h-3 w-3 animate-spin text-primary" />
-              </span>
-            ) : agents.length === 0 ? (
-              <span className="text-xs text-muted-foreground px-3 py-1 flex items-center gap-1.5 text-amber-500 font-medium">
-                No active agents
-              </span>
-            ) : (
-              <div className="relative">
-                <button 
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center gap-2 px-4 py-1.5 rounded-full hover:bg-muted/50 transition-all text-xs font-bold text-foreground"
-                >
-                  <Server className="w-3.5 h-3.5 text-primary" />
-                  <span>{selectedAgent ? `Sub Agent: ${selectedAgent.name}` : "Select Sub Agent"}</span>
-                  <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform duration-300", isDropdownOpen && "rotate-180")} />
-                </button>
-
-            {isDropdownOpen && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-60 rounded-2xl bg-white/60 backdrop-blur-2xl border border-white/50 p-2 shadow-xl animate-in fade-in zoom-in-95 duration-200">
-                <div className="text-[10px] font-bold text-muted-foreground/60 px-3 py-1 mb-1 uppercase tracking-wider border-b border-white/5">
-                  Select Sub Agent
-                </div>
-                <div className="space-y-1 mt-1">
-                  {agents.map((agent) => (
-                    <div
-                      key={agent.id}
-                      className={cn(
-                        "w-full rounded-xl text-xs font-medium flex items-center justify-between transition-all hover:bg-muted/50 p-1",
-                        selectedAgent?.id === agent.id ? "bg-primary/5 text-primary" : "text-muted-foreground"
-                      )}
-                    >
-                      <button
-                        onClick={() => handleAgentSelect(agent)}
-                        className="flex-1 text-left px-2 py-1.5 truncate flex items-center gap-2"
-                      >
-                        <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", agent.status === "live" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-amber-500")} />
-                        <span className="truncate">{agent.name}</span>
-                      </button>
-                      
-                      <button
-                        onClick={(e) => toggleAgentStatus(agent, e)}
-                        className={cn(
-                          "px-2 py-1 rounded-md text-[9px] font-bold border transition-all duration-200 uppercase",
-                          agent.status === "live"
-                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
-                            : "border-amber-500/30 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
-                        )}
-                        title={agent.status === "live" ? "Click to Disable" : "Click to Enable"}
-                      >
-                        {agent.status === "live" ? "Live" : "Paused"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </>
-    )}
-  </div>
-
       <div 
         ref={scrollRef} 
-        className="flex-1 w-full overflow-y-auto custom-scrollbar flex flex-col items-center"
+        className="flex-1 w-full overflow-y-auto custom-scrollbar flex flex-col items-center relative"
       >
-        <div className="w-full max-w-3xl px-4 md:px-6 pt-10 pb-40 space-y-8">
+        {messages.length === 0 && !isLoadingConversation && (
+          <div className="flex-1 flex flex-col items-center justify-center w-full max-w-3xl px-4 animate-in fade-in duration-500 pb-44 mt-10">
+            
+            {/* Enhanced Multi-color Glow Matching Landing Page */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] pointer-events-none opacity-60 dark:opacity-40 flex items-center justify-center">
+              <div className="absolute w-[300px] h-[300px] bg-[#eca8d6]/30 blur-[100px] rounded-full mix-blend-multiply dark:mix-blend-screen animate-pulse -translate-x-32" />
+              <div className="absolute w-[300px] h-[300px] bg-[#a78bfa]/30 blur-[100px] rounded-full mix-blend-multiply dark:mix-blend-screen animate-pulse" />
+              <div className="absolute w-[300px] h-[300px] bg-[#67e8f9]/30 blur-[100px] rounded-full mix-blend-multiply dark:mix-blend-screen animate-pulse translate-x-32" />
+            </div>
+
+            <div className="relative z-10 flex flex-col items-center w-full">
+              {userTier === 'free' && (
+                <div className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[11px] font-semibold px-2.5 py-0.5 rounded-full mb-6 mt-6 shadow-sm border border-purple-200 dark:border-purple-800">
+                  Free plan • Upgrade
+                </div>
+              )}
+
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-pink-500 via-purple-600 to-cyan-500 dark:from-[#eca8d6] dark:via-[#a78bfa] dark:to-[#67e8f9] bg-clip-text text-transparent mb-10 text-center tracking-tight">
+                Good afternoon, {user?.firstName || "Ashok"}
+              </h1>
+
+            </div>
+          </div>
+        )}
+
+        <div className={cn("w-full max-w-3xl px-4 md:px-6 pb-40 space-y-8", messages.length > 0 ? "pt-10" : "pt-0")}>
         {isLoadingConversation ? (
           <div className="flex flex-col items-center justify-center py-32 space-y-4 animate-in fade-in duration-300">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center">
@@ -470,10 +408,16 @@ export default function PlaygroundPage() {
               <div className={cn(
                 "w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-lg border-t border-white/40 dark:border-white/10 transition-transform duration-300 hover:scale-105 active:scale-95",
                 isAI 
-                  ? "bg-gradient-to-br from-white via-slate-50 to-slate-100 text-primary shadow-black/5" 
+                  ? "bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 text-primary shadow-black/5 overflow-hidden" 
                   : "bg-gradient-to-br from-white via-slate-50 to-slate-100 text-slate-600 dark:text-slate-400 shadow-black/5 shadow-lg"
               )}>
-                {isAI ? <Bot className="h-4 w-4 drop-shadow-sm" /> : <User className="h-4 w-4 drop-shadow-sm" />}
+                {isAI ? (
+                  <img 
+                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(message.agent_name || "Agent")}`} 
+                    alt="Avatar" 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : <User className="h-4 w-4 drop-shadow-sm" />}
               </div>
 
               {/* Message Block */}
@@ -626,8 +570,12 @@ export default function PlaygroundPage() {
         {/* Dynamic Loading block */}
         {isLoading && (
           <div className="flex items-start gap-5">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 text-primary animate-pulse">
-              <Bot className="h-4 w-4" />
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 shadow-lg border-t border-white/40 dark:border-white/10 flex items-center justify-center shrink-0 text-primary animate-pulse overflow-hidden">
+              <img 
+                src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(isOrchestratorMode ? "Master Agent" : (selectedAgent?.name || "Agent"))}`} 
+                alt="Avatar" 
+                className="w-full h-full object-cover opacity-50" 
+              />
             </div>
             <div className="rounded-2xl px-5 py-3.5 bg-muted/20 border border-white/5 flex items-center gap-3 animate-in fade-in duration-200">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
@@ -638,34 +586,124 @@ export default function PlaygroundPage() {
       </div>
     </div>
 
-      {/* Floating ChatGPT Action Pill bar */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-10 animate-in slide-in-from-bottom-4 duration-300">
+      {/* V0 Style Input Bar */}
+      <div className={cn(
+        "absolute left-1/2 -translate-x-1/2 w-full max-w-[800px] px-4 z-20 transition-all duration-500",
+        messages.length === 0 && !isLoadingConversation
+          ? "top-[55%] -translate-y-1/2"
+          : "bottom-4"
+      )}>
+        
+        {/* Render Dropdown Toggles above the input box in a sleek way */}
+        <div className="flex items-center justify-center gap-2 mb-3">
+           <button
+             onClick={() => {
+               setIsOrchestratorMode(!isOrchestratorMode)
+               setMessages([])
+             }}
+             className={cn("text-[11px] px-3 py-1 rounded-full font-medium flex items-center gap-1.5 transition-all",
+               isOrchestratorMode 
+                 ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                 : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
+             )}
+           >
+             <Sparkles className="w-3 h-3" />
+             Master Agent
+           </button>
+           
+           {!isOrchestratorMode && (
+             <div className="relative">
+                <button 
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-[11px] font-medium text-foreground"
+                >
+                  <Server className="w-3 h-3 text-muted-foreground" />
+                  <span>{selectedAgent ? selectedAgent.name : "Select Workforce"}</span>
+                  <ChevronDown className={cn("w-3 h-3 text-muted-foreground transition-transform duration-300", isDropdownOpen && "rotate-180")} />
+                </button>
+
+                {isDropdownOpen && (
+                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-52 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-200">
+                    <div className="space-y-0.5 max-h-[250px] overflow-y-auto custom-scrollbar">
+                      {agents.map((agent) => (
+                        <button
+                          key={agent.id}
+                          onClick={() => handleAgentSelect(agent)}
+                          className={cn(
+                            "w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-all hover:bg-slate-100 dark:hover:bg-slate-800",
+                            selectedAgent?.id === agent.id ? "bg-slate-100 dark:bg-slate-800 text-foreground" : "text-muted-foreground"
+                          )}
+                        >
+                          <div className="w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-500" />
+                          <span className="truncate">{agent.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+             </div>
+           )}
+        </div>
+
         <form
           onSubmit={(e) => {
             e.preventDefault()
             handleSend()
           }}
-          className="relative flex items-center p-2 pr-3 transition-all duration-300"
+          className="relative w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_30px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-300 focus-within:shadow-[0_0_40px_rgba(200,150,255,0.15)] focus-within:ring-2 focus-within:ring-purple-500/50 flex flex-col"
         >
-          <input
+          <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isOrchestratorMode ? "Message Orchestrator Engine..." : (selectedAgent ? `Message ${selectedAgent.name}...` : "Select an agent context.")}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder="Ask anything, and add agents to chat with @"
             disabled={isLoading || (!isOrchestratorMode && !selectedAgent)}
-            className="w-full h-14 bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl px-5 text-sm outline-none placeholder-muted-foreground/50 focus:ring-4 focus:ring-primary/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all"
+            className="w-full min-h-[100px] max-h-[300px] bg-transparent resize-none px-4 pt-4 pb-12 text-[15px] outline-none placeholder:text-muted-foreground/60 custom-scrollbar"
           />
-          <Button 
-            type="submit" 
-            disabled={!input.trim() || isLoading || (!isOrchestratorMode && !selectedAgent)}
-            size="icon"
-            className="h-10 w-10 rounded-xl shadow-glow bg-primary hover:bg-primary/90 transition-all ml-2 absolute right-5"
-          >
-            <ArrowRight className="h-4 w-4 text-primary-foreground" />
-          </Button>
+
+          <div className="absolute bottom-2.5 right-3 flex items-center gap-3">
+            <Button 
+              type="submit" 
+              disabled={!input.trim() || isLoading || (!isOrchestratorMode && !selectedAgent)}
+              size="icon"
+              className="h-8 w-8 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 transition-all shadow-sm disabled:opacity-50"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </Button>
+          </div>
         </form>
-        <p className="text-[10px] text-center text-muted-foreground/40 mt-2 font-medium tracking-wide">
-          API requests route dynamically over verified Open specifications.
-        </p>
+
+        {/* Suggestion Cards directly below input box */}
+        {messages.length === 0 && !isLoadingConversation && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full mt-4 pb-2">
+            {[
+              { icon: <Terminal className="w-4 h-4 text-emerald-500" />, title: "Debug Code", desc: "Find errors in my Python script" },
+              { icon: <Search className="w-4 h-4 text-blue-500" />, title: "Analyze Data", desc: "Summarize the latest CSV upload" },
+              { icon: <Sparkles className="w-4 h-4 text-purple-500" />, title: "Brainstorm", desc: "Ideas for a new marketing campaign" }
+            ].map((suggestion, idx) => (
+              <button 
+                key={idx}
+                onClick={() => {
+                  setInput(suggestion.desc)
+                }}
+                className="flex flex-col items-start gap-1 p-3 rounded-2xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/60 dark:border-slate-800/60 shadow-sm hover:shadow-md hover:bg-white dark:hover:bg-slate-900 hover:-translate-y-0.5 transition-all duration-300 text-left group"
+              >
+                <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 group-hover:scale-110 transition-transform mb-1">
+                  {suggestion.icon}
+                </div>
+                <div>
+                  <h3 className="text-xs font-semibold text-slate-800 dark:text-slate-200">{suggestion.title}</h3>
+                  <p className="text-[10px] text-muted-foreground leading-tight mt-0.5 line-clamp-1">{suggestion.desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   </div>

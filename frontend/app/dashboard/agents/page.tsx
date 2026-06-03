@@ -23,7 +23,6 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
 import { cn, addNotification, getAgentColor } from "@/lib/utils"
-import { AgentAvatar } from "@/components/dashboard/agent-avatar"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
@@ -238,8 +237,12 @@ function AgentsContent() {
 
               <CardContent className="pt-4 px-6 pb-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div className={cn("group-hover:scale-110 transition-transform duration-300", selectedIds.includes(agent.id) ? "ml-8" : "ml-0")}>
-                    <AgentAvatar id={agent.id} size="lg" />
+                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm overflow-hidden border border-white/50 dark:border-white/10 group-hover:scale-110 transition-transform duration-300 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50", selectedIds.includes(agent.id) ? "ml-8" : "ml-0")}>
+                    <img 
+                      src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(agent.name)}`} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover" 
+                    />
                   </div>
                   
                   <DropdownMenu>

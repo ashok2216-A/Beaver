@@ -180,7 +180,7 @@ def _ingest_spec(agent: Agent, spec: dict | str, db: Session) -> Agent:
     return agent
 
 
-def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
+def _agent_out(agent: Agent, ep_count: int | None = None, precalc_mcp_url: str | None = None, connected_providers: set | None = None) -> AgentOut:
     has_secret = False
     if agent.auth_secret:
         try:
@@ -193,12 +193,33 @@ def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
 
     source_type = "rest"
     mcp_url = None
-    if getattr(agent, "endpoints", None):
-        for ep in agent.endpoints:
-            if hasattr(ep, "source_type") and getattr(ep, "source_type") == ToolSource.mcp_sse:
+    
+    # Fast path if mcp_url was precalculated in list_agents
+    if precalc_mcp_url:
+        source_type = "mcp_sse"
+        mcp_url = precalc_mcp_url
+    else:
+        # Try to find if this agent has MCP endpoints without loading the full collection
+        from sqlalchemy.orm import object_session
+        from models.models import Endpoint, ToolSource
+        session = object_session(agent)
+        
+        if session:
+            # Fast query for just the mcp server url instead of loading 1000s of endpoints
+            mcp_ep = session.query(Endpoint.mcp_server_url).filter(
+                Endpoint.agent_id == agent.id, 
+                Endpoint.source_type == ToolSource.mcp_sse
+            ).first()
+            if mcp_ep and mcp_ep[0]:
                 source_type = "mcp_sse"
-                mcp_url = ep.mcp_server_url
-                break
+                mcp_url = mcp_ep[0]
+        elif getattr(agent, "endpoints", None):
+            # Fallback if no session (e.g. freshly created but not attached)
+            for ep in agent.endpoints:
+                if hasattr(ep, "source_type") and getattr(ep, "source_type") == ToolSource.mcp_sse:
+                    source_type = "mcp_sse"
+                    mcp_url = ep.mcp_server_url
+                    break
 
     if source_type == "mcp_sse" and mcp_url:
         url_lower = mcp_url.lower()
@@ -206,18 +227,24 @@ def _agent_out(agent: Agent, ep_count: int | None = None) -> AgentOut:
         integration = get_integration_by_alias(url_lower)
         if integration:
             provider = integration.get("provider_name")
-            from database.database import SessionLocal
-            from models.models import UserIntegration
-            try:
-                with SessionLocal() as db_session:
-                    integration = db_session.query(UserIntegration).filter(
-                        UserIntegration.user_id == str(agent.owner_id),
-                        UserIntegration.provider == provider.lower()
-                    ).first()
-                    if integration:
-                        has_secret = True
-            except Exception as e:
-                log.warning(f"Error checking OAuth status for agent {agent.id}: {e}")
+            if connected_providers is not None:
+                # O(1) check using the prefetched providers
+                if provider.lower() in connected_providers:
+                    has_secret = True
+            else:
+                # Fallback N+1 query if not prefetched
+                from database.database import SessionLocal
+                from models.models import UserIntegration
+                try:
+                    with SessionLocal() as db_session:
+                        user_integ = db_session.query(UserIntegration).filter(
+                            UserIntegration.user_id == str(agent.owner_id),
+                            UserIntegration.provider == provider.lower()
+                        ).first()
+                        if user_integ:
+                            has_secret = True
+                except Exception as e:
+                    log.warning(f"Error checking OAuth status for agent {agent.id}: {e}")
         else:
             has_secret = True
 
@@ -370,24 +397,27 @@ def get_global_stats(user: User = Depends(get_current_user), db: Session = Depen
     week_ago = now - timedelta(days=7)
     two_weeks_ago = now - timedelta(days=14)
     
-    stats = db.query(
-        func.count(distinct(Agent.id)).label("agent_total"),
-        func.count(distinct(case((Agent.created_at >= week_ago, Agent.id)))).label("agent_new"),
+    agent_stats = db.query(
+        func.count(Agent.id).label("agent_total"),
+        func.count(case((Agent.created_at >= week_ago, Agent.id))).label("agent_new")
+    ).filter(Agent.owner_id == user.id).first()
+
+    log_stats = db.query(
         func.count(Log.id).label("msg_total"),
         func.count(case((Log.created_at >= week_ago, Log.id))).label("msg_this_week"),
         func.count(case(((Log.created_at < week_ago) & (Log.created_at >= two_weeks_ago), Log.id))).label("msg_prev_week"),
         func.avg(Log.latency_ms).label("latency_avg"),
         func.avg(case(((Log.created_at < week_ago) & (Log.created_at >= two_weeks_ago), Log.latency_ms))).label("latency_avg_prev")
-    ).outerjoin(Log, Agent.id == Log.agent_id)\
-     .filter(Agent.owner_id == user.id).first()
+    ).join(Agent).filter(Agent.owner_id == user.id).first()
 
-    agent_count = stats.agent_total or 0
-    agent_new = stats.agent_new or 0
-    total_messages = stats.msg_total or 0
-    msg_this_week = stats.msg_this_week or 0
-    msg_prev_week = stats.msg_prev_week or 0
-    avg_latency = int(stats.latency_avg or 0)
-    latency_prev = stats.latency_avg_prev or 0
+    agent_count = agent_stats.agent_total or 0
+    agent_new = agent_stats.agent_new or 0
+    
+    total_messages = log_stats.msg_total or 0
+    msg_this_week = log_stats.msg_this_week or 0
+    msg_prev_week = log_stats.msg_prev_week or 0
+    avg_latency = int(log_stats.latency_avg or 0)
+    latency_prev = log_stats.latency_avg_prev or 0
     
     def pct_change(curr, prev):
         if prev == 0:
@@ -462,25 +492,28 @@ def get_health_stats(user: User = Depends(get_current_user), db: Session = Depen
 def get_request_velocity(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Return day-by-day tool usage logs for the last 30 days."""
     from datetime import datetime, timedelta, timezone
+    from sqlalchemy import cast, Date
     
     now = datetime.now(timezone.utc)
     start_date = (now - timedelta(days=29)).replace(hour=0, minute=0, second=0, microsecond=0)
     
-    logs = db.query(Log.created_at).join(Agent).filter(
+    # Do grouping in SQL database instead of loading thousands of logs into Python memory
+    log_counts = db.query(
+        cast(Log.created_at, Date).label("day"),
+        func.count(Log.id).label("count")
+    ).join(Agent).filter(
         Agent.owner_id == user.id,
         Log.created_at >= start_date
-    ).all()
+    ).group_by(cast(Log.created_at, Date)).all()
+    
+    # Map the DB results by date string
+    count_map = {row.day.strftime("%b %d"): row.count for row in log_counts if row.day}
     
     daily_counts = {}
     for i in range(30):
         day = start_date + timedelta(days=i)
         day_str = day.strftime("%b %d")
-        daily_counts[day_str] = 0
-        
-    for log in logs:
-        log_day_str = log.created_at.strftime("%b %d")
-        if log_day_str in daily_counts:
-            daily_counts[log_day_str] += 1
+        daily_counts[day_str] = count_map.get(day_str, 0)
             
     items = [{"date": k, "requests": v} for k, v in daily_counts.items()]
     return VelocityOut(items=items)
@@ -489,17 +522,25 @@ def get_request_velocity(user: User = Depends(get_current_user), db: Session = D
 @router.get("", response_model=list[AgentOut])
 def list_agents(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Return all agents owned by the user, ordered by creation date."""
+    from sqlalchemy import case
+    from models.models import ToolSource, UserIntegration
+    
     results = db.query(
         Agent, 
-        func.count(Endpoint.id).label("ep_count")
+        func.count(Endpoint.id).label("ep_count"),
+        func.max(case((Endpoint.source_type == ToolSource.mcp_sse, Endpoint.mcp_server_url), else_=None)).label("mcp_server_url")
     ).options(defer(Agent.api_spec))\
      .outerjoin(Agent.endpoints)\
      .filter(Agent.owner_id == user.id)\
      .group_by(Agent.id)\
      .order_by(Agent.created_at.desc())\
      .all()
+     
+    # Prefetch user integrations to avoid N+1 queries in _agent_out
+    user_integrations = db.query(UserIntegration).filter(UserIntegration.user_id == user.id).all()
+    connected_providers = {ui.provider.lower() for ui in user_integrations}
     
-    return [_agent_out(agent, ep_count=ep_count) for agent, ep_count in results]
+    return [_agent_out(agent, ep_count=ep_count, precalc_mcp_url=mcp_url, connected_providers=connected_providers) for agent, ep_count, mcp_url in results]
 
 
 @router.get("/{agent_id}", response_model=AgentDetail)

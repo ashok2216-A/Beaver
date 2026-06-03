@@ -8,7 +8,7 @@ import Link from "next/link"
 
 export default function DeveloperPage() {
   const [copiedCode, setCopiedCode] = useState(false)
-  const [activeTab, setActiveTab] = useState("Python")
+  const [activeTab, setActiveTab] = useState("cURL")
   
   const masterEndpoint = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/chat/orchestrate`
 

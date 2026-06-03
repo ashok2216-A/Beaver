@@ -169,11 +169,12 @@ function NewAgentContent() {
   // Map template IDs to their provider strings and auth types dynamically from the backend registry
   const getRegistryItemForTemplate = (t: Template) => {
     const id = (t.id || "").toLowerCase();
+    const cleanId = id.replace(/[-_]/g, "");
     
     // 1. Try exact match first
     for (const key in providersRegistry) {
       const item = providersRegistry[key];
-      if (item.aliases && item.aliases.includes(id)) {
+      if (item.aliases && (item.aliases.includes(id) || item.aliases.includes(cleanId))) {
         return item;
       }
     }
@@ -181,7 +182,7 @@ function NewAgentContent() {
     // 2. Fallback to substring matching (only if it's the exact prefix or suffix to be safer)
     for (const key in providersRegistry) {
       const item = providersRegistry[key];
-      if (item.aliases && item.aliases.some((alias: string) => id.startsWith(alias + "_") || id.endsWith("_" + alias))) {
+      if (item.aliases && item.aliases.some((alias: string) => id.startsWith(alias + "_") || id.endsWith("_" + alias) || cleanId.startsWith(alias) || cleanId.endsWith(alias))) {
         return item;
       }
     }
@@ -266,6 +267,25 @@ function NewAgentContent() {
         );
 
         if (!hasActiveIntegration) {
+          if (authTypeForProvider === "NONE") {
+            setAgentName(name);
+            setBaseUrl(mcpUrl);
+            setMcpServerUrl(mcpUrl);
+            setSourceType(sType);
+            setDescription(desc);
+            setAuthType(aType);
+            setTab("manual");
+            toast.info(`Review configuration for ${name} and click Save Integration.`);
+            
+            setConnectedTools(prev => {
+              if (prev.includes(t.id)) return prev;
+              const next = [...prev, t.id];
+              try { localStorage.setItem("beaver_connected_tools", JSON.stringify(next)); } catch (e) {}
+              return next;
+            });
+            return;
+          }
+
           if (authTypeForProvider === "API_KEY" && !mcpUrl.startsWith("composio:")) {
             // Save pending template to resume after API key is entered
             localStorage.setItem('oauth_pending_template', JSON.stringify({

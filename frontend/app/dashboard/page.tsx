@@ -36,7 +36,7 @@ interface Agent {
 }
 
 export default function DashboardPage() {
-  const { getToken } = useAuth()
+  const { getToken, isLoaded, isSignedIn } = useAuth()
   const { user } = useUser()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [agents, setAgents] = useState<Agent[]>([])
@@ -45,7 +45,16 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!isLoaded) return
+    if (!isSignedIn) {
+      setLoading(false)
+      return
+    }
+
     async function fetchData() {
+      const start = Date.now()
+      console.warn(`[TIMER] Starting fetchData sequence...`)
+      
       const apiUrl = process.env.NEXT_PUBLIC_API_URL
       if (!apiUrl) {
         console.error("NEXT_PUBLIC_API_URL is not defined in environment variables")
@@ -54,33 +63,39 @@ export default function DashboardPage() {
       }
 
       try {
+        console.warn(`[TIMER] Calling getToken()...`)
         const token = await getToken()
         if (!token) {
-          console.debug("Waiting for authentication token...")
+          console.debug("Failed to get auth token")
+          setLoading(false)
           return
         }
 
         const headers = { Authorization: `Bearer ${token}` }
         
-        // Fetch stats
-        console.debug(`Fetching stats from: ${apiUrl}/agents/stats`)
-        const statsRes = await fetch(`${apiUrl}/agents/stats`, { headers })
+        console.warn(`[TIMER] Fetching dashboard data... (auth took ${Date.now() - start}ms)`)
+        
+        const fetchStart = Date.now()
+        // Fetch all data concurrently
+        const [statsRes, agentsRes, velocityRes] = await Promise.all([
+          fetch(`${apiUrl}/agents/stats`, { headers }).then(res => { console.warn(`[TIMER] /stats finished in ${Date.now() - fetchStart}ms`); return res; }),
+          fetch(`${apiUrl}/agents`, { headers }).then(res => { console.warn(`[TIMER] /agents finished in ${Date.now() - fetchStart}ms`); return res; }),
+          fetch(`${apiUrl}/agents/stats/velocity`, { headers }).then(res => { console.warn(`[TIMER] /velocity finished in ${Date.now() - fetchStart}ms`); return res; })
+        ])
+        console.warn(`[TIMER] All API calls finished in ${Date.now() - fetchStart}ms total`)
+
         if (statsRes.ok) {
           setStats(await statsRes.json())
         } else {
           console.error(`Stats fetch failed with status: ${statsRes.status}`)
         }
 
-        // Fetch agents
-        const agentsRes = await fetch(`${apiUrl}/agents`, { headers })
         if (agentsRes.ok) {
           const agentsData = await agentsRes.json()
           setAgents(agentsData || [])
           setAllAgents(agentsData || [])
         }
 
-        // Fetch velocity for sparklines
-        const velocityRes = await fetch(`${apiUrl}/agents/stats/velocity`, { headers })
         if (velocityRes.ok) {
           const data = await velocityRes.json()
           setVelocityData(data?.items || [])
@@ -93,7 +108,7 @@ export default function DashboardPage() {
       }
     }
     fetchData()
-  }, [getToken])
+  }, [getToken, isLoaded, isSignedIn])
   
   const handleRemoveRecentAgent = (agentId: number) => {
     setAgents(prev => prev.filter(a => a.id !== agentId))

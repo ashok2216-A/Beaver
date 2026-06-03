@@ -151,15 +151,39 @@ async def get_current_user(
             raise HTTPException(status_code=401, detail="Invalid session token")
 
         user = db.query(User).filter(User.id == clerk_id).first()
-        if not user:
-            log.info(f"Hydrating new user from Clerk: {clerk_id}")
-            user = User(
-                id=clerk_id,
-                email=email,
-                plan_type="free",
-                subscription_status="active"
-            )
-            db.add(user)
+        
+        # Hydrate or backfill missing email
+        if not user or not getattr(user, "email", None):
+            if not email and getattr(settings, "clerk_secret_key", None):
+                try:
+                    import httpx
+                    async with httpx.AsyncClient() as client:
+                        r = await client.get(
+                            f"https://api.clerk.com/v1/users/{clerk_id}",
+                            headers={"Authorization": f"Bearer {settings.clerk_secret_key}"},
+                            timeout=5.0
+                        )
+                        if r.status_code == 200:
+                            data = r.json()
+                            emails = data.get("email_addresses", [])
+                            if emails:
+                                email = emails[0].get("email_address")
+                except Exception as e:
+                    log.warning(f"Failed to fetch user {clerk_id} from Clerk API: {e}")
+
+            if not user:
+                log.info(f"Hydrating new user from Clerk: {clerk_id}")
+                user = User(
+                    id=clerk_id,
+                    email=email,
+                    plan_type="free",
+                    subscription_status="active"
+                )
+                db.add(user)
+            else:
+                log.info(f"Backfilling missing email for user: {clerk_id}")
+                user.email = email
+                
             db.commit()
             db.refresh(user)
 

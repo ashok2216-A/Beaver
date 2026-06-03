@@ -26,9 +26,10 @@ def get_integration_registry() -> Dict[str, Dict[str, Any]]:
         settings = get_settings()
         if not settings.composio_api_key:
             log.warning("No composio_api_key found. Cannot fetch dynamic toolkits.")
+            _DYNAMIC_REGISTRY = {}
             return {}
             
-        r = requests.get("https://backend.composio.dev/api/v3.1/toolkits", headers={"x-api-key": settings.composio_api_key}, timeout=15)
+        r = requests.get("https://backend.composio.dev/api/v3.1/toolkits", headers={"x-api-key": settings.composio_api_key}, timeout=2.0)
         if r.status_code == 200:
             toolkits = r.json().get("items", [])
         else:
@@ -87,6 +88,7 @@ def get_integration_registry() -> Dict[str, Dict[str, Any]]:
         
     except Exception as e:
         log.error(f"Error building dynamic integration registry: {e}")
+        _DYNAMIC_REGISTRY = {}
         return {}
 
 

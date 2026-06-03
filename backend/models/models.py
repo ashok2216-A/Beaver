@@ -198,3 +198,30 @@ class PendingAction(Base):
 
     conversation    = relationship("Conversation")
     agent           = relationship("Agent")
+
+
+class AgentTeam(Base):
+    __tablename__ = "agent_teams"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    owner_id    = Column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name        = Column(String(120), nullable=False)
+    description = Column(Text, default="")
+    category    = Column(String(64), default="AI Workforce")
+    price       = Column(String(32), default="$0.00")
+    created_at  = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+
+    owner       = relationship("User")
+    members     = relationship("AgentTeamMember", back_populates="team", cascade="all, delete-orphan")
+
+
+class AgentTeamMember(Base):
+    __tablename__ = "agent_team_members"
+
+    id          = Column(Integer, primary_key=True)
+    team_id     = Column(Integer, ForeignKey("agent_teams.id", ondelete="CASCADE"), nullable=False, index=True)
+    agent_id    = Column(Integer, ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at  = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    team        = relationship("AgentTeam", back_populates="members")
+    agent       = relationship("Agent")

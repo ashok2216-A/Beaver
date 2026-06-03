@@ -867,8 +867,12 @@ export default function AgentBuilderPage() {
                       <User className="h-5 w-5 text-slate-600 drop-shadow-sm" />
                     </div>
                   ) : (
-                    <div className="shrink-0">
-                      <AgentAvatar id={Number(id)} size="md" />
+                    <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-border/50 shadow-sm bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50">
+                      <img 
+                        src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(agent.name)}`} 
+                        alt="Avatar" 
+                        className="w-full h-full object-cover" 
+                      />
                     </div>
                   )}
                   <div className={cn(
@@ -1006,8 +1010,12 @@ export default function AgentBuilderPage() {
               ))}
               {isSending && messages[messages.length-1].role === 'user' && (
                 <div className="flex gap-4 animate-pulse">
-                  <div className="shrink-0">
-                    <AgentAvatar id={Number(id)} size="md" />
+                  <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-border/50 shadow-sm bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50">
+                    <img 
+                      src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(agent.name)}`} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover" 
+                    />
                   </div>
                   <div className="bg-white/60 dark:bg-white/10 border border-border/50 rounded-3xl rounded-tl-sm px-4 py-2 backdrop-blur-md shadow-sm">
                     <span className="text-xs text-muted-foreground animate-pulse italic">Thinking...</span>
