@@ -274,17 +274,32 @@ export default function PlaygroundPage() {
     }
   }
 
+  const handleNewChat = async () => {
+    setSessionId("")
+    setMessages([])
+    try {
+      const token = await getToken()
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/clear_memory`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    } catch (e) { console.error(e) }
+  }
+
   return (
-    <div className="h-[calc(100vh-4rem)] -m-6 flex overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] -m-6 flex overflow-hidden bg-transparent">
       
       {/* V0 Style History Sidebar */}
       <div className="w-64 flex flex-col bg-transparent border-r border-slate-200 dark:border-slate-800 p-4 shrink-0 animate-in slide-in-from-left duration-300">
         
+        <div className="mb-6 px-1">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Chat</h1>
+          <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-1">
+            Interact with your AI agents.
+          </p>
+        </div>
         <button
-          onClick={() => {
-            setSessionId("")
-            setMessages([])
-          }}
+          onClick={handleNewChat}
           className="w-full flex items-center justify-between text-[13px] py-2 px-2 rounded-lg text-foreground hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors mb-2"
         >
           <div className="flex items-center gap-2">

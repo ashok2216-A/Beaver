@@ -48,8 +48,9 @@ export default function DashboardLayout({
     checkOnboarding()
   }, [isLoaded, isSignedIn, getToken, router])
 
-  // Hide sidebar/header ONLY on the agent builder (IDE) page
+  // Hide sidebar/header on the agent builder (IDE) page AND the OAuth callback popup window
   const isBuilderPage = pathname.match(/\/dashboard\/agents\/\d+$/)
+  const isCallbackPage = pathname.includes('/dashboard/integrations/callback')
 
   if (isCheckingOnboarding) {
     return (
@@ -59,7 +60,7 @@ export default function DashboardLayout({
     )
   }
 
-  if (isBuilderPage) {
+  if (isBuilderPage || isCallbackPage) {
     return (
       <div
         className="min-h-screen"

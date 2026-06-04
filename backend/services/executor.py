@@ -188,7 +188,7 @@ async def call_api(
                 body_params[k] = v
 
     headers = {
-        "User-Agent":   "api2bot-studio/1.0",
+        "User-Agent":   "beaver/1.0",
         "Content-Type": "application/json",
         "Accept":       "application/json",
         **_build_auth_headers(auth_type, auth_secret, url, auth_header),

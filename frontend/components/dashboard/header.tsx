@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { UserButton, useAuth } from "@clerk/nextjs"
+import { useAuth } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Menu, Bell } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -19,7 +19,10 @@ import {
   Activity,
   Fingerprint,
   LifeBuoy,
-  Search
+  Search,
+  Info,
+  CheckCircle2,
+  Shield
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import {
@@ -30,6 +33,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { CustomUserButton } from "./custom-user-button"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
@@ -109,10 +113,9 @@ export function DashboardHeader() {
         setNotifications(JSON.parse(stored))
       } else {
         const initial = [
-          { id: 1, title: "🎉 Welcome to API Studio", description: "Start configuring and auto-discovering custom API tools effortlessly." },
-          { id: 2, title: "🚀 System Upgraded", description: "FastAPI schema validations scaled for premium operations securely." },
-          { id: 3, title: "🔑 API Key Generated", description: "A new standalone access secret was bound effectively." },
-          { id: 4, title: "⚡ Playground Connected", description: "Master LLM routing channels configured flawlessly." }
+          { id: 1, type: "info", title: "Welcome to Beaver", description: "Start configuring and auto-discovering custom agents effortlessly." },
+          { id: 2, type: "success", title: "System Initialized", description: "Core services and databases are running optimally." },
+          { id: 3, type: "security", title: "Workspace Secured", description: "Your environment is protected by enterprise-grade encryption." }
         ]
         localStorage.setItem("api2bot_notifications", JSON.stringify(initial))
         setNotifications(initial)
@@ -213,40 +216,79 @@ export function DashboardHeader() {
           {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative rounded-xl">
-                <Bell className="h-5 w-5 text-muted-foreground" />
+              <Button variant="ghost" size="icon" className="relative rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <Bell className="h-5 w-5 text-slate-600 dark:text-slate-300" />
                 <span className="sr-only">View notifications</span>
-                <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
+                {notifications.length > 0 && (
+                  <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-rose-500 rounded-full ring-[1.5px] ring-white dark:ring-slate-950 animate-pulse" />
+                )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 rounded-2xl p-2 shadow-glow-sm">
-              <div className="flex items-center justify-between px-3 py-1.5">
-                <span className="font-bold text-xs text-foreground uppercase tracking-widest">Notifications</span>
+            <DropdownMenuContent align="end" className="w-[380px] rounded-2xl p-0 shadow-2xl border border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800/50">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm text-slate-900 dark:text-white">Notifications</span>
+                  {notifications.length > 0 && (
+                    <span className="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      {notifications.length}
+                    </span>
+                  )}
+                </div>
                 {notifications.length > 0 && (
                   <button 
                     onClick={() => {
                       localStorage.setItem("api2bot_notifications", "[]")
                       setNotifications([])
                     }}
-                    className="text-[10px] font-bold text-rose-500 hover:text-rose-600 transition-colors uppercase tracking-widest px-2 py-1 rounded-md hover:bg-rose-500/5"
+                    className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
                   >
-                    Clear All
+                    Clear all
                   </button>
                 )}
               </div>
-              <DropdownMenuSeparator className="my-1" />
-              {notifications.length > 0 ? (
-                notifications.map((n, idx) => (
-                  <DropdownMenuItem key={n.id || idx} className="flex flex-col items-start gap-1 p-3 rounded-xl cursor-pointer focus:bg-muted/50">
-                    <span className="text-xs font-bold text-foreground">{n.title}</span>
-                    <span className="text-[11px] text-muted-foreground leading-relaxed">{n.description}</span>
-                  </DropdownMenuItem>
-                ))
-              ) : (
-                <div className="py-8 text-center text-[11px] text-muted-foreground font-medium">
-                  All caught up! No active notifications.
-                </div>
-              )}
+              
+              <div className="max-h-[400px] overflow-y-auto custom-scrollbar p-1">
+                {notifications.length > 0 ? (
+                  notifications.map((n, idx) => {
+                    let Icon = Bell;
+                    let iconWrapper = "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
+                    
+                    if (n.type === 'success') { 
+                      Icon = CheckCircle2; 
+                      iconWrapper = "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"; 
+                    } else if (n.type === 'security') { 
+                      Icon = Shield; 
+                      iconWrapper = "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"; 
+                    } else if (n.type === 'info') { 
+                      Icon = Info; 
+                      iconWrapper = "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"; 
+                    }
+
+                    return (
+                      <DropdownMenuItem key={n.id || idx} className="flex items-start gap-3 p-3 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 focus:bg-slate-50 dark:focus:bg-slate-800/50 transition-all outline-none group mb-1 last:mb-0">
+                        <div className={`mt-0.5 p-2 rounded-full shrink-0 ${iconWrapper} ring-1 ring-inset ring-black/5 dark:ring-white/5 group-hover:scale-105 transition-transform`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col gap-1 min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold text-slate-900 dark:text-white leading-none truncate">{n.title}</span>
+                            <span className="text-[10px] font-medium text-slate-400 shrink-0">{n.time || "Just now"}</span>
+                          </div>
+                          <span className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">{n.description}</span>
+                        </div>
+                      </DropdownMenuItem>
+                    )
+                  })
+                ) : (
+                  <div className="py-12 flex flex-col items-center justify-center text-center px-4">
+                    <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center mb-3">
+                      <Bell className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">You're all caught up</p>
+                    <p className="text-xs text-slate-500 mt-1">No new notifications right now.</p>
+                  </div>
+                )}
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -274,13 +316,7 @@ export function DashboardHeader() {
 
           {/* User menu */}
           {mounted ? (
-            <UserButton 
-              appearance={{
-                elements: {
-                  avatarBox: "w-8 h-8"
-                }
-              }}
-            />
+            <CustomUserButton />
           ) : (
             <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
           )}

@@ -47,7 +47,14 @@ log = logging.getLogger(__name__)
 # Shared in-process session and memory stores
 _session_service = InMemorySessionService()
 _memory_service = InMemoryMemoryService()
-APP_NAME = "api2bot-studio"
+APP_NAME = "beaver"
+
+def clear_agent_memory():
+    """Wipe all ADK long-term memories and active sessions."""
+    global _session_service, _memory_service
+    _session_service = InMemorySessionService()
+    _memory_service = InMemoryMemoryService()
+
 
 
 # ─── Robust Tool Params Parser ───────────────────────────────────────────────

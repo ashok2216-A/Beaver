@@ -303,7 +303,13 @@ export default function DashboardPage() {
                 <CardContent className="pt-4 px-6 pb-6 flex-1">
                   <div className="flex items-start justify-between mb-4">
                     <div className="group-hover:scale-110 transition-transform duration-300">
-                      <AgentAvatar id={agent.id} size="lg" />
+                      <div className="h-12 w-12 rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 shadow-lg border-t border-white/40 dark:border-white/10">
+                        <img 
+                          src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(agent.name)}`} 
+                          alt={agent.name} 
+                          className="w-full h-full object-cover" 
+                        />
+                      </div>
                     </div>
                     <button 
                       className="text-muted-foreground hover:text-destructive transition-colors p-1"
