@@ -49,7 +49,7 @@ except Exception as e:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    log.info("🚀 api2bot-studio backend starting up…")
+    log.info("🚀 beaver backend starting up.")
     
     log.info("⚙️ Step 0/3: Validating environment configuration…")
     validate_environment()
@@ -235,7 +235,7 @@ else:
     @app.get("/")
     def root():
         return {
-            "service": "api2bot-studio",
+            "service": "beaver",
             "version": "1.0.0",
             "status":  "running",
             "message": "Frontend not found. Please build frontend first."
