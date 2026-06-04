@@ -95,7 +95,7 @@ Every push to `main` triggers a GitHub Action that performs:
 ## 📂 Project Structure
 
 ```bash
-api2bot-studio/
+beaver/
 ├── .github/workflows/   # CI/CD Pipelines
 ├── backend/
 │   ├── alembic/         # Database migrations

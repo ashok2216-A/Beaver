@@ -568,8 +568,15 @@ export default function AgentBuilderPage() {
             variant="outline" 
             size="sm" 
             className="rounded-xl font-bold h-10 px-6 bg-white text-slate-900 border-white hover:bg-slate-50 hover:text-slate-900 shadow-lg shadow-white/5"
-            onClick={() => {
+            onClick={async () => {
               setMessages([{ role: 'assistant', content: `Hi! I'm ${agent.name}. How can I help you with the API today?` }])
+              try {
+                const token = await getToken()
+                await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/clear_memory`, {
+                  method: 'POST',
+                  headers: { Authorization: `Bearer ${token}` }
+                })
+              } catch (e) { console.error(e) }
               toast.success("Chat playground reset")
             }}
           >

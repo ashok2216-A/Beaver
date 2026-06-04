@@ -121,6 +121,21 @@ def delete_conversation(
 
 # ─── Chat ─────────────────────────────────────────────────────────────────────
 
+@router.post("/chat/clear_memory")
+def clear_memory(
+    user: User = Depends(get_current_user),
+):
+    """Clear ADK in-memory session and memory services."""
+    try:
+        from services.adk_runner import clear_agent_memory
+        clear_agent_memory()
+        log.info("Agent memory cleared by user request.")
+        return {"message": "Memory cleared"}
+    except Exception as e:
+        log.error(f"Failed to clear memory: {e}")
+        raise HTTPException(status_code=500, detail="Failed to clear memory")
+
+
 @router.post("/chat/orchestrate")
 @limiter.limit("10/minute")
 async def chat_orchestrate(

@@ -2,9 +2,8 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 export function Loader({ className, text, ...props }: React.SVGProps<SVGSVGElement> & { text?: string | boolean }) {
-  // Automatically hide text for small button loaders unless explicitly requested
-  const isSmall = className?.includes("w-4") || className?.includes("w-5") || className?.includes("w-3") || className?.includes("h-4") || className?.includes("h-5") || className?.includes("h-3");
-  const shouldShowText = text === undefined ? !isSmall : text;
+  // Only show text if explicitly requested to avoid duplicate loading text in the UI
+  const shouldShowText = !!text;
   const displayText = typeof text === 'string' ? text : "Loading...";
 
   const svg = (

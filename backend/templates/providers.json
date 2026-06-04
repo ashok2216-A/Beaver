@@ -33,7 +33,7 @@
       "method": "GET",
       "field": "login",
       "headers": {
-        "User-Agent": "api2bot-studio"
+        "User-Agent": "beaver"
       }
     }
   },

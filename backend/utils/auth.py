@@ -27,12 +27,12 @@ _jwks_cache: Optional[dict[str, Any]] = None
 _jwks_fetched_at: float = 0.0
 _JWKS_TTL_SECONDS = 3600  # Refresh signing keys every 1 hour
 
-async def get_jwks() -> dict[str, Any]:
+async def get_jwks(force_refresh: bool = False) -> dict[str, Any]:
     """Fetch Clerk JWKS with a 1-hour TTL cache to handle key rotation."""
     global _jwks_cache, _jwks_fetched_at
 
     now = time.monotonic()
-    if _jwks_cache is not None and (now - _jwks_fetched_at) < _JWKS_TTL_SECONDS:
+    if not force_refresh and _jwks_cache is not None and (now - _jwks_fetched_at) < _JWKS_TTL_SECONDS:
         return _jwks_cache
 
     url = settings.clerk_jwks_url
@@ -68,29 +68,41 @@ async def get_jwks() -> dict[str, Any]:
 async def verify_clerk_token(token: str) -> dict[str, Any]:
     """Verify a Clerk JWT with issuer validation and key rotation support."""
     jwks = await get_jwks()
+    
+    decode_options: dict[str, Any] = {
+        "verify_aud": False,   # Clerk doesn't set aud by default
+        "leeway": 60,
+    }
+
+    issuer = None
+    if settings.clerk_jwks_url:
+        base = settings.clerk_jwks_url.rsplit("/.well-known", 1)[0]
+        if base:
+            issuer = base
+            decode_options["verify_iss"] = True
+
     try:
-        decode_options: dict[str, Any] = {
-            "verify_aud": False,   # Clerk doesn't set aud by default
-            "leeway": 60,
-        }
-
-        issuer = None
-        if settings.clerk_jwks_url:
-            base = settings.clerk_jwks_url.rsplit("/.well-known", 1)[0]
-            if base:
-                issuer = base
-                decode_options["verify_iss"] = True
-
-        payload = jwt.decode(
+        return jwt.decode(
             token,
             jwks,
             algorithms=["RS256"],
             issuer=issuer,
             options=decode_options,
         )
-        return payload
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired session")
+    except JWTError as e:
+        log.warning(f"Initial JWT verification failed ({e}). Forcing JWKS refresh...")
+        jwks = await get_jwks(force_refresh=True)
+        try:
+            return jwt.decode(
+                token,
+                jwks,
+                algorithms=["RS256"],
+                issuer=issuer,
+                options=decode_options,
+            )
+        except JWTError as e2:
+            log.error(f"JWT verification failed after refresh: {str(e2)}")
+            raise HTTPException(status_code=401, detail=f"Invalid or expired session: {str(e2)}")
 
 # ── API Key logic ────────────────────────────────────────────────────────────
 

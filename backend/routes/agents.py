@@ -615,11 +615,14 @@ def get_endpoints(
     """Return paginated and searchable endpoints for an agent."""
     _get_agent_or_404(agent_id, user, db)
     
-    from sqlalchemy import not_
     query = db.query(Endpoint).filter(Endpoint.agent_id == agent_id)
     
-    # Hide Composio meta-tools from the UI
-    query = query.filter(not_(Endpoint.summary.ilike("composio_%")))
+    # Hide Composio meta-tools (like Remote Workbench) from other integrations (like Twitter, Gmail)
+    # But DO NOT hide them if the agent is the primary Composio Gateway itself!
+    from sqlalchemy import not_
+    agent = db.query(Agent).filter(Agent.id == agent_id).first()
+    if agent and getattr(agent, "base_url", "") != "composio:composio":
+        query = query.filter(not_(Endpoint.summary.ilike("composio_%")))
 
     if q:
         search_filter = or_(

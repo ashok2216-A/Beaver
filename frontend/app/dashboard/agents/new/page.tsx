@@ -640,10 +640,6 @@ function NewAgentContent() {
       {tab === null ? (
         <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)] px-4 animate-in fade-in zoom-in-95 duration-700">
           <div className="text-center max-w-3xl mb-12 space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold tracking-wider uppercase shadow-xs backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-              Next-Gen Agent Architecture
-            </div>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
               Select your agent <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">engine</span>
             </h1>
@@ -711,34 +707,50 @@ function NewAgentContent() {
           </div>
         </div>
       ) : (
-        <div className="space-y-8 animate-in fade-in duration-300">
-          <div className="flex items-center justify-between">
+        <div className="space-y-6 animate-in fade-in duration-300">
+          {/* Sticky Header Group */}
+          <div className="sticky top-16 z-30 bg-white/20 dark:bg-slate-950/20 backdrop-blur-xl -mx-6 px-6 pt-6 pb-4 -mt-6 mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            {/* Page Title */}
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Create a new agent</h1>
-              <p className="text-muted-foreground">
-                Choose a template or use your own spec to get started.
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                {tab === "templates" ? "Integrations" : sourceType === "mcp_sse" ? "New Integration" : "New Agent"}
+              </h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                {tab === "templates" ? "Connect verified tools and services to your workspace" : "Configure your agent's settings and capabilities"}
               </p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                if (tab === "manual" && sourceType === "mcp_sse") {
-                  setTab("templates");
-                } else {
-                  setTab(null);
-                }
-              }}
-              className="rounded-xl font-bold"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              {tab === "manual" && sourceType === "mcp_sse" ? "Back to Integrations" : "Back to Selection"}
-            </Button>
+
+            {/* Breadcrumb Navigation */}
+            <div className="flex items-center gap-2 text-sm pt-1">
+              <button
+                onClick={() => setTab(null)}
+                className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+              >
+                Agents
+              </button>
+              <span className="text-slate-300 dark:text-slate-600">/</span>
+              {tab === "manual" && sourceType === "mcp_sse" ? (
+                <>
+                  <button
+                    onClick={() => setTab("templates")}
+                    className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                  >
+                    Integrations
+                  </button>
+                  <span className="text-slate-300 dark:text-slate-600">/</span>
+                  <span className="text-slate-900 dark:text-white font-medium">{agentName || "Setup"}</span>
+                </>
+              ) : tab === "templates" ? (
+                <span className="text-slate-900 dark:text-white font-medium">Integrations</span>
+              ) : (
+                <span className="text-slate-900 dark:text-white font-medium">New Agent</span>
+              )}
+            </div>
           </div>
 
-          <div className="pt-4">
+          <div>
             {tab === "templates" ? (
-              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 max-h-[65vh] overflow-y-auto pr-4 custom-scrollbar">
+              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 pb-12">
                 {isLoadingTemplates ? (
                   <div className="flex flex-col items-center justify-center py-20 space-y-4">
                     <Loader className="h-8 w-8 animate-spin text-primary" />
@@ -760,7 +772,7 @@ function NewAgentContent() {
                         {cat} ({filteredTemplates.filter((t) => t.category === cat).length})
                         <span className="h-px w-12 sm:w-20 bg-slate-200 dark:bg-slate-800" />
                       </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto w-full px-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-w-5xl mx-auto w-full px-2">
                         {filteredTemplates.filter((t) => t.category === cat).map((t) => {
                           const isConnecting = actionLoading === t.id;
                           const isConnected = isTemplateConnected(t);
@@ -771,19 +783,19 @@ function NewAgentContent() {
                               key={t.id}
                               onClick={() => !isConnecting && handleTemplateClick(t)}
                               className={cn(
-                                "group flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 transition-all duration-300 text-left cursor-pointer hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/5",
+                                "group flex items-center justify-between px-3 py-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 transition-all duration-300 text-left cursor-pointer hover:border-blue-500/50 hover:shadow-md hover:shadow-blue-500/5",
                                 isConnected && "hover:border-emerald-500/50 hover:shadow-emerald-500/5"
                               )}
                             >
-                              <div className="flex items-center gap-4 min-w-0 pr-2">
-                                <div className="h-10 w-10 flex-shrink-0 flex items-center justify-center rounded-lg p-1 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                              <div className="flex items-center gap-2.5 min-w-0 pr-1">
+                                <div className="h-7 w-7 flex-shrink-0 flex items-center justify-center rounded-md p-0.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
                                   <img
                                     src={getLogoForTemplate(t)}
                                     alt={t.name}
-                                    className="h-7 w-7 object-contain transition-transform group-hover:scale-110"
+                                    className="h-5 w-5 object-contain transition-transform group-hover:scale-110"
                                   />
                                 </div>
-                                <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm md:text-base truncate max-w-[180px] sm:max-w-[220px]">
+                                <span className="font-medium text-slate-800 dark:text-slate-200 text-[13px] truncate">
                                   {t.name.replace(/\s+MCP$/i, "")}
                                 </span>
                               </div>
@@ -821,7 +833,7 @@ function NewAgentContent() {
                                     toast.success(`Disconnected OAuth session for ${t.name}. Next connection will re-prompt authorization.`);
                                   }}
                                   className={cn(
-                                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs shadow-sm whitespace-nowrap transition-all duration-200 cursor-pointer animate-in zoom-in-95",
+                                    "inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold text-[11px] whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0",
                                     isHovered
                                       ? "bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white"
                                       : "bg-emerald-500/10 border border-emerald-500/30 text-emerald-500"
@@ -829,20 +841,20 @@ function NewAgentContent() {
                                 >
                                   {isHovered ? (
                                     <>
-                                      <X className="w-3.5 h-3.5 stroke-[3px]" /> Disconnect
+                                      <X className="w-3 h-3 stroke-[3px]" /> Disconnect
                                     </>
                                   ) : (
                                     <>
-                                      <Check className="w-3.5 h-3.5 stroke-[3px]" /> Connected
+                                      <Check className="w-3 h-3 stroke-[3px]" /> Connected
                                     </>
                                   )}
                                 </button>
                               ) : isConnecting ? (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/50 text-white font-medium text-xs shadow-sm whitespace-nowrap">
-                                  <Loader className="w-3.5 h-3.5 animate-spin" /> Connecting
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-600/50 text-white font-medium text-[11px] whitespace-nowrap shrink-0">
+                                  <Loader className="w-3 h-3 animate-spin" /> Connecting
                                 </span>
                               ) : (
-                                <span className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs shadow-sm transition-all group-hover:shadow-blue-500/25 whitespace-nowrap cursor-pointer">
+                                <span className="px-2.5 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium text-[11px] transition-all whitespace-nowrap cursor-pointer shrink-0">
                                   Connect
                                 </span>
                               )}
@@ -855,40 +867,69 @@ function NewAgentContent() {
                 )}
               </div>
             ) : sourceType === "mcp_sse" ? (
-              <div className="rounded-3xl border border-white/50 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl p-10 shadow-2xl space-y-8 animate-in fade-in">
-                <div className="flex items-center gap-4 pb-6 border-b border-border/50">
-                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-500 flex items-center justify-center shadow-inner">
-                    <Boxes className="h-8 w-8" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-foreground">Verified Integration Setup</h2>
-                    <p className="text-xs text-muted-foreground">Manage agent profile and execution parameters for this connected integration.</p>
+              <div className="max-w-xl mx-auto animate-in fade-in duration-400 border border-slate-200/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm rounded-2xl p-8 shadow-sm">
+                
+                <div className="mb-6 pt-2">
+                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">Integration Details</h2>
+                  <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-1">Provide the essential information to identify this integration.</p>
+                </div>
+                {/* Horizontal row form — Agent Name */}
+                <div className="py-5 border-b border-slate-200/70 dark:border-slate-800/70">
+                  <div className="flex items-start gap-8">
+                    <div className="w-36 shrink-0 pt-2.5">
+                      <label className="text-[13px] font-medium text-slate-600 dark:text-slate-400">Name</label>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 leading-relaxed">Identifies this agent</p>
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        value={agentName}
+                        onChange={(e) => setAgentName(e.target.value)}
+                        placeholder="e.g. Gmail Agent"
+                        className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm outline-none focus:border-slate-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 dark:focus:ring-slate-400/10 transition-all text-slate-900 dark:text-slate-100 placeholder:text-slate-350 dark:placeholder:text-slate-600"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Integration Agent Name</label>
-                  <input
-                    value={agentName}
-                    onChange={(e) => setAgentName(e.target.value)}
-                    placeholder="e.g. Gmail Agent"
-                    className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner font-semibold text-foreground"
-                  />
+                {/* Horizontal row form — Description */}
+                <div className="py-5 border-b border-slate-200/70 dark:border-slate-800/70">
+                  <div className="flex items-start gap-8">
+                    <div className="w-36 shrink-0 pt-2.5">
+                      <label className="text-[13px] font-medium text-slate-600 dark:text-slate-400">Description</label>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 leading-relaxed">Helps route tasks</p>
+                    </div>
+                    <div className="flex-1">
+                      <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        maxLength={150}
+                        placeholder="What capabilities does this agent provide?"
+                        rows={3}
+                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-sm outline-none focus:border-slate-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 dark:focus:ring-slate-400/10 transition-all text-slate-900 dark:text-slate-100 leading-relaxed resize-none placeholder:text-slate-350 dark:placeholder:text-slate-600"
+                      />
+                      <div className="flex justify-end mt-1.5">
+                        <span className={cn(
+                          "text-[11px] font-mono tabular-nums",
+                          description.length > 130 ? "text-amber-500" : "text-slate-300 dark:text-slate-600"
+                        )}>{description.length}/150</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Capabilities & Description</label>
-                    <span className="text-[10px] font-bold text-muted-foreground/50">{description.length}/150</span>
+                {/* Connection Status row */}
+                <div className="py-5">
+                  <div className="flex items-start gap-8">
+                    <div className="w-36 shrink-0 pt-0.5">
+                      <label className="text-[13px] font-medium text-slate-600 dark:text-slate-400">Connection</label>
+                    </div>
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                      <span className="text-[13px] text-slate-600 dark:text-slate-400">Verified MCP integration</span>
+                    </div>
                   </div>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    maxLength={150}
-                    placeholder="What does this agent do?"
-                    className="w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 p-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner min-h-[120px] text-foreground leading-relaxed font-medium"
-                  />
                 </div>
+
               </div>
             ) : (
               <div className="rounded-3xl border border-white/50 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl p-10 shadow-2xl space-y-8 animate-in fade-in">
@@ -1028,18 +1069,18 @@ function NewAgentContent() {
 
 
             {generating && (
-              <div className="mt-10 transition-all animate-in fade-in zoom-in-95 bg-slate-500/5 rounded-3xl p-8 border border-slate-200/50 backdrop-blur-sm">
-                <div className="flex items-center justify-between text-sm mb-4">
-                  <span className="font-bold flex items-center gap-3 text-slate-700">
-                    <Loader className="h-5 w-5 animate-spin text-slate-400" />
-                    Generating your agent engine…
+              <div className="max-w-xl mx-auto mt-6 animate-in fade-in slide-in-from-top-2 border border-slate-200/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between text-[13px] mb-4">
+                  <span className="font-semibold flex items-center gap-2.5 text-slate-900 dark:text-white">
+                    <Loader className="h-4 w-4 animate-spin text-slate-500" />
+                    Generating your agent engine...
                   </span>
-                  <span className="font-mono text-slate-900 font-bold">{progress}%</span>
+                  <span className="font-mono text-slate-500 dark:text-slate-400 font-medium">{progress}%</span>
                 </div>
-                <div className="h-1.5 w-full rounded-full bg-slate-200/50 overflow-hidden mb-6">
-                  <div className="h-full bg-slate-900 transition-all duration-300" style={{ width: `${progress}%` }} />
+                <div className="h-1.5 w-full rounded-full bg-slate-200/50 dark:bg-slate-800/50 overflow-hidden mb-6">
+                  <div className="h-full bg-slate-900 dark:bg-slate-100 transition-all duration-300" style={{ width: `${progress}%` }} />
                 </div>
-                <ul className="grid grid-cols-2 gap-4">
+                <ul className="grid grid-cols-2 gap-y-4 gap-x-6">
                   <Step done={progress > 20} label="Parsing schema" />
                   <Step done={progress > 50} label="Mapping tools" />
                   <Step done={progress > 80} label="System prompt" />
@@ -1049,35 +1090,40 @@ function NewAgentContent() {
             )}
 
             {tab === "manual" && (
-              <div className="mt-10 flex justify-end items-center gap-4">
-                <Button variant="ghost" onClick={() => router.back()} disabled={generating} className="rounded-xl px-6">
+              <div className="mt-6 max-w-xl mx-auto flex items-center justify-between">
+                <button 
+                  onClick={() => router.back()} 
+                  disabled={generating} 
+                  className="text-[13px] font-medium text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors disabled:opacity-40"
+                >
                   Cancel
-                </Button>
-                <Button
-                  variant="hero"
-                  size="lg"
+                </button>
+                <button
                   onClick={handleGenerate}
                   disabled={generating || (!agentName || (!apiSpec && !file && sourceType === "rest"))}
-                  className="rounded-xl h-12 px-8 min-w-[180px] shadow-glow"
+                  className={cn(
+                    "h-9 px-4 rounded-lg text-[13px] font-medium transition-all flex items-center gap-2",
+                    "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100",
+                    "disabled:opacity-40 disabled:pointer-events-none"
+                  )}
                 >
                   {generating ? (
                     <>
-                      <Loader className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader className="h-3.5 w-3.5 animate-spin" />
                       Working...
                     </>
                   ) : sourceType === "mcp_sse" ? (
                     <>
-                      <Check className="mr-2 h-4 w-4 stroke-[3px]" />
                       Save Integration
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </>
                   ) : (
                     <>
-                      <Sparkles className="mr-2 h-4 w-4" />
                       Generate Agent
-                      <ArrowRight className="ml-2 h-4 w-4" />
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </>
                   )}
-                </Button>
+                </button>
               </div>
             )}
           </div>
@@ -1098,14 +1144,14 @@ export default function NewAgentPage() {
 const Step = ({ done, label }: { done: boolean; label: string }) => (
   <li className="flex items-center gap-3">
     <div className={cn(
-      "flex h-5 w-5 items-center justify-center rounded-full transition-all duration-500",
-      done ? "bg-emerald-500 text-white rotate-0" : "bg-muted text-muted-foreground/30 -rotate-90"
+      "flex h-[18px] w-[18px] items-center justify-center rounded-full transition-all duration-500",
+      done ? "bg-emerald-500 text-white rotate-0" : "bg-slate-200 dark:bg-slate-800 text-slate-400 -rotate-90"
     )}>
-      {done ? <Check className="h-3 w-3 stroke-[3px]" /> : <div className="h-1 w-1 rounded-full bg-current" />}
+      {done ? <Check className="h-2.5 w-2.5 stroke-[3px]" /> : <div className="h-1 w-1 rounded-full bg-current" />}
     </div>
     <span className={cn(
-      "text-sm font-medium transition-colors duration-300",
-      done ? "text-foreground" : "text-muted-foreground/40"
+      "text-[13px] font-medium transition-colors duration-300",
+      done ? "text-slate-900 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"
     )}>
       {label}
     </span>
