@@ -334,9 +334,11 @@ function NewAgentContent() {
             `width=${width},height=${height},left=${left},top=${top},status=yes,scrollbars=yes`
           );
 
+          let isSuccess = false;
           // Listen for the success message from the callback page
           const handleMessage = (event: MessageEvent) => {
             if (event.data === 'oauth_success') {
+              isSuccess = true;
               window.removeEventListener('message', handleMessage);
               
               // Optimistically update state so the UI button reflects the connection
@@ -354,24 +356,17 @@ function NewAgentContent() {
           window.addEventListener('message', handleMessage);
 
           // Poll to stop loading state if user manually closes the popup
-          const timer = setInterval(async () => {
+          const timer = setInterval(() => {
             if (popup && popup.closed) {
               clearInterval(timer);
               window.removeEventListener('message', handleMessage);
               
-              // Since Composio's MCP UI does not support auto-redirecting back to our app,
-              // we optimistically assume success when the user manually closes the "Success" window.
-              try {
-                const token = await getToken();
-                await fetch(
-                  `${process.env.NEXT_PUBLIC_API_URL}/oauth/mark-connected?provider=${encodeURIComponent(oauthProvider)}`,
-                  { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
-                );
-              } catch (e) {
-                console.error("Failed to mark connection:", e);
+              if (!isSuccess) {
+                // If closed without the callback success message, it means the user aborted or it failed.
+                toast.error("Integration setup was cancelled or incomplete.");
+                localStorage.removeItem('oauth_pending_template');
+                localStorage.removeItem('oauth_return_to');
               }
-
-              handleMessage({ data: 'oauth_success' } as MessageEvent);
               
               setActionLoading(null);
             }
@@ -545,7 +540,8 @@ function NewAgentContent() {
         const list = stored ? JSON.parse(stored) : [];
         list.unshift({
           id: Date.now(),
-          title: `🤖 Agent "${agentName || data.name || "Custom"}" Created`,
+          type: "success",
+          title: `Agent "${agentName || data.name || "Custom"}" Created`,
           description: `Specification parameters parsed cleanly. Available in workspace logs.`
         });
         localStorage.setItem("api2bot_notifications", JSON.stringify(list));

@@ -5,6 +5,13 @@ import { useClerk, useAuth } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
+// Apple Logo SVG
+const AppleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" {...props}>
+    <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
+  </svg>
+)
+
 // Github Logo SVG
 const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
@@ -49,13 +56,27 @@ export function CustomAuth() {
   const [isLoading, setIsLoading] = React.useState(false)
   const [error, setError] = React.useState('')
 
-  const handleOAuth = (strategy: 'oauth_google' | 'oauth_github') => {
+  const handleOAuth = async (strategy: 'oauth_google' | 'oauth_github' | 'oauth_apple') => {
     if (!signIn) return
-    signIn.authenticateWithRedirect({
-      strategy,
-      redirectUrl: '/sso-callback',
-      redirectUrlComplete: '/dashboard',
-    })
+    try {
+      // Must open popup synchronously in the click handler to avoid popup blockers
+      const popup = window.open('', '_blank', 'width=600,height=700,scrollbars=yes,status=yes')
+      if (!popup) {
+        setError('Popup blocked. Please allow popups for this site.')
+        return
+      }
+
+      await signIn.authenticateWithPopup({
+        strategy,
+        popup,
+        redirectUrl: `${window.location.origin}/sso-callback`,
+        redirectUrlComplete: `${window.location.origin}/dashboard`,
+      })
+      // The useEffect listening to isSignedIn will automatically redirect to /dashboard once complete
+    } catch (err: any) {
+      console.error(err)
+      setError(err.errors?.[0]?.longMessage || 'OAuth authentication failed. Please try again.')
+    }
   }
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -166,8 +187,8 @@ export function CustomAuth() {
         {step === 'initial' ? (
           <>
             <form onSubmit={handleEmailSubmit} className="space-y-4 mb-8">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-900 dark:text-slate-200">Email</label>
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-slate-900 dark:text-slate-200">Email</label>
                 <input 
                   type="email" 
                   value={email}
@@ -196,17 +217,24 @@ export function CustomAuth() {
             <div className="space-y-3">
               <button 
                 onClick={() => handleOAuth('oauth_google')}
-                className="w-full h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-medium flex items-center justify-center transition-colors shadow-sm"
+                className="relative w-full h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-medium flex items-center justify-center transition-colors shadow-sm"
               >
-                <GoogleIcon className="w-5 h-5 mr-3" />
+                <GoogleIcon className="absolute left-4 w-5 h-5" />
                 Continue with Google
               </button>
               <button 
                 onClick={() => handleOAuth('oauth_github')}
-                className="w-full h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-medium flex items-center justify-center transition-colors shadow-sm"
+                className="relative w-full h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-medium flex items-center justify-center transition-colors shadow-sm"
               >
-                <GithubIcon className="w-5 h-5 mr-3" />
+                <GithubIcon className="absolute left-4 w-5 h-5" />
                 Continue with Github
+              </button>
+              <button 
+                onClick={() => handleOAuth('oauth_apple')}
+                className="relative w-full h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-medium flex items-center justify-center transition-colors shadow-sm"
+              >
+                <AppleIcon className="absolute left-4 w-5 h-5" />
+                Continue with Apple
               </button>
             </div>
           </>
@@ -217,8 +245,8 @@ export function CustomAuth() {
                 We sent a verification code to <strong className="text-slate-900 dark:text-white">{email}</strong>.
               </p>
              </div>
-             <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-900 dark:text-slate-200">Verification Code</label>
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-slate-900 dark:text-slate-200">Verification Code</label>
                 <input 
                   type="text" 
                   value={otp}
