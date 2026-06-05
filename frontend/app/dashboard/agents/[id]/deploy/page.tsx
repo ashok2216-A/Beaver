@@ -226,21 +226,26 @@ axios.post(url, data, { headers })
               · Last synced {new Date().toLocaleDateString()}
             </p>
           </div>
-          <Button 
-            className={cn(
-              "rounded-xl h-12 px-8 font-bold shadow-glow text-lg min-w-[180px]",
-              agent.status === 'live' ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20" : ""
-            )}
-            disabled={isRedeploying}
-            onClick={handleRedeploy}
+          <div 
+            className="inline-block"
+            title={agent.endpoint_count === 0 ? "You must add at least one tool to the agent before deploying." : ""}
           >
-            {isRedeploying ? (
-              <Loader className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-              <Zap className="mr-2 h-5 w-5" />
-            )}
-            {isRedeploying ? "Processing..." : agent.status === 'live' ? "Sync & Redeploy" : "Go Live Now"}
-          </Button>
+            <Button 
+              className={cn(
+                "rounded-xl h-12 px-8 font-bold shadow-glow text-lg min-w-[180px]",
+                agent.status === 'live' ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20" : ""
+              )}
+              disabled={isRedeploying || agent.endpoint_count === 0}
+              onClick={handleRedeploy}
+            >
+              {isRedeploying ? (
+                <Loader className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <Zap className="mr-2 h-5 w-5" />
+              )}
+              {isRedeploying ? "Processing..." : agent.status === 'live' ? "Sync & Redeploy" : "Go Live Now"}
+            </Button>
+          </div>
         </div>
       </Card>
 

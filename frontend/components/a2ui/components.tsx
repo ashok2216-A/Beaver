@@ -627,41 +627,65 @@ interface A2HumanApprovalProps {
 
 
 export function A2HumanApproval({ data, onApprove, onReject }: A2HumanApprovalProps) {
-  const { action_id, tool_name, params } = data.a2ui;
-  const [status, setStatus] = useState<'pending' | 'approved' | 'executed' | 'rejected'>('pending');
+  const a2uiData = data?.a2ui || {};
+  const actionId = a2uiData.action_id || a2uiData.actionId;
+  const toolName = a2uiData.tool_name || a2uiData.toolName;
+  const params = a2uiData.params;
+
+  const [status, setStatus] = useState<'pending' | 'approved' | 'rejected' | 'executed'>('pending');
 
   const handleApprove = async () => {
     setStatus('approved');
-    await onApprove(action_id);
+    await onApprove(actionId);
     setStatus('executed');
   };
 
   const handleReject = async () => {
     setStatus('rejected');
-    await onReject(action_id);
+    if (onReject) await onReject(actionId);
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px 4px', background: 'transparent', width: '100%' }}>
       <div style={{ fontSize: '18px', fontWeight: 800, color: 'inherit', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="#f59e0b">
-          <path d="M12 2L1 21h22L12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/>
-        </svg>
-        Action Requires Approval
+        {status === 'pending' ? (
+          <>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#f59e0b">
+              <path d="M12 2L1 21h22L12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/>
+            </svg>
+            Action Requires Approval
+          </>
+        ) : status === 'executed' || status === 'approved' ? (
+          <>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#10b981">
+              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+            </svg>
+            Action Approved
+          </>
+        ) : (
+          <>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#ef4444">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+            </svg>
+            Action Rejected
+          </>
+        )}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', background: 'rgba(0,0,0,0.02)', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.05)' }}>
-        {Object.entries(params || {}).map(([key, value]) => (
-          <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {key.replace(/_/g, ' ')}
-            </span>
-            <span style={{ fontSize: '13px', color: '#0f172a', fontWeight: 500, wordBreak: 'break-word' }}>
-              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-            </span>
-          </div>
-        ))}
-      </div>
+      {Object.keys(params || {}).length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', background: 'rgba(0,0,0,0.02)', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.05)' }}>
+          {Object.entries(params || {}).map(([key, value]) => (
+            <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {key.replace(/_/g, ' ')}
+              </span>
+              <span style={{ fontSize: '13px', color: '#0f172a', fontWeight: 500, wordBreak: 'break-word' }}>
+                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       
       {status === 'pending' ? (
         <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>

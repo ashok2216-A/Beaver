@@ -54,6 +54,7 @@ def clear_agent_memory():
     global _session_service, _memory_service
     _session_service = InMemorySessionService()
     _memory_service = InMemoryMemoryService()
+    log.info("Agent memory and active sessions successfully cleared.")
 
 
 
@@ -798,7 +799,7 @@ def _build_agent(
                             "tool_name": ep_def.get("summary") or f"{method} {path}",
                             "params": params_dict
                         },
-                        "note": "CRITICAL: The action has been paused for human approval. You MUST output the exact 'a2ui' JSON block above to the user using the ```a2ui code block format, and stop your turn. DO NOT say the action was completed."
+                        "note": "CRITICAL: The action has been paused for human approval. First, write a brief, friendly message explaining what you are about to do and asking the user for approval. Then, you MUST output the exact 'a2ui' JSON block above to the user using the ```a2ui code block format, and stop your turn. DO NOT say the action was completed."
                     })
             except Exception as e:
                 log.error(f"Failed to create PendingAction: {e}")

@@ -123,16 +123,28 @@ async def call_api(
         if "." in parts[1]: # Segment 1 is a domain like 'api.firecrawl.dev'
             resolved_path = "/" + "/".join(parts[2:])
 
-    # Ensure there is exactly one slash between base_url and resolved_path
-    clean_base = base_url.rstrip("/")
-    clean_path = "/" + resolved_path.lstrip("/")
-    url = clean_base + clean_path
-    
+    # Handle case where LLM passes a full URL in the path
+    clean_base = base_url.strip()
+    clean_path = resolved_path.strip()
+
+    if clean_path.startswith("http://") or clean_path.startswith("https://"):
+        url = clean_path
+    else:
+        # Add protocol to base_url if missing
+        if clean_base and not clean_base.startswith("http://") and not clean_base.startswith("https://"):
+            clean_base = "https://" + clean_base if "localhost" not in clean_base and "127.0.0.1" not in clean_base else "http://" + clean_base
+            
+        clean_base = clean_base.rstrip("/")
+        clean_path = "/" + clean_path.lstrip("/")
+        url = clean_base + clean_path
+
     # Final safety: Collapse any accidental double slashes (except the protocol)
-    # e.g. https://api.example.com//v2/scrape -> https://api.example.com/v2/scrape
-    protocol = "https://" if url.startswith("https://") else "http://"
-    path_part = url[len(protocol):].replace("//", "/")
-    url = protocol + path_part
+    protocol = "https://" if url.startswith("https://") else "http://" if url.startswith("http://") else ""
+    if protocol:
+        path_part = url[len(protocol):].replace("//", "/")
+        url = protocol + path_part
+    else:
+        url = "https://" + url.replace("//", "/")
 
     log.info(f"EXECUTOR: Final Constructed URL: {url}")
     

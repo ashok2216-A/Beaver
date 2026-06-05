@@ -213,7 +213,9 @@ export default function PlaygroundPage() {
       content: promptText
     }
 
-    setMessages(prev => [...prev, userMessage])
+    if (!promptText.startsWith('[System:')) {
+      setMessages(prev => [...prev, userMessage])
+    }
     setInput("")
     setIsLoading(true)
 
@@ -410,7 +412,7 @@ export default function PlaygroundPage() {
             <p className="text-sm text-muted-foreground font-medium animate-pulse">Loading...</p>
           </div>
         ) : (
-          messages.map((message) => {
+          messages.filter(m => !m.content.startsWith('[System:')).map((message) => {
             const isAI = message.role === 'assistant'
           return (
             <div
@@ -472,6 +474,19 @@ export default function PlaygroundPage() {
                                             headers: { Authorization: `Bearer ${token}` }
                                           });
                                           const data = await res.json();
+                                          if (data && data.status === 'approved') {
+                                            let resultStr = JSON.stringify(data.data);
+                                            if (resultStr.length > 2000) {
+                                              resultStr = resultStr.substring(0, 2000) + '... [TRUNCATED]';
+                                            }
+                                            handleSend(`[System: Action executed successfully. Result: ${resultStr}]`);
+                                          } else {
+                                            let errorStr = data.error || JSON.stringify(data);
+                                            if (errorStr.length > 2000) {
+                                              errorStr = errorStr.substring(0, 2000) + '... [TRUNCATED]';
+                                            }
+                                            handleSend(`[System: Action execution failed. Error: ${errorStr}]`);
+                                          }
                                         } catch(e) { console.error(e) }
                                       }}
                                       onReject={async (actionId) => {
@@ -481,6 +496,7 @@ export default function PlaygroundPage() {
                                             method: 'POST',
                                             headers: { Authorization: `Bearer ${token}` }
                                           });
+                                          handleSend(`[System: Action was rejected by the user.]`);
                                         } catch(e) { console.error(e) }
                                       }}
                                     />
