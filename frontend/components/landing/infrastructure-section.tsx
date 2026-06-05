@@ -158,7 +158,7 @@ export function InfrastructureSection() {
             isVisible ? "opacity-100" : "opacity-0"
           }`}>
             <span className="w-12 h-px bg-foreground/20" />
-            Internal Architecture
+            Workforce Architecture
           </span>
           
           <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
@@ -174,7 +174,7 @@ export function InfrastructureSection() {
               <p className={`mt-6 md:mt-8 text-lg md:text-xl text-muted-foreground leading-relaxed max-w-lg transition-all duration-1000 delay-100 ${
                 isVisible ? "opacity-100" : "opacity-0"
               }`}>
-                We turn static REST APIs into dynamic reasoning engines using a high-fidelity execution pipeline.
+                We turn static APIs into dynamic, multi-agent workforces using a high-fidelity execution pipeline.
               </p>
             </div>
 

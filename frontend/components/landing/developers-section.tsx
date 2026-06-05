@@ -150,18 +150,18 @@ function WhaleNetworkCanvas() {
 
 const solutions = [
   { 
-    title: "Customer Support (Zendesk / Intercom)", 
-    description: "Automatically resolve tier-1 tickets by giving your agent access to your support platform's API.",
+    title: "Customer Support Team", 
+    description: "Automatically resolve tier-1 tickets by giving an AI workforce access to your support platform's API.",
     icon: Headphones,
   },
   { 
-    title: "Internal IT Helpdesk (Jira / Slack)", 
-    description: "Let employees reset passwords, query company databases, and create tickets via a simple chat interface.",
+    title: "Engineering Operations", 
+    description: "Let an AI team triage bugs, query databases, and manage pull requests autonomously.",
     icon: Building2,
   },
   { 
-    title: "E-Commerce Concierge (Shopify / Stripe)", 
-    description: "Build shopping assistants that can check order status, manage refunds, and recommend products natively.",
+    title: "Growth & Sales", 
+    description: "Build a revenue-focused workforce that checks pipeline status, updates CRM records, and drafts outreach.",
     icon: ShoppingCart,
   },
 ];
@@ -228,7 +228,7 @@ export function DevelopersSection() {
           }`}
         >
           <p className="text-xl text-muted-foreground leading-relaxed">
-            Stop hardcoding chatbot logic. Connect your existing systems and let the agent figure out how to satisfy the user intent.
+            Stop building isolated bots. Connect your existing systems and let specialized AI teams figure out how to collaborate and solve problems.
           </p>
         </div>
 

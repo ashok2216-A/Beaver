@@ -349,7 +349,7 @@ export default function PlaygroundPage() {
                 >
                   <button
                     onClick={() => loadConversation(convItem.id)}
-                    className="flex-1 text-left p-2 pl-3 text-[13px] flex items-center gap-2 text-slate-700 dark:text-slate-300"
+                    className="flex-1 min-w-0 text-left p-2 pl-3 text-[13px] flex items-center gap-2 text-slate-700 dark:text-slate-300"
                   >
                     <span className="truncate flex-1">
                       {convItem.title || "Conversation"}
@@ -428,11 +428,7 @@ export default function PlaygroundPage() {
                   : "bg-gradient-to-br from-white via-slate-50 to-slate-100 text-slate-600 dark:text-slate-400 shadow-black/5 shadow-lg"
               )}>
                 {isAI ? (
-                  <img 
-                    src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(message.agent_name || "Agent")}`} 
-                    alt="Avatar" 
-                    className="w-full h-full object-cover" 
-                  />
+                  <Bot className="h-5 w-5 drop-shadow-sm" />
                 ) : <User className="h-4 w-4 drop-shadow-sm" />}
               </div>
 
@@ -551,12 +547,7 @@ export default function PlaygroundPage() {
                     <span className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 px-2.5 py-0.5 rounded-md font-bold font-mono tracking-wide">
                       {message.agent_name}
                     </span>
-                    {message.matched_endpoint && message.matched_endpoint.path && (
-                      <span className="bg-primary/5 text-primary border border-primary/20 px-2.5 py-0.5 rounded-md font-bold font-mono tracking-wide flex items-center gap-1">
-                        <Terminal className="w-3 h-3" />
-                        {message.matched_endpoint.method} {message.matched_endpoint.path}
-                      </span>
-                    )}
+
 
                     {message.status_code !== undefined && (
                       <div className={cn(
@@ -587,11 +578,7 @@ export default function PlaygroundPage() {
         {isLoading && (
           <div className="flex items-start gap-5">
             <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 shadow-lg border-t border-white/40 dark:border-white/10 flex items-center justify-center shrink-0 text-primary animate-pulse overflow-hidden">
-              <img 
-                src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(isOrchestratorMode ? "Master Agent" : (selectedAgent?.name || "Agent"))}`} 
-                alt="Avatar" 
-                className="w-full h-full object-cover opacity-50" 
-              />
+              <Bot className="h-5 w-5 drop-shadow-sm opacity-70" />
             </div>
             <div className="rounded-2xl px-5 py-3.5 bg-muted/20 border border-white/5 flex items-center gap-3 animate-in fade-in duration-200">
               <Loader className="h-3.5 w-3.5 animate-spin text-primary" />

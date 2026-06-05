@@ -27,7 +27,7 @@ export function PlaygroundSection() {
 
   return (
     <section 
-      id="playground" 
+      id="chat" 
       ref={sectionRef} 
       className="relative py-24 lg:py-32 overflow-hidden bg-background"
     >
@@ -43,11 +43,11 @@ export function PlaygroundSection() {
           }`}>
             <div className="flex items-center gap-3 mb-8">
               <div className="w-12 h-px bg-white/20" />
-              <span className="text-[11px] font-mono uppercase tracking-[0.3em] text-white/60">Live Playground</span>
+              <span className="text-[11px] font-mono uppercase tracking-[0.3em] text-white/60">Live Chat</span>
             </div>
             
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-display leading-[1.1] mb-8 text-white">
-              Experience the power of 
+              Experience the power&nbsp;of 
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]">
                 Agentic Discovery
               </span>

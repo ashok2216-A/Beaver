@@ -154,9 +154,10 @@ export function CustomAuth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] dark:bg-slate-950 p-4 font-sans relative overflow-hidden">
-      {/* Dynamic Background Blurs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-purple-500/10 blur-[120px] pointer-events-none" />
+      {/* Background Ambient Gradients */}
+      <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] md:w-[40vw] md:h-[40vw] rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[70vw] h-[70vw] md:w-[40vw] md:h-[40vw] rounded-full bg-purple-500/10 dark:bg-purple-500/20 blur-[100px] pointer-events-none" />
+      <div className="absolute top-[40%] left-[60%] w-[30vw] h-[30vw] rounded-full bg-pink-500/5 dark:bg-pink-500/10 blur-[80px] pointer-events-none" />
 
       <div className="w-full max-w-[440px] bg-white dark:bg-slate-900 rounded-[24px] shadow-sm border border-slate-100 dark:border-slate-800 p-10 relative">
         {/* Corner Plus Details */}
@@ -208,33 +209,35 @@ export function CustomAuth() {
               </button>
             </form>
 
-            <div className="flex items-center gap-4 mb-8">
+            <div className="flex items-center gap-4 mb-5">
               <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1" />
               <span className="text-sm text-slate-400 dark:text-slate-500">or</span>
               <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1" />
             </div>
 
-            <div className="space-y-3">
+            <p className="text-[13px] text-slate-500 dark:text-slate-400 text-center mb-4 font-medium">Continue with</p>
+
+            <div className="grid grid-cols-3 gap-3">
               <button 
                 onClick={() => handleOAuth('oauth_google')}
-                className="relative w-full h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-medium flex items-center justify-center transition-colors shadow-sm"
+                className="flex h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 items-center justify-center transition-colors shadow-sm text-slate-900 dark:text-white gap-2 font-medium text-sm"
               >
-                <GoogleIcon className="absolute left-4 w-5 h-5" />
-                Continue with Google
+                <GoogleIcon className="w-5 h-5" />
+                Google
               </button>
               <button 
                 onClick={() => handleOAuth('oauth_github')}
-                className="relative w-full h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-medium flex items-center justify-center transition-colors shadow-sm"
+                className="flex h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 items-center justify-center transition-colors shadow-sm text-slate-900 dark:text-white gap-2 font-medium text-sm"
               >
-                <GithubIcon className="absolute left-4 w-5 h-5" />
-                Continue with Github
+                <GithubIcon className="w-5 h-5" />
+                Github
               </button>
               <button 
                 onClick={() => handleOAuth('oauth_apple')}
-                className="relative w-full h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-medium flex items-center justify-center transition-colors shadow-sm"
+                className="flex h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 items-center justify-center transition-colors shadow-sm text-slate-900 dark:text-white gap-2 font-medium text-sm"
               >
-                <AppleIcon className="absolute left-4 w-5 h-5" />
-                Continue with Apple
+                <AppleIcon className="w-5 h-5" />
+                Apple
               </button>
             </div>
           </>

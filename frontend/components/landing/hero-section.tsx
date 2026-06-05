@@ -265,7 +265,7 @@ export function HeroSection() {
             >
               <span className="inline-flex items-center gap-3 text-xs md:text-sm font-mono text-white/60 px-3 md:px-4 py-1.5 md:py-2 border border-white/20 rounded-full backdrop-blur-sm">
                 <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9] animate-pulse" />
-                The Future of API Tooling
+                The Future of AI Automation
               </span>
             </div>
  
@@ -275,10 +275,10 @@ export function HeroSection() {
               isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
             }`}
           >
-            Ship any API as a
+            Build autonomous
             <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#eca8d6] via-[#a78bfa] to-[#67e8f9]">
-              Super-Agent
+              Agentic AI teams
             </span>
           </h1>
         </div>
@@ -289,7 +289,7 @@ export function HeroSection() {
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
             >
-              Beaver is the ultimate platform for turning OpenAPI documentation into reliable, tool-calling agents for any LLM in seconds.
+              Beaver is the ultimate platform for combining your APIs and tools into intelligent, autonomous teams that scale your operations in seconds.
             </p>
 
             {/* CTAs */}

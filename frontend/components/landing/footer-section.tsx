@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Twitter, Linkedin, Instagram } from "lucide-react";
 import Link from "next/link";
 
 interface FooterLink {
@@ -16,7 +16,7 @@ interface FooterLink {
 const footerLinks = {
   Product: [
     { name: "Features", href: "#features" },
-    { name: "Playground", href: "#playground" },
+    { name: "Chat", href: "#chat" },
     { name: "Pricing", href: "#pricing" },
     { name: "Integrations", href: "#integrations" },
   ],
@@ -29,15 +29,14 @@ const footerLinks = {
   Company: [
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
-    { name: "Privacy", href: "/privacy" },
-    { name: "Terms", href: "/terms" },
+    { name: "Terms & Privacy", href: "/legal" },
   ],
 };
 
 const socialLinks = [
-  { name: "Twitter", href: "#" },
-  { name: "GitHub", href: "#" },
-  { name: "Discord", href: "#" },
+  { name: "Twitter", icon: Twitter, href: "#" },
+  { name: "LinkedIn", icon: Linkedin, href: "#" },
+  { name: "Instagram", icon: Instagram, href: "#" },
 ];
 
 export function FooterSection() {
@@ -61,21 +60,24 @@ export function FooterSection() {
 
 
               <p className="text-white/50 leading-relaxed mb-8 max-w-xs text-sm">
-                Turn any API into an AI assistant. The ultimate playground for agentic API tooling.
+                Turn any API into an AI workforce. The ultimate platform for autonomous teams.
               </p>
 
               {/* Social Links */}
               <div className="flex gap-6">
-                {socialLinks.map((link) => (
-                  <a
-                    key={link.name}
-                    href={link.href}
-                    className="text-sm text-white/40 hover:text-white transition-colors flex items-center gap-1 group"
-                  >
-                    {link.name}
-                    <ArrowUpRight className="w-3 h-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                  </a>
-                ))}
+                {socialLinks.map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <a
+                      key={link.name}
+                      href={link.href}
+                      aria-label={link.name}
+                      className="text-white/40 hover:text-white transition-colors flex items-center justify-center group"
+                    >
+                      <Icon className="w-5 h-5 group-hover:-translate-y-1 transition-transform" />
+                    </a>
+                  );
+                })}
               </div>
             </div>
 
@@ -109,7 +111,7 @@ export function FooterSection() {
         {/* Bottom Bar */}
         <div className="py-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-white/30">
-            &copy; 2025 Beaver. All rights reserved.
+            &copy; 2026 Beaver. All rights reserved.
           </p>
 
           <div className="flex items-center gap-4 text-sm text-white/30">

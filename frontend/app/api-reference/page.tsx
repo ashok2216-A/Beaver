@@ -58,8 +58,8 @@ const endpoints = [
   {
     method: "POST",
     path: "/api/v1/agents",
-    title: "Create Agent",
-    desc: "Create a new AI agent by providing an OpenAPI specification URL or uploading a specification file. Beaver automatically parses all endpoints and generates semantic tools the LLM can invoke.",
+    title: "Create Agent/Workforce Member",
+    desc: "Create a new AI agent to join your workforce by providing an OpenAPI specification URL or uploading a specification file. Beaver automatically parses all endpoints and generates semantic tools the LLM can invoke.",
     params: [
       { name: "name", type: "string", required: true, desc: "Display name for the agent." },
       { name: "spec_url", type: "string", required: false, desc: "Public URL to an OpenAPI/Swagger spec (JSON or YAML)." },
@@ -146,8 +146,8 @@ createAgent();`,
   {
     method: "GET",
     path: "/api/v1/agents",
-    title: "List Agents",
-    desc: "Returns a paginated list of all agents belonging to the authenticated user, ordered by creation date (newest first).",
+    title: "List Workforce Agents",
+    desc: "Returns a paginated list of all agents belonging to your autonomous workforce, ordered by creation date (newest first).",
     params: [
       { name: "page", type: "integer", required: false, desc: "Page number (default: 1)." },
       { name: "limit", type: "integer", required: false, desc: "Items per page, max 100 (default: 20)." },
@@ -197,8 +197,8 @@ listAgents();`,
   {
     method: "POST",
     path: "/api/v1/agents/{id}/chat",
-    title: "Chat with Agent",
-    desc: "Send a natural language message to an agent. The LLM reasons over available tools, calls the appropriate API endpoints, and returns a synthesized reply.",
+    title: "Chat with Workforce",
+    desc: "Send a natural language message to your workforce. The LLM reasons over available tools, calls the appropriate API endpoints, and returns a synthesized reply.",
     params: [
       { name: "id", type: "string", required: true, desc: "The unique agent ID." },
       { name: "message", type: "string", required: true, desc: "The user's natural language message." },
@@ -287,7 +287,7 @@ export default function ApiReferencePage() {
   const ep = endpoints[active]
 
   return (
-    <div className="min-h-screen bg-background pitch-dark">
+    <div className="min-h-screen bg-background pitch-dark dark">
       <Navigation />
       
       <main className="pt-32 pb-32 container mx-auto max-w-[1400px]">
@@ -301,7 +301,7 @@ export default function ApiReferencePage() {
             <span className="text-muted-foreground">Reference.</span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl leading-relaxed">
-            Full REST API documentation for the Beaver platform — request schemas, cURL examples, response shapes, and error codes.
+            Full REST API documentation for the Beaver Workforce platform — request schemas, cURL examples, response shapes, and error codes.
           </p>
         </div>
 
