@@ -8,7 +8,7 @@ import { useAuth, useUser } from "@clerk/nextjs"
 import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { A2InputForm, A2AudioPlayer, A2HumanApproval } from "@/components/a2ui/components"
+import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval } from "@/components/a2ui/components"
 
 interface MessageChunk {
   type: 'text' | 'a2ui'
@@ -458,6 +458,15 @@ export default function PlaygroundPage() {
                                       label={a2data.a2ui.label}
                                       src={a2data.a2ui.src}
                                       data={a2data.a2ui.data}
+                                      title={a2data.a2ui.title}
+                                    />
+                                  );
+                                }
+                                if (comp === 'videoplayer' || comp === 'video' || comp === 'youtube') {
+                                  return (
+                                    <A2VideoPlayer
+                                      label={a2data.a2ui.label}
+                                      src={a2data.a2ui.src}
                                       title={a2data.a2ui.title}
                                     />
                                   );

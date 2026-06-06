@@ -223,7 +223,6 @@ function NewAgentContent() {
     if (id === "instagram") return "https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg";
     if (id === "youtube") return "https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg";
     if (id === "spotify") return "https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg";
-    if (id === "soundcloud") return "https://upload.wikimedia.org/wikipedia/commons/a/a2/SoundCloud_logo.svg";
     return `https://www.google.com/s2/favicons?sz=128&domain=${t.domain}`;
   };
 
@@ -906,7 +905,7 @@ function NewAgentContent() {
                       <textarea
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        maxLength={50}
+                        maxLength={100}
                         placeholder="What capabilities does this agent provide?"
                         rows={3}
                         className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-sm outline-none focus:border-slate-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 dark:focus:ring-slate-400/10 transition-all text-slate-900 dark:text-slate-100 leading-relaxed resize-none placeholder:text-slate-350 dark:placeholder:text-slate-600"
@@ -914,8 +913,8 @@ function NewAgentContent() {
                       <div className="flex justify-end mt-1.5">
                         <span className={cn(
                           "text-[11px] font-mono tabular-nums",
-                          description.length > 40 ? "text-amber-500" : "text-slate-300 dark:text-slate-600"
-                        )}>{description.length}/50</span>
+                          description.length > 90 ? "text-amber-500" : "text-slate-300 dark:text-slate-600"
+                        )}>{description.length}/100</span>
                       </div>
                     </div>
                   </div>
@@ -997,7 +996,7 @@ function NewAgentContent() {
                           <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            maxLength={50}
+                            maxLength={100}
                             placeholder="What capabilities does this API provide?"
                             rows={3}
                             className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-sm outline-none focus:border-slate-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 dark:focus:ring-slate-400/10 transition-all text-slate-900 dark:text-slate-100 leading-relaxed resize-none placeholder:text-slate-350 dark:placeholder:text-slate-600"
@@ -1005,8 +1004,8 @@ function NewAgentContent() {
                           <div className="flex justify-end mt-1.5">
                             <span className={cn(
                               "text-[11px] font-mono tabular-nums",
-                              description.length > 40 ? "text-amber-500" : "text-slate-300 dark:text-slate-600"
-                            )}>{description.length}/50</span>
+                              description.length > 90 ? "text-amber-500" : "text-slate-300 dark:text-slate-600"
+                            )}>{description.length}/100</span>
                           </div>
                         </div>
                       </div>
