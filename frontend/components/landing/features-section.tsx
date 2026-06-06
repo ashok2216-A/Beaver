@@ -69,27 +69,27 @@ function TerminalCanvas() {
 const features = [
   {
     number: "01",
-    title: "AI Agent Generation",
-    description: "Our reasoning engine doesn't just call APIs—it understands the semantic intent behind every endpoint, generating high-fidelity tools and prompts automatically.",
+    title: "Workforce Orchestration",
+    description: "Combine individual agents into specialized teams across different departments. Build autonomous workforces that seamlessly handle complex operations.",
     icon: Brain,
-    steps: ["Ingest", "Analyze", "Synthesize", "Deploy"],
+    steps: ["Ingest", "Assign", "Orchestrate", "Scale"],
   },
   {
     number: "02",
     title: "Zero-Glue Ingestion",
-    description: "Drop any OpenAPI spec. We handle the parsing, schema validation, and context compression instantly.",
+    description: "Drop any OpenAPI spec. We handle the parsing to immediately equip your workforce with the tools they need.",
     icon: Zap,
   },
   {
     number: "03",
     title: "Deep Debugging",
-    description: "Inspect raw request/response cycles for every tool call with our built-in forensic logger.",
+    description: "Inspect the reasoning and tool execution of your entire workforce in real-time with our built-in forensic logger.",
     icon: Bug,
   },
   {
     number: "04",
-    title: "Instant Edge Deployment",
-    description: "Ship your agents to high-performance edge endpoints or embed our battle-tested chat widget.",
+    title: "Instant Deployment",
+    description: "Ship your AI teams to high-performance edge endpoints or embed our chat interface natively.",
     icon: Rocket,
   },
 ];
@@ -126,7 +126,7 @@ export function FeaturesSection() {
     >
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
         {/* Header */}
-        <div className="relative mb-24 lg:mb-32">
+        <div className="relative mb-12 lg:mb-16">
           <div className="grid lg:grid-cols-12 gap-8 items-end">
             <div className="lg:col-span-7">
               <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground mb-6">

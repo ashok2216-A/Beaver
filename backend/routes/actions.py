@@ -14,8 +14,11 @@ async def approve_action(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    action = db.query(PendingAction).filter(PendingAction.id == action_id).first()
+    clean_id = action_id.strip()
+    log.info(f"Approving action: '{clean_id}'")
+    action = db.query(PendingAction).filter(PendingAction.id == clean_id).first()
     if not action:
+        log.warning(f"Action '{clean_id}' not found in database. All DB actions: {[a.id for a in db.query(PendingAction).order_by(PendingAction.created_at.desc()).limit(5).all()]}")
         raise HTTPException(status_code=404, detail="Action not found")
     
     # Optional: verify ownership via Agent
@@ -96,7 +99,8 @@ async def reject_action(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    action = db.query(PendingAction).filter(PendingAction.id == action_id).first()
+    clean_id = action_id.strip()
+    action = db.query(PendingAction).filter(PendingAction.id == clean_id).first()
     if not action:
         raise HTTPException(status_code=404, detail="Action not found")
         

@@ -150,11 +150,11 @@ const sections = [
     id: "getting-started",
     title: "Getting Started",
     icon: Rocket,
-    summary: "Upload an OpenAPI spec and have a working AI agent in under 2 minutes.",
+    summary: "Upload an OpenAPI spec and orchestrate a working AI workforce in under 2 minutes.",
     content: (
       <div className="space-y-6">
         <p className="text-lg text-muted-foreground leading-relaxed">
-          Beaver turns any OpenAPI 3.0 or Swagger 2.0 specification into a fully functional, tool-calling AI agent. The entire process — from spec upload to live agent — takes under 2 minutes.
+          Beaver turns any OpenAPI 3.0 or Swagger 2.0 specification into a fully functional, tool-calling AI workforce. The entire process — from spec upload to live agent team — takes under 2 minutes.
         </p>
 
         <div className="space-y-4 pt-4">
@@ -170,11 +170,11 @@ const sections = [
           <Step n={4} title="Review auto-generated tools">
             Beaver parses every endpoint and generates a semantic tool for each. Review, rename, or disable tools using the endpoint panel.
           </Step>
-          <Step n={5} title="Test in the Live Sandbox">
-            Use the built-in chat interface to ask your agent questions in natural language. Inspect the tool calls it makes in real-time.
+          <Step n={5} title="Test in the Live Chat">
+            Use the built-in chat interface to ask your workforce questions in natural language. Inspect the tool calls it makes in real-time.
           </Step>
           <Step n={6} title="Deploy">
-            Click <strong>Deploy</strong> to publish your agent as a REST endpoint or an embeddable chat widget.
+            Click <strong>Deploy</strong> to publish your workforce as a REST endpoint or an embeddable chat widget.
           </Step>
         </div>
 
@@ -183,7 +183,7 @@ const sections = [
         </Callout>
 
         <h3 className="text-2xl font-bold text-foreground mt-12 mb-4">Your First API Call</h3>
-        <p className="text-muted-foreground mb-4">Once deployed, chat with your agent via the REST API:</p>
+        <p className="text-muted-foreground mb-4">Once deployed, chat with your workforce via the REST API:</p>
         <MultiLangCodeBlock />
       </div>
     ),
@@ -192,7 +192,7 @@ const sections = [
     id: "authentication",
     title: "Authentication",
     icon: Shield,
-    summary: "Configure Bearer tokens, API keys, and Basic Auth for your agents.",
+    summary: "Configure Bearer tokens, API keys, and Basic Auth for your autonomous teams.",
     content: (
       <div className="space-y-8">
         <p className="text-lg text-muted-foreground leading-relaxed">
@@ -236,11 +236,11 @@ const sections = [
     id: "security",
     title: "Security & Endpoint Locking",
     icon: Lock,
-    summary: "Restrict which API tools your agent can invoke to prevent unintended access.",
+    summary: "Restrict which API tools your workforce can invoke to prevent unintended access.",
     content: (
       <div className="space-y-6">
         <p className="text-lg text-muted-foreground leading-relaxed">
-          Endpoint Locking gives you fine-grained control over what your agent is allowed to do. By default, every parsed endpoint becomes an available tool. Locking removes it from the agent's reasoning toolkit entirely.
+          Endpoint Locking gives you fine-grained control over what your workforce is allowed to do. By default, every parsed endpoint becomes an available tool. Locking removes it from the team's reasoning toolkit entirely.
         </p>
 
         <h3 className="text-2xl font-bold text-foreground mt-12 mb-6">Why it matters</h3>
@@ -259,7 +259,7 @@ const sections = [
         </div>
 
         <Callout icon={CheckCircle2} type="tip" title="Read-only mode">
-          To create a read-only agent instantly, use the <strong>Lock All Write Endpoints</strong> button in the Builder to disable every POST, PUT, PATCH, and DELETE tool in one click.
+          To create a read-only workforce instantly, use the <strong>Lock All Write Endpoints</strong> button in the Builder to disable every POST, PUT, PATCH, and DELETE tool in one click.
         </Callout>
       </div>
     ),
@@ -268,11 +268,11 @@ const sections = [
     id: "deployment",
     title: "Deployment",
     icon: Terminal,
-    summary: "Deploy agents as REST endpoints or embeddable chat widgets.",
+    summary: "Deploy your workforce as REST endpoints or embeddable chat widgets.",
     content: (
       <div className="space-y-8">
         <p className="text-lg text-muted-foreground leading-relaxed">
-          Beaver offers two deployment modes. You can use both simultaneously — the same agent can power a REST integration and an embedded chat widget at the same time.
+          Beaver offers two deployment modes. You can use both simultaneously — the same workforce can power a REST integration and an embedded chat widget at the same time.
         </p>
 
         <div className="grid gap-8">
@@ -282,7 +282,7 @@ const sections = [
               <h3 className="text-2xl font-bold">REST Endpoint</h3>
               <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-md ml-auto">Production Ready</span>
             </div>
-            <p className="text-muted-foreground mb-6 leading-relaxed">Use the <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono text-xs">/chat</code> endpoint to integrate Beaver agents into any backend, mobile app, or serverless function.</p>
+            <p className="text-muted-foreground mb-6 leading-relaxed">Use the <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono text-xs">/chat</code> endpoint to integrate Beaver workforces into any backend, mobile app, or serverless function.</p>
             <CodeBlock language="python" code={`import httpx
 
 response = httpx.post(
@@ -299,7 +299,7 @@ print(response.json()["reply"])`} />
               <h3 className="text-2xl font-bold">Chat Widget</h3>
               <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md ml-auto">Recommended</span>
             </div>
-            <p className="text-muted-foreground mb-6 leading-relaxed">Drop a single <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono text-xs">&lt;script&gt;</code> tag onto any webpage to embed your agent as a floating chat bubble.</p>
+            <p className="text-muted-foreground mb-6 leading-relaxed">Drop a single <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono text-xs">&lt;script&gt;</code> tag onto any webpage to embed your workforce as a floating chat bubble.</p>
             <CodeBlock language="html" code={`<!-- Add before </body> -->
 <script
   src="https://api.beaver.ai/widget.js"
@@ -318,7 +318,7 @@ export default function DocsPage() {
   const [activeSection, setActiveSection] = useState(sections[0].id)
 
   return (
-    <div className="min-h-screen bg-background pitch-dark">
+    <div className="min-h-screen bg-background pitch-dark dark">
       <Navigation />
       
       <div className="pt-32 pb-32 container mx-auto max-w-[1400px]">
@@ -379,7 +379,7 @@ export default function DocsPage() {
                 Documentation <br />
                 <span className="text-muted-foreground">Hub.</span>
               </h1>
-              <p className="text-2xl text-muted-foreground leading-relaxed">Everything you need to build, test, and deploy production-ready AI agents from your REST APIs.</p>
+              <p className="text-2xl text-muted-foreground leading-relaxed">Everything you need to build, test, and deploy production-ready AI workforces from your REST APIs.</p>
             </div>
 
             <div className="space-y-32">

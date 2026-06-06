@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card"
 
 export default function SecurityPage() {
   return (
-    <div className="min-h-screen bg-background pitch-dark">
+    <div className="min-h-screen bg-background pitch-dark dark">
       <Navigation />
       
       <main className="pt-32 pb-32">
@@ -67,7 +67,7 @@ export default function SecurityPage() {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {[
-                  { title: "No Data Storage", desc: "We don't store your API responses or system prompts. We process your OpenAPI files in-memory during agent generation." },
+                  { title: "Zero Response Retention", desc: "We don't log or store the actual data returning from your APIs. While your workforce configurations and schemas are stored securely, your users' PII and API payloads pass through ephemerally." },
                   { title: "Standard Auth Support", desc: "We support Bearer Tokens, API Keys (header-based), and basic auth. You configure the secret, we inject it securely." },
                   { title: "Access Controls", desc: "Internal access is restricted by role-based permissions and MFA. Access logs are audited regularly for suspicious activity." }
                 ].map((item, i) => (

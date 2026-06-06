@@ -35,6 +35,12 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -329,18 +335,24 @@ export default function AgentBuilderPage() {
     const userMsg = (overrideMessage ?? input).trim()
     if (!userMsg || isSending) return
     setInput("")
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }])
+    
+    // Only show user messages in UI, hide system backend commands
+    if (!userMsg.startsWith('[System:')) {
+      setMessages(prev => [...prev, { role: 'user', content: userMsg }])
+    }
     setIsSending(true)
 
     try {
       const token = await getToken()
+      const payload: any = { message: userMsg }
+      
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/${id}?stream=true`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ message: userMsg })
+        body: JSON.stringify(payload)
       })
 
       if (!response.ok) throw new Error("Failed to send message")
@@ -583,10 +595,29 @@ export default function AgentBuilderPage() {
             <Plus className="mr-2 h-4 w-4" />
             New Chat
           </Button>
-          <Button variant="hero" size="sm" className="rounded-xl h-10 px-6 shadow-glow" onClick={() => router.push(`/dashboard/agents/${id}/deploy`)}>
-            <Rocket className="mr-2 h-4 w-4" />
-            Deploy
-          </Button>
+          <TooltipProvider>
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <span className={cn("inline-block", endpoints.length === 0 && "cursor-not-allowed")}>
+                  <Button 
+                    variant="hero" 
+                    size="sm" 
+                    className="rounded-xl h-10 px-6 shadow-glow disabled:opacity-50 disabled:pointer-events-none" 
+                    onClick={() => router.push(`/dashboard/agents/${id}/deploy`)}
+                    disabled={endpoints.length === 0}
+                  >
+                    <Rocket className="mr-2 h-4 w-4" />
+                    Deploy
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {endpoints.length === 0 && (
+                <TooltipContent side="bottom" align="end" sideOffset={8} className="bg-slate-900 text-white font-medium">
+                  Add at least one tool to deploy
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </header>
 
@@ -864,7 +895,11 @@ export default function AgentBuilderPage() {
           
           <div className="flex-1 p-6 md:p-10 overflow-y-auto custom-scrollbar" ref={scrollRef}>
             <div className="max-w-3xl mx-auto space-y-8">
-              {messages.map((m, i) => (
+              {messages.map((m, i) => {
+                // Hide system-generated instruction messages
+                if (m.role === 'user' && m.content.startsWith('[System: ')) return null;
+                
+                return (
                 <div key={i} className={cn(
                   "flex gap-4 animate-in fade-in slide-in-from-bottom-2",
                   m.role === 'user' ? "flex-row-reverse" : "flex-row"
@@ -922,6 +957,19 @@ export default function AgentBuilderPage() {
                                                 headers: { Authorization: `Bearer ${token}` }
                                               });
                                               const data = await res.json();
+                                              if (data && data.status === 'approved') {
+                                                let resultStr = JSON.stringify(data.data);
+                                                if (resultStr.length > 2000) {
+                                                  resultStr = resultStr.substring(0, 2000) + '... [TRUNCATED]';
+                                                }
+                                                handleSendMessage(`[System: Action executed successfully. Result: ${resultStr}]`);
+                                              } else {
+                                                let errorStr = data.error || JSON.stringify(data);
+                                                if (errorStr.length > 2000) {
+                                                  errorStr = errorStr.substring(0, 2000) + '... [TRUNCATED]';
+                                                }
+                                                handleSendMessage(`[System: Action execution failed. Error: ${errorStr}]`);
+                                              }
                                             } catch(e) { console.error(e) }
                                           }}
                                           onReject={async (actionId) => {
@@ -931,6 +979,7 @@ export default function AgentBuilderPage() {
                                                 method: 'POST',
                                                 headers: { Authorization: `Bearer ${token}` }
                                               });
+                                              handleSendMessage(`[System: Action was rejected by the user.]`);
                                             } catch(e) { console.error(e) }
                                           }}
                                         />
@@ -1014,7 +1063,7 @@ export default function AgentBuilderPage() {
                     )}
                   </div>
                 </div>
-              ))}
+              ); })}
               {isSending && messages[messages.length-1].role === 'user' && (
                 <div className="flex gap-4 animate-pulse">
                   <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-border/50 shadow-sm bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50">
@@ -1095,12 +1144,12 @@ export default function AgentBuilderPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Description</label>
-                    <span className="text-[9px] font-bold text-muted-foreground/50">{(agent?.description?.length || 0)}/150</span>
+                    <span className="text-[9px] font-bold text-muted-foreground/50">{(agent?.description?.length || 0)}/50</span>
                   </div>
                   <Textarea 
                     name="description" 
                     defaultValue={agent.description} 
-                    maxLength={150}
+                    maxLength={50}
                     onChange={(e) => setAgent(prev => prev ? {...prev, description: e.target.value} : null)}
                     className="min-h-[80px] rounded-xl bg-background/50 border-border/50 text-xs leading-relaxed resize-none"
                     placeholder="Short description of the agent's capabilities..."
@@ -1110,12 +1159,12 @@ export default function AgentBuilderPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">System Prompt</label>
-                    <span className="text-[9px] font-bold text-muted-foreground/50">{(agent?.system_prompt?.length || 0)}/500</span>
+                    <span className="text-[9px] font-bold text-muted-foreground/50">{(agent?.system_prompt?.length || 0)}/100</span>
                   </div>
                   <Textarea 
                     name="system_prompt" 
                     defaultValue={agent.system_prompt} 
-                    maxLength={500}
+                    maxLength={100}
                     onChange={(e) => setAgent(prev => prev ? {...prev, system_prompt: e.target.value} : null)}
                     className="min-h-[160px] rounded-xl bg-background/50 border-border/50 text-xs leading-relaxed resize-none"
                     placeholder="Defines the agent's behavior..."

@@ -42,7 +42,7 @@ const posts = [
 
 export default function BlogPage() {
   return (
-    <div className="min-h-screen bg-background pitch-dark">
+    <div className="min-h-screen bg-background pitch-dark dark">
       <Navigation />
       
       <main className="pt-32 pb-32">

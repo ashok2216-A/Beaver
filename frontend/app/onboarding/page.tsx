@@ -120,7 +120,6 @@ export default function OnboardingPage() {
       {/* Top Bar */}
       <div className="w-full p-6 flex justify-between items-center text-sm text-slate-500 absolute top-0 left-0">
         <div className="flex items-center gap-1">
-          <ChevronLeft className="w-4 h-4" />
           <span>You are signed in as <span className="underline decoration-slate-300 underline-offset-4">{user?.primaryEmailAddress?.emailAddress}</span></span>
         </div>
       </div>
@@ -215,7 +214,7 @@ export default function OnboardingPage() {
                   className="mt-1"
                 />
                 <label htmlFor="terms" className="text-xs text-slate-600 leading-tight">
-                  I agree to Beaver's <a href="#" className="underline">Terms and Conditions</a> and consent to the <a href="#" className="underline">Data Privacy Policy</a>. <span className="text-red-500">*</span>
+                  I agree to Beaver's <a href="/legal" target="_blank" className="underline">Terms and Conditions</a> and consent to the <a href="/legal" target="_blank" className="underline">Data Privacy Policy</a>. <span className="text-red-500">*</span>
                 </label>
               </div>
 

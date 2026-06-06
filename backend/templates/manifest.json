@@ -206,6 +206,24 @@
       "mcp_server_url": "composio:youtube",
       "source_type": "mcp_sse",
       "description": "Access YouTube videos, transcripts, search, and channel analytics."
+    },
+    {
+      "id": "spotify",
+      "name": "Spotify",
+      "category": "Social & CRM",
+      "domain": "spotify.com",
+      "mcp_server_url": "composio:spotify",
+      "source_type": "mcp_sse",
+      "description": "Control playback, manage playlists, search tracks, and retrieve user profiles."
+    },
+    {
+      "id": "soundcloud",
+      "name": "SoundCloud",
+      "category": "Social & CRM",
+      "domain": "soundcloud.com",
+      "mcp_server_url": "composio:soundcloud",
+      "source_type": "mcp_sse",
+      "description": "Stream audio, fetch user tracks, and manage audio profiles."
     }
   ]
 }

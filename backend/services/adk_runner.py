@@ -54,6 +54,7 @@ def clear_agent_memory():
     global _session_service, _memory_service
     _session_service = InMemorySessionService()
     _memory_service = InMemoryMemoryService()
+    log.info("Agent memory and active sessions successfully cleared.")
 
 
 
@@ -74,6 +75,8 @@ def _parse_params_robust(params: str) -> dict:
     """
     if not params:
         return {}
+    if isinstance(params, dict):
+        return params
 
     # Strategy 1: standard non-strict parse
     try:
@@ -187,7 +190,9 @@ def _sanitize_mcp_params(tool_name: str, params: dict, endpoint_params: list[dic
             if not best_match:
                 # Substring match (e.g. 'code' -> 'code_to_execute')
                 for valid_key in valid_keys:
-                    if len(key_lower) > 3 and (key_lower in valid_key.lower() or valid_key.lower() in key_lower):
+                    key_clean = key_lower.replace("_", "")
+                    valid_clean = valid_key.lower().replace("_", "")
+                    if len(key_clean) > 3 and (key_clean in valid_clean or valid_clean in key_clean):
                         best_match = valid_key
                         break
                         
@@ -552,7 +557,7 @@ def _build_agent(
             # Replace colon-style placeholders like :documentation_id with a regex pattern
             # Note: re.escape might or might not escape the colon depending on Python version.
             pattern = re.sub(r'\\?:[a-zA-Z0-9_]+', r'[^/]+', pattern)
-            return bool(re.match(f"^{pattern}$", a))
+            return bool(re.match(f"^{pattern}$", a, re.IGNORECASE))
 
         ep_def = next(
             (e for e in endpoints
@@ -794,7 +799,7 @@ def _build_agent(
                             "tool_name": ep_def.get("summary") or f"{method} {path}",
                             "params": params_dict
                         },
-                        "note": "CRITICAL: The action has been paused for human approval. You MUST output the exact 'a2ui' JSON block above to the user using the ```a2ui code block format, and stop your turn. DO NOT say the action was completed."
+                        "note": "CRITICAL: The action has been paused for human approval. First, write a brief, friendly message explaining what you are about to do and asking the user for approval. Then, you MUST output the exact 'a2ui' JSON block above to the user using the ```a2ui code block format, and stop your turn. DO NOT say the action was completed."
                     })
             except Exception as e:
                 log.error(f"Failed to create PendingAction: {e}")
@@ -856,19 +861,19 @@ def _build_agent(
                 )
 
             # SUCCESS: Log and return
-            if status < 400:
+            if 200 <= status < 400:
                 log.info(f"SUCCESS: Tool call to {method} {path} succeeded on attempt {attempt + 1}")
                 # Save this successful structure for future reference
                 discovery.save_successful_pattern(method, path, current_payload)
                 break
 
             # FAILURE: Check if fixable via AI Repair
-            is_tool_not_found = isinstance(mcp_res, dict) and "not found" in str(mcp_res).lower()
-            is_auth_error = isinstance(mcp_res, dict) and ("no active connection" in str(mcp_res).lower() or "unauthorized" in str(mcp_res).lower() or status in (401, 403))
+            is_tool_not_found = isinstance(data, dict) and "not found" in str(data).lower()
+            is_auth_error = isinstance(data, dict) and ("no active connection" in str(data).lower() or "unauthorized" in str(data).lower() or status in (401, 403))
             
             if status in (400, 422) and attempt < MAX_INTERNAL_RETRIES - 1 and not is_tool_not_found and not is_auth_error:
                 log.info(f"Self-Healing Attempt {attempt + 1}: Repairing payload for {method} {path} ({status})")
-                log.error(f"MCP_RES error details: {mcp_res}")
+                log.error(f"Error details: {data}")
                 
                 # Check if we have a known pattern to help the repair
                 known_pattern = discovery.get_pattern(method, path)

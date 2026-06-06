@@ -27,7 +27,7 @@ export function HowItWorksSection() {
 
   return (
     <section
-      id="playground"
+      id="chat"
       ref={sectionRef}
       className="relative py-24 lg:py-32 bg-[oklch(0.09_0.01_260)] text-white overflow-hidden"
     >
@@ -40,7 +40,7 @@ export function HowItWorksSection() {
             isVisible ? "opacity-100" : "opacity-0"
           }`}>
             <span className="w-12 h-px bg-white/20" />
-            Live playground
+            Live Chat
           </span>
 
           <h2 className={`text-5xl md:text-6xl lg:text-7xl font-display tracking-tight leading-[0.9] mb-8 transition-all duration-1000 ${

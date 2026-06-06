@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   X,
   Boxes,
+  Wrench,
   FileCode2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,7 @@ function NewAgentContent() {
   const [dragOver, setDragOver] = useState(false);
   const [progress, setProgress] = useState(0);
   const [generating, setGenerating] = useState(false);
+  const [step, setStep] = useState(1);
 
   const [templates, setTemplates] = useState<Template[]>([]);
   const [oauthIntegrations, setOauthIntegrations] = useState<any[]>([]);
@@ -220,6 +222,8 @@ function NewAgentContent() {
     if (id === "github_mcp") return "https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg";
     if (id === "instagram") return "https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg";
     if (id === "youtube") return "https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg";
+    if (id === "spotify") return "https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg";
+    if (id === "soundcloud") return "https://upload.wikimedia.org/wikipedia/commons/a/a2/SoundCloud_logo.svg";
     return `https://www.google.com/s2/favicons?sz=128&domain=${t.domain}`;
   };
 
@@ -658,7 +662,7 @@ function NewAgentContent() {
 
               <div className="flex items-center justify-between w-full mb-8">
                 <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 p-4 text-white shadow-lg shadow-blue-500/25 flex items-center justify-center transform group-hover:scale-110 transition-all duration-300">
-                  <Boxes className="w-8 h-8" />
+                  <Wrench className="w-8 h-8" />
                 </div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-semibold tracking-wide border border-blue-500/20">
                   ★ Recommended
@@ -902,7 +906,7 @@ function NewAgentContent() {
                       <textarea
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        maxLength={150}
+                        maxLength={50}
                         placeholder="What capabilities does this agent provide?"
                         rows={3}
                         className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-sm outline-none focus:border-slate-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 dark:focus:ring-slate-400/10 transition-all text-slate-900 dark:text-slate-100 leading-relaxed resize-none placeholder:text-slate-350 dark:placeholder:text-slate-600"
@@ -910,8 +914,8 @@ function NewAgentContent() {
                       <div className="flex justify-end mt-1.5">
                         <span className={cn(
                           "text-[11px] font-mono tabular-nums",
-                          description.length > 130 ? "text-amber-500" : "text-slate-300 dark:text-slate-600"
-                        )}>{description.length}/150</span>
+                          description.length > 40 ? "text-amber-500" : "text-slate-300 dark:text-slate-600"
+                        )}>{description.length}/50</span>
                       </div>
                     </div>
                   </div>
@@ -929,140 +933,193 @@ function NewAgentContent() {
                     </div>
                   </div>
                 </div>
-
               </div>
             ) : (
-              <div className="rounded-3xl border border-white/50 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl p-10 shadow-2xl space-y-8 animate-in fade-in">
-                {/* Top Row: Name and URL */}
-                <div className="grid gap-8 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold">Agent Name</label>
-                    <input
-                      value={agentName}
-                      onChange={(e) => setAgentName(e.target.value)}
-                      placeholder="e.g. My Custom API"
-                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
-                    />
+              <div className="max-w-3xl mx-auto animate-in fade-in duration-400 border border-slate-200/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm rounded-2xl p-8 shadow-sm">
+                <div className="mb-6 pt-2 flex items-start justify-between">
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-900 dark:text-white">API Configuration</h2>
+                    <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-1">Configure your custom OpenAPI or REST integration.</p>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold">Base URL</label>
-                    <input
-                      value={baseUrl}
-                      onChange={(e) => setBaseUrl(e.target.value)}
-                      placeholder="https://api.example.com"
-                      className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
-                    />
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className={cn("h-1.5 rounded-full transition-all duration-300", step === 1 ? "w-6 bg-slate-900 dark:bg-white" : step > 1 ? "w-1.5 bg-slate-900 dark:bg-white" : "w-1.5 bg-slate-200 dark:bg-slate-700")} />
+                    <span className={cn("h-1.5 rounded-full transition-all duration-300", step === 2 ? "w-6 bg-slate-900 dark:bg-white" : step > 2 ? "w-1.5 bg-slate-900 dark:bg-white" : "w-1.5 bg-slate-200 dark:bg-slate-700")} />
+                    <span className={cn("h-1.5 rounded-full transition-all duration-300", step === 3 ? "w-6 bg-slate-900 dark:bg-white" : "w-1.5 bg-slate-200 dark:bg-slate-700")} />
                   </div>
                 </div>
 
-
-                {/* Security Configuration */}
-                <div className="pt-4 border-t border-border/50">
-                  <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60 mb-4">Security Configuration</h4>
-                  <div className="grid gap-6 md:grid-cols-3">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold">Auth Type</label>
-                      <div className="relative">
-                        <select
-                          value={authType}
-                          onChange={(e) => setAuthType(e.target.value)}
-                          className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-slate-900 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 appearance-none shadow-inner transition-all"
-                        >
-                          <option value="none">No Auth</option>
-                          <option value="bearer">Bearer Token</option>
-                          <option value="apikey">Custom Header (API Key)</option>
-                          <option value="query_key">Query Parameter (URL)</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold">Auth Header Name</label>
-                      <input
-                        value={authHeader}
-                        onChange={(e) => setAuthHeader(e.target.value)}
-                        placeholder="Authorization"
-                        className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-mono shadow-inner"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold">API Secret / Access Token</label>
-                      <input
-                        type="password"
-                        value={authSecret}
-                        onChange={(e) => setAuthSecret(e.target.value)}
-                        placeholder="sk-••••••••••••••••••••••••••••"
-                        className="h-14 w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 px-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-mono shadow-inner"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom Row: Side-by-Side Upload and Spec */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
-                  <div className="space-y-2 flex flex-col">
-                    <label className="text-sm font-bold">Import OpenAPI Spec</label>
-                    <div
-                      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                      onDragLeave={() => setDragOver(false)}
-                      onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
-                      className={cn(
-                        "relative flex-1 min-h-[220px] rounded-[2rem] border-2 border-dashed p-6 text-center transition-all flex flex-col items-center justify-center",
-                        dragOver ? "border-primary bg-primary/10 shadow-glow-sm" : "border-white/40 bg-white/20 hover:bg-white/40 hover:border-primary/40"
-                      )}
-                    >
-                      <div className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-glow mb-3">
-                        <UploadCloud className="h-5 w-5" />
-                      </div>
-                      <h3 className="text-sm font-bold">Drag & Drop file</h3>
-                      <p className="text-[10px] text-muted-foreground mt-1">JSON or YAML supported</p>
-                      <label className="mt-4">
-                        <input type="file" accept=".json,.yaml,.yml" className="sr-only" onChange={(e) => handleFiles(e.target.files)} />
-                        <span className="inline-flex h-8 cursor-pointer items-center rounded-lg border border-border bg-background px-4 text-[10px] font-bold hover:bg-muted transition-all">
-                          Browse Files
-                        </span>
-                      </label>
-                      {file && (
-                        <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-background p-2 text-left w-full max-w-[240px]">
-                          <div className="h-7 w-7 rounded bg-primary/10 flex items-center justify-center text-primary">
-                            <FileJson className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[10px] font-bold truncate">{file.name}</p>
-                          </div>
-                          <Check className="h-3 w-3 text-emerald-500" />
+                {step === 1 && (
+                  <div className="animate-in fade-in slide-in-from-right-2 duration-300">
+                    {/* Agent Name */}
+                    <div className="py-5 border-b border-slate-200/70 dark:border-slate-800/70">
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-8">
+                        <div className="w-40 shrink-0 sm:pt-2.5">
+                          <label className="text-[13px] font-medium text-slate-600 dark:text-slate-400">Agent Name</label>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 leading-relaxed">Identifies this API</p>
                         </div>
-                      )}
+                        <div className="flex-1">
+                          <input
+                            value={agentName}
+                            onChange={(e) => setAgentName(e.target.value)}
+                            placeholder="e.g. Internal CRM"
+                            className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm outline-none focus:border-slate-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 dark:focus:ring-slate-400/10 transition-all text-slate-900 dark:text-slate-100 placeholder:text-slate-350 dark:placeholder:text-slate-600"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Base URL */}
+                    <div className="py-5 border-b border-slate-200/70 dark:border-slate-800/70">
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-8">
+                        <div className="w-40 shrink-0 sm:pt-2.5">
+                          <label className="text-[13px] font-medium text-slate-600 dark:text-slate-400">Base URL</label>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 leading-relaxed">The API server URL</p>
+                        </div>
+                        <div className="flex-1">
+                          <input
+                            value={baseUrl}
+                            onChange={(e) => setBaseUrl(e.target.value)}
+                            placeholder="https://api.example.com"
+                            className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm outline-none focus:border-slate-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 dark:focus:ring-slate-400/10 transition-all text-slate-900 dark:text-slate-100 placeholder:text-slate-350 dark:placeholder:text-slate-600"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="py-5">
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-8">
+                        <div className="w-40 shrink-0 sm:pt-2.5">
+                          <label className="text-[13px] font-medium text-slate-600 dark:text-slate-400">Description</label>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 leading-relaxed">Helps the LLM route requests</p>
+                        </div>
+                        <div className="flex-1">
+                          <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            maxLength={50}
+                            placeholder="What capabilities does this API provide?"
+                            rows={3}
+                            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-sm outline-none focus:border-slate-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 dark:focus:ring-slate-400/10 transition-all text-slate-900 dark:text-slate-100 leading-relaxed resize-none placeholder:text-slate-350 dark:placeholder:text-slate-600"
+                          />
+                          <div className="flex justify-end mt-1.5">
+                            <span className={cn(
+                              "text-[11px] font-mono tabular-nums",
+                              description.length > 40 ? "text-amber-500" : "text-slate-300 dark:text-slate-600"
+                            )}>{description.length}/50</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  <div className="space-y-2 flex flex-col">
-                    <label className="text-sm font-bold flex items-center gap-2">
-                      Raw API Specification
-                      {!file && <span className="text-[10px] font-normal text-muted-foreground">(Required if no file)</span>}
-                    </label>
-                    <textarea
-                      value={apiSpec}
-                      onChange={(e) => setApiSpec(e.target.value)}
-                      placeholder='{"openapi": "3.0.0", ...}'
-                      className="flex-1 w-full rounded-[2rem] border border-white/50 bg-white/40 p-6 text-xs outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all font-mono min-h-[220px] shadow-inner"
-                    />
-                  </div>
-                </div>
+                {step === 2 && (
+                  <div className="animate-in fade-in slide-in-from-right-2 duration-300">
+                    {/* Security */}
+                    <div className="py-5">
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-8">
+                        <div className="w-40 shrink-0 sm:pt-2.5">
+                          <label className="text-[13px] font-medium text-slate-600 dark:text-slate-400">Authentication</label>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 leading-relaxed">How to authenticate</p>
+                        </div>
+                        <div className="flex-1 space-y-4">
+                          <div className="relative">
+                            <select
+                              value={authType}
+                              onChange={(e) => setAuthType(e.target.value)}
+                              className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm outline-none focus:border-slate-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 dark:focus:ring-slate-400/10 transition-all text-slate-900 dark:text-slate-100 appearance-none"
+                            >
+                              <option value="none">No Auth</option>
+                              <option value="bearer">Bearer Token</option>
+                              <option value="apikey">Custom Header (API Key)</option>
+                              <option value="query_key">Query Parameter (URL)</option>
+                            </select>
+                          </div>
 
-                {/* Description (Moved below) */}
-                <div className="space-y-2 pt-4 border-t border-border/50">
-                  <div className="flex justify-between items-center">
-                    <label className="text-sm font-bold">Description (Optional)</label>
-                    <span className="text-[10px] font-bold text-muted-foreground/50">{description.length}/150</span>
+                          {authType !== "none" && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                              <div>
+                                <label className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1 block">Header/Param Name</label>
+                                <input
+                                  value={authHeader}
+                                  onChange={(e) => setAuthHeader(e.target.value)}
+                                  placeholder="Authorization"
+                                  className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm outline-none focus:border-slate-900 dark:focus:border-slate-400 transition-all text-slate-900 dark:text-slate-100 font-mono placeholder:text-slate-350 dark:placeholder:text-slate-600"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1 block">Secret Token</label>
+                                <input
+                                  type="password"
+                                  value={authSecret}
+                                  onChange={(e) => setAuthSecret(e.target.value)}
+                                  placeholder="sk-..."
+                                  className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm outline-none focus:border-slate-900 dark:focus:border-slate-400 transition-all text-slate-900 dark:text-slate-100 font-mono placeholder:text-slate-350 dark:placeholder:text-slate-600"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    maxLength={150}
-                    placeholder="What does this agent do?"
-                    className="w-full rounded-2xl border border-white/50 bg-white/40 dark:bg-white/5 p-5 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-inner min-h-[100px]"
-                  />
-                </div>
+                )}
+
+                {step === 3 && (
+                  <div className="animate-in fade-in slide-in-from-right-2 duration-300">
+                    {/* API Specification */}
+                    <div className="py-5">
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-8">
+                        <div className="w-40 shrink-0 sm:pt-2.5">
+                          <label className="text-[13px] font-medium text-slate-600 dark:text-slate-400">OpenAPI Spec</label>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 leading-relaxed">JSON or YAML <span className="italic text-slate-400/80">(Optional)</span></p>
+                        </div>
+                        <div className="flex-1 space-y-4">
+                          <div
+                            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                            onDragLeave={() => setDragOver(false)}
+                            onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
+                            className={cn(
+                              "relative w-full min-h-[120px] rounded-xl border border-dashed p-4 text-center transition-all flex flex-col items-center justify-center",
+                              dragOver ? "border-blue-500 bg-blue-50 dark:bg-blue-900/10" : "border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                            )}
+                          >
+                            <UploadCloud className="h-5 w-5 text-slate-400 mb-2" />
+                            <h3 className="text-[13px] font-medium text-slate-700 dark:text-slate-300">Drag & Drop file</h3>
+                            <label className="mt-2">
+                              <input type="file" accept=".json,.yaml,.yml" className="sr-only" onChange={(e) => handleFiles(e.target.files)} />
+                              <span className="inline-flex h-7 cursor-pointer items-center rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-[11px] font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm">
+                                Browse Files
+                              </span>
+                            </label>
+                            {file && (
+                              <div className="mt-3 flex items-center gap-2 rounded-md border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-900/10 px-3 py-1.5 text-left w-full max-w-sm mx-auto">
+                                <FileJson className="h-4 w-4 text-emerald-600 dark:text-emerald-500" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 truncate">{file.name}</p>
+                                </div>
+                                <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-500" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="relative">
+                            <div className="absolute top-3 right-3">
+                              <span className="text-[10px] text-slate-400 font-medium">RAW EDITOR</span>
+                            </div>
+                            <textarea
+                              value={apiSpec}
+                              onChange={(e) => setApiSpec(e.target.value)}
+                              placeholder='{"openapi": "3.0.0", ...}'
+                              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 pt-8 text-[11px] outline-none focus:border-slate-900 dark:focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 dark:focus:ring-slate-400/10 transition-all font-mono min-h-[160px] text-slate-800 dark:text-slate-200 resize-y placeholder:text-slate-350 dark:placeholder:text-slate-600"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1090,40 +1147,61 @@ function NewAgentContent() {
             )}
 
             {tab === "manual" && (
-              <div className="mt-6 max-w-xl mx-auto flex items-center justify-between">
+              <div className="mt-6 max-w-3xl mx-auto flex items-center justify-between px-2">
                 <button 
-                  onClick={() => router.back()} 
+                  onClick={() => {
+                    if (sourceType !== "mcp_sse" && step > 1) {
+                      setStep(step - 1);
+                    } else {
+                      router.back();
+                    }
+                  }} 
                   disabled={generating} 
                   className="text-[13px] font-medium text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors disabled:opacity-40"
                 >
-                  Cancel
+                  {sourceType !== "mcp_sse" && step > 1 ? "Back" : "Cancel"}
                 </button>
-                <button
-                  onClick={handleGenerate}
-                  disabled={generating || (!agentName || (!apiSpec && !file && sourceType === "rest"))}
-                  className={cn(
-                    "h-9 px-4 rounded-lg text-[13px] font-medium transition-all flex items-center gap-2",
-                    "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100",
-                    "disabled:opacity-40 disabled:pointer-events-none"
-                  )}
-                >
-                  {generating ? (
-                    <>
-                      <Loader className="h-3.5 w-3.5 animate-spin" />
-                      Working...
-                    </>
-                  ) : sourceType === "mcp_sse" ? (
-                    <>
-                      Save Integration
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </>
-                  ) : (
-                    <>
-                      Generate Agent
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </>
-                  )}
-                </button>
+                
+                {sourceType !== "mcp_sse" && step < 3 ? (
+                  <button
+                    onClick={() => setStep(step + 1)}
+                    disabled={generating || (step === 1 && (!agentName || !baseUrl))}
+                    className={cn(
+                      "h-9 px-4 rounded-lg text-[13px] font-medium transition-all flex items-center gap-2",
+                      "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100",
+                      "disabled:opacity-40 disabled:pointer-events-none"
+                    )}
+                  >
+                    Continue <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleGenerate}
+                    disabled={generating || !agentName}
+                    className={cn(
+                      "h-9 px-4 rounded-lg text-[13px] font-medium transition-all flex items-center gap-2",
+                      "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100",
+                      "disabled:opacity-40 disabled:pointer-events-none"
+                    )}
+                  >
+                    {generating ? (
+                      <>
+                        <Loader className="h-3.5 w-3.5 animate-spin" />
+                        Working...
+                      </>
+                    ) : sourceType === "mcp_sse" ? (
+                      <>
+                        Save Integration
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </>
+                    ) : (
+                      <>
+                        Generate Agent
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             )}
           </div>
