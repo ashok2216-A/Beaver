@@ -462,6 +462,53 @@ export function A2AudioPlayer({ label, src, data, title }: A2AudioPlayerProps) {
   )
 }
 
+// Video Player
+interface A2VideoPlayerProps extends FieldProps {
+  src?: string
+  title?: string
+}
+
+export function A2VideoPlayer({ label, src, title }: A2VideoPlayerProps) {
+  if (!src) return null;
+  
+  // Basic youtube url converter for embed
+  let embedUrl = src;
+  if (src.includes('youtube.com/watch')) {
+    try {
+      const urlObj = new URL(src);
+      const v = urlObj.searchParams.get('v');
+      if (v) embedUrl = `https://www.youtube.com/embed/${v}`;
+    } catch (e) {}
+  } else if (src.includes('youtu.be/')) {
+    const v = src.split('youtu.be/')[1]?.split('?')[0];
+    if (v) embedUrl = `https://www.youtube.com/embed/${v}`;
+  }
+  
+  return (
+    <div style={STYLES.audioContainer}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ padding: '8px', background: '#e11d48', borderRadius: '10px', color: 'white' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+          </svg>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={STYLES.label}>{String(label || 'Video Playback')}</span>
+          {title && <span style={{ fontSize: '12px', fontWeight: 600, color: '#0f172a' }}>{String(title)}</span>}
+        </div>
+      </div>
+      <div style={{ position: 'relative', width: '100%', paddingTop: '56.25%', borderRadius: '8px', overflow: 'hidden', marginTop: '8px' }}>
+        <iframe 
+          src={embedUrl}
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+          allowFullScreen
+        />
+      </div>
+    </div>
+  )
+}
+
 // ─── A2UI INPUT FORM ──────────────────────────────────────────────────────────
 // Top-level component: renders the full input form described by the agent's a2ui JSON
 
@@ -582,6 +629,10 @@ export function A2InputForm({ data, onSubmit }: A2InputFormProps) {
       case 'audio':
       case 'media':
         return <A2AudioPlayer key={key} {...commonProps} src={field.src} data={field.data} title={field.title} />
+      case 'videoplayer':
+      case 'video':
+      case 'youtube':
+        return <A2VideoPlayer key={key} {...commonProps} src={field.src} title={field.title} />
       default:
         return null
     }
@@ -627,7 +678,7 @@ interface A2HumanApprovalProps {
 
 
 export function A2HumanApproval({ data, onApprove, onReject }: A2HumanApprovalProps) {
-  const a2uiData = data?.a2ui || {};
+  const a2uiData: any = data?.a2ui || {};
   const actionId = a2uiData.action_id || a2uiData.actionId;
   const toolName = a2uiData.tool_name || a2uiData.toolName;
   const params = a2uiData.params;

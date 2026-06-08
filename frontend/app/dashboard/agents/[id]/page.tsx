@@ -50,7 +50,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { toast } from "sonner"
 import Link from "next/link"
-import { A2InputForm, A2AudioPlayer, A2HumanApproval } from "@/components/a2ui/components"
+import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval } from "@/components/a2ui/components"
 
 interface Agent {
   id: number
@@ -945,6 +945,15 @@ export default function AgentBuilderPage() {
                                         />
                                       );
                                     }
+                                    if (comp === 'videoplayer' || comp === 'video' || comp === 'youtube') {
+                                      return (
+                                        <A2VideoPlayer
+                                          label={a2data.a2ui.label}
+                                          src={a2data.a2ui.src}
+                                          title={a2data.a2ui.title}
+                                        />
+                                      );
+                                    }
                                     if (comp === 'human_approval') {
                                       return (
                                         <A2HumanApproval
@@ -1144,12 +1153,12 @@ export default function AgentBuilderPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Description</label>
-                    <span className="text-[9px] font-bold text-muted-foreground/50">{(agent?.description?.length || 0)}/50</span>
+                    <span className="text-[9px] font-bold text-muted-foreground/50">{(agent?.description?.length || 0)}/100</span>
                   </div>
                   <Textarea 
                     name="description" 
                     defaultValue={agent.description} 
-                    maxLength={50}
+                    maxLength={100}
                     onChange={(e) => setAgent(prev => prev ? {...prev, description: e.target.value} : null)}
                     className="min-h-[80px] rounded-xl bg-background/50 border-border/50 text-xs leading-relaxed resize-none"
                     placeholder="Short description of the agent's capabilities..."
