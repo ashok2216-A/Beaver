@@ -73,6 +73,23 @@
       "description": "Model Context Protocol server for searching, reading, and managing Google Drive files."
     },
     {
+      "id": "google_maps",
+      "name": "Google Maps",
+      "category": "Productivity",
+      "domain": "google.com",
+      "mcp_server_url": "composio:googlemaps",
+      "source_type": "mcp_sse",
+      "description": "Calculate routes, search places, get directions, and explore maps dynamically.",
+      "parameter_defaults": {
+        "GOOGLE_MAPS_TEXT_SEARCH": {
+          "fieldMask": "places.displayName,places.formattedAddress,places.websiteUri,places.nationalPhoneNumber"
+        },
+        "GOOGLE_MAPS_NEARBY_SEARCH": {
+          "fieldMask": "places.displayName,places.formattedAddress,places.websiteUri,places.nationalPhoneNumber"
+        }
+      }
+    },
+    {
       "id": "github_mcp",
       "name": "GitHub",
       "category": "DevTools",
@@ -224,6 +241,15 @@
       "mcp_server_url": "composio:soundcloud",
       "source_type": "mcp_sse",
       "description": "Stream audio, fetch user tracks, and manage audio profiles."
+    },
+    {
+      "id": "apify",
+      "name": "Apify",
+      "category": "AI & Search",
+      "domain": "apify.com",
+      "mcp_server_url": "composio:apify",
+      "source_type": "mcp_sse",
+      "description": "Run web scraping, data extraction, and automation actors on the Apify platform."
     }
   ]
 }

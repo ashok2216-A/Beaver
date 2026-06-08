@@ -106,3 +106,47 @@ def test_pro_user_unlimited(mock_auth_pro):
         
         # 402 is Payment Required. For Pro user, it should NOT return 402.
         assert response.status_code != 402
+
+
+def test_enrich_mcp_parameters_with_defaults():
+    from routes.agents import _enrich_mcp_parameters_with_defaults
+    
+    # Mock tools list returned by discover_mcp_tools_sync
+    mock_tools = [
+        {
+            "name": "GOOGLE_MAPS_TEXT_SEARCH",
+            "description": "text search",
+            "parameters": [
+                {"name": "textQuery", "type": "string", "required": True},
+                {"name": "fieldMask", "type": "string", "required": False}
+            ]
+        }
+    ]
+    
+    enriched = _enrich_mcp_parameters_with_defaults("composio:googlemaps", mock_tools)
+    
+    field_mask_param = next(p for p in enriched[0]["parameters"] if p["name"] == "fieldMask")
+    assert "default" in field_mask_param
+    assert "places.websiteUri" in field_mask_param["default"]
+
+
+def test_sanitize_mcp_params_injected_default():
+    from services.adk_runner import _sanitize_mcp_params
+    
+    endpoint_params = [
+        {"name": "textQuery", "type": "string", "required": True},
+        {"name": "fieldMask", "type": "string", "required": False, "default": "places.displayName,places.websiteUri"}
+    ]
+    
+    # Case 1: fieldMask is missing
+    sanitized1 = _sanitize_mcp_params("GOOGLE_MAPS_TEXT_SEARCH", {"textQuery": "test query"}, endpoint_params)
+    assert sanitized1["fieldMask"] == "places.displayName,places.websiteUri"
+    
+    # Case 2: fieldMask is empty string
+    sanitized2 = _sanitize_mcp_params("GOOGLE_MAPS_TEXT_SEARCH", {"textQuery": "test query", "fieldMask": ""}, endpoint_params)
+    assert sanitized2["fieldMask"] == "places.displayName,places.websiteUri"
+    
+    # Case 3: fieldMask is already specified
+    sanitized3 = _sanitize_mcp_params("GOOGLE_MAPS_TEXT_SEARCH", {"textQuery": "test query", "fieldMask": "places.displayName"}, endpoint_params)
+    assert sanitized3["fieldMask"] == "places.displayName"
+

@@ -268,6 +268,72 @@ def _agent_out(agent: Agent, ep_count: int | None = None, precalc_mcp_url: str |
         updated_at=agent.updated_at,
     )
 
+def _enrich_mcp_parameters_with_defaults(mcp_url: str, tools: list[dict]) -> list[dict]:
+    """
+    Enrich discovered MCP tool parameters with defaults from manifest.json.
+    """
+    import os
+    import json
+    
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    path1 = os.path.join(current_dir, "..", "templates", "manifest.json")
+    path2 = os.path.join(os.getcwd(), "templates", "manifest.json")
+    path3 = os.path.join(os.getcwd(), "backend", "templates", "manifest.json")
+    
+    manifest_path = None
+    for p in [path1, path2, path3]:
+        if os.path.exists(p):
+            manifest_path = p
+            break
+            
+    if not manifest_path:
+        log.warning(f"Could not load manifest.json to enrich parameter defaults. Path not found.")
+        return tools
+        
+    try:
+        with open(manifest_path, "r", encoding="utf-8-sig") as f:
+            manifest = json.load(f)
+    except Exception as e:
+        log.warning(f"Failed to parse manifest.json: {e}")
+        return tools
+        
+    templates = manifest.get("templates", [])
+    matched_template = None
+    mcp_url_lower = mcp_url.lower() if mcp_url else ""
+    for temp in templates:
+        temp_mcp_url = temp.get("mcp_server_url", "").lower()
+        temp_id = temp.get("id", "").lower()
+        if temp_mcp_url == mcp_url_lower or temp_id == mcp_url_lower:
+            matched_template = temp
+            break
+            
+    if not matched_template:
+        log.info(f"No template match found in manifest for mcp_url '{mcp_url}'")
+        return tools
+        
+    defaults = matched_template.get("parameter_defaults", {})
+    if not defaults:
+        return tools
+        
+    log.info(f"Enriching tools for mcp_url '{mcp_url}' with defaults from template '{matched_template.get('id')}'")
+    
+    for t in tools:
+        t_name = t.get("name")
+        if not t_name:
+            continue
+        tool_defaults = defaults.get(t_name)
+        if not tool_defaults:
+            continue
+            
+        params = t.get("parameters", [])
+        for p in params:
+            p_name = p.get("name")
+            if p_name in tool_defaults:
+                p["default"] = tool_defaults[p_name]
+                log.info(f"Set default for parameter '{p_name}' in tool '{t_name}' to '{tool_defaults[p_name]}'")
+                
+    return tools
+
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
@@ -311,6 +377,7 @@ def create_agent(
         from services.mcp_service import discover_mcp_tools_sync
         mcp_url = data.mcp_server_url or data.base_url
         tools = discover_mcp_tools_sync(mcp_url, user_id=user.id)
+        tools = _enrich_mcp_parameters_with_defaults(mcp_url, tools)
         for t in tools:
             ep = Endpoint(
                 agent_id=agent.id,

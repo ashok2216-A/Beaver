@@ -212,6 +212,8 @@ function NewAgentContent() {
 
   const getLogoForTemplate = (t: Template) => {
     const id = (t.id || "").toLowerCase();
+    if (id === "google_maps") return "https://www.google.com/s2/favicons?sz=128&domain=maps.google.com";
+    if (id === "apify") return "https://cdn.simpleicons.org/apify";
     if (id === "gmail") return "https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg";
     if (id === "google_calendar") return "https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg";
     if (id === "google_drive") return "https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg";

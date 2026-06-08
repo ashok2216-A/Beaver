@@ -208,6 +208,14 @@ def _sanitize_mcp_params(tool_name: str, params: dict, endpoint_params: list[dic
         elif "userId" in valid_keys and "userId" not in final_params:
             final_params["userId"] = "me"
             
+        # Dynamically inject template parameter defaults if they are missing or empty
+        for p in endpoint_params:
+            if isinstance(p, dict) and "name" in p and "default" in p:
+                p_name = p["name"]
+                if p_name not in final_params or final_params[p_name] is None or final_params[p_name] == "":
+                    final_params[p_name] = p["default"]
+                    log.info(f"Dynamic param sanitizer: injected default '{p['default']}' for parameter '{p_name}' in tool {tool_name}")
+            
         return final_params
         
     return sanitized
@@ -943,6 +951,13 @@ def _build_agent(
         if status >= 400:
             log.warning(f"Tool Error {status} from {path} after internal attempts.")
 
+            # Generate a corrective A2UI form dynamically if there is a validation error
+            a2ui_form = None
+            try:
+                a2ui_form = await _generate_corrective_a2ui(status, path, method, data, current_payload)
+            except Exception as e:
+                log.warning(f"Failed to generate corrective A2UI: {e}")
+
             hint = "The API returned an error."
             if isinstance(data, dict):
                 # Try to find a meaningful message in various common fields
@@ -993,16 +1008,24 @@ def _build_agent(
                     "response":    data,
                 })
 
-                return json.dumps({
+                resp_payload = {
                     "status_code": status,
                     "error_details": data,
                     "hint": hint,
-                    "note": (
+                }
+                if a2ui_form:
+                    resp_payload["a2ui"] = a2ui_form.get("a2ui")
+                    resp_payload["note"] = (
+                        f"CRITICAL: The API call to {method.upper()} {path} failed. "
+                        f"A corrective input form has been generated. You MUST output the exact 'a2ui' JSON block above to the user using the ```a2ui code block format, and stop your turn immediately."
+                    )
+                else:
+                    resp_payload["note"] = (
                         f"CRITICAL: The API call to {method.upper()} {path} failed. "
                         f"DO NOT generate any JSON forms. Instead, explain the issue to the user clearly using the error details "
                         f"and ask them to provide the missing information or corrections directly in the chat so you can retry."
                     )
-                })
+                return json.dumps(resp_payload)
             
             tool_log.append({
                 "path":        path,
