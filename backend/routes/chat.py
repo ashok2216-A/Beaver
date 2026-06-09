@@ -329,9 +329,22 @@ Conversation:
             top_ids = [item[1] for item in ranked_endpoints][:15]
             endpoints = db.query(Endpoint).filter(Endpoint.id.in_(top_ids)).all()
 
+        from utils.security import get_provider_name_from_urls
+        from models.models import UserIntegration
         endpoint_list = []
         for ep in endpoints:
             ep_agent = agent_map[ep.agent_id]
+            auth_secret_val = ep_agent.auth_secret
+            if not auth_secret_val:
+                provider_name = get_provider_name_from_urls(ep_agent.base_url, ep.mcp_server_url)
+                if provider_name:
+                    user_integ = db.query(UserIntegration).filter(
+                        UserIntegration.user_id == user.id,
+                        UserIntegration.provider == provider_name.lower()
+                    ).first()
+                    if user_integ:
+                        auth_secret_val = user_integ.access_token
+
             endpoint_list.append({
                 "path":         ep.path,
                 "method":       ep.method.value if hasattr(ep.method, "value") else ep.method,
@@ -342,7 +355,7 @@ Conversation:
                 "base_url":     ep_agent.base_url,
                 "auth_type":    ep_agent.auth_type,
                 "auth_header":  ep_agent.auth_header,
-                "auth_secret":  ep_agent.auth_secret,
+                "auth_secret":  auth_secret_val,
                 "custom_headers": ep_agent.custom_headers,
                 "source_type":  ep.source_type if hasattr(ep, "source_type") else "rest",
                 "mcp_server_url": ep.mcp_server_url if hasattr(ep, "mcp_server_url") else None,
@@ -358,6 +371,17 @@ Conversation:
         for m in reversed(db_msgs):
             history.append({"role": m.role, "content": m.content})
 
+    main_auth_secret = agent.auth_secret
+    if not main_auth_secret:
+        provider_name = get_provider_name_from_urls(agent.base_url, getattr(agent, "mcp_server_url", None))
+        if provider_name:
+            user_integ = db.query(UserIntegration).filter(
+                UserIntegration.user_id == user.id,
+                UserIntegration.provider == provider_name.lower()
+            ).first()
+            if user_integ:
+                main_auth_secret = user_integ.access_token
+
     params = {
         "user_input": _sanitize_input(req.message),
         "endpoints": endpoint_list,
@@ -365,7 +389,7 @@ Conversation:
         "system_prompt": agent.system_prompt,
         "auth_type": agent.auth_type,
         "auth_header": agent.auth_header,
-        "auth_secret": agent.auth_secret,
+        "auth_secret": main_auth_secret,
         "custom_headers": agent.custom_headers,
         "agent_name": "orchestrated_agent",
         "model": agent.model_id,
@@ -458,6 +482,7 @@ async def chat(
 
     if not all_metadata:
         endpoint_list = []
+        endpoints = []  # Initialize to empty list to prevent NameError in auth_secret lookup below
     else:
         # Step 2: Rank endpoints by relevance to user input and recent history
         user_input = _sanitize_input(req.message).lower()
@@ -565,6 +590,30 @@ async def chat(
         for m in reversed(db_msgs):
             history.append({"role": m.role, "content": m.content})
 
+    from utils.security import get_provider_name_from_urls
+    from models.models import UserIntegration
+    main_auth_secret = agent.auth_secret
+    if not main_auth_secret:
+        mcp_url = None
+        for ep in endpoints:
+            if getattr(ep, "mcp_server_url", None):
+                mcp_url = ep.mcp_server_url
+                break
+        provider_name = get_provider_name_from_urls(agent.base_url, mcp_url)
+        log.info(f"AUTH_LOOKUP: agent.base_url={agent.base_url!r} mcp_url={mcp_url!r} → provider_name={provider_name!r}")
+        if provider_name:
+            user_integ = db.query(UserIntegration).filter(
+                UserIntegration.user_id == user.id,
+                UserIntegration.provider == provider_name.lower()
+            ).first()
+            if user_integ:
+                log.info(f"AUTH_LOOKUP: Found UserIntegration for provider={provider_name!r}, token_len={len(user_integ.access_token or '')}")
+                main_auth_secret = user_integ.access_token
+            else:
+                log.warning(f"AUTH_LOOKUP: No UserIntegration found for user_id={user.id}, provider={provider_name!r}")
+        else:
+            log.warning(f"AUTH_LOOKUP: Could not resolve provider from base_url={agent.base_url!r}")
+
     params = {
         "user_input": _sanitize_input(req.message),
         "endpoints": endpoint_list,
@@ -572,7 +621,7 @@ async def chat(
         "system_prompt": agent.system_prompt,
         "auth_type": agent.auth_type,
         "auth_header": agent.auth_header,
-        "auth_secret": agent.auth_secret,
+        "auth_secret": main_auth_secret,
         "custom_headers": agent.custom_headers,
         "agent_name": agent.name,
         "model": agent.model_id,

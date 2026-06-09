@@ -106,6 +106,7 @@ def connect_apikey(
     Save an API Key natively to bypass Composio for custom auth providers.
     """
     provider_lower = provider.lower()
+    from utils.security import encrypt_secret
 
     try:
         existing = db.query(UserIntegration).filter(
@@ -114,12 +115,12 @@ def connect_apikey(
         ).first()
         
         if existing:
-            existing.access_token = input.api_key
+            existing.access_token = encrypt_secret(input.api_key)
         else:
             db.add(UserIntegration(
                 user_id=user.id,
                 provider=provider_lower,
-                access_token=input.api_key,
+                access_token=encrypt_secret(input.api_key),
                 account_id="native_api_key",
                 refresh_token=None,
                 scopes=[],

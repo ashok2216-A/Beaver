@@ -25,7 +25,7 @@ from utils.limiter import limiter
 
 from config.config import get_settings
 from database.database import Base, engine
-from routes import agents, chat, auth, billing, oauth, actions, agent_teams
+from routes import agents, chat, auth, billing, oauth, actions, agent_teams, custom_tools
 from utils.auth import get_current_user
 
 from utils.logging_config import setup_logging
@@ -180,6 +180,13 @@ app.include_router(
     agent_teams.router,
     prefix="/api/v1",
     dependencies=[Depends(get_current_user)]
+)
+
+app.include_router(
+    custom_tools.router,
+    prefix="/api/v1",
+    # No Clerk JWT auth here — endpoints authenticate via the Duffel API key
+    # in the Authorization header and are only callable from the local agent executor.
 )
 
 

@@ -306,45 +306,61 @@ def _mcp_path_matches_score(template: str, actual: str) -> float:
 def _extract_a2ui_chunks(text: str) -> list[dict]:
     """
     Scan the agent answer for embedded ```a2ui ... ``` fenced blocks or
-    raw {"a2ui": ...} JSON objects. Returns a list of message chunks:
+    raw {"a2ui": ...} JSON/YAML objects. Returns a list of message chunks:
       [{"type": "text", "content": "..."}, {"type": "a2ui", "content": {...}}, ...]
     Falls back to a single text chunk when no A2UI payload is found.
     """
+    import yaml
     chunks: list[dict] = []
 
-    # Pattern 1: fenced code block  ```a2ui\n{...}\n```
+    # 1. Parse fenced blocks first: ```a2ui ... ```
     fenced_re = re.compile(r'```a2ui\s*(\{.*?\})\s*```', re.DOTALL)
-    # Pattern 2: bare JSON object that starts with {"a2ui":
-    # We use a lookahead to try and find the outermost brace by expecting a newline or end of string.
-    bare_re = re.compile(r'(\{\s*"a2ui"\s*:.*?\}(?=\s*($|\n|\*\*|###)))', re.DOTALL)
+    combined: list[tuple[int, int, dict]] = []
+
+    for m in fenced_re.finditer(text):
+        try:
+            payload = yaml.safe_load(m.group(1))
+            if isinstance(payload, dict) and 'a2ui' in payload:
+                combined.append((m.start(), m.end(), payload))
+        except Exception:
+            pass
+
+    # 2. Parse bare blocks using balanced brace counting
+    # This correctly handles nested structures without falling victim to regex limitations.
+    for i in range(len(text)):
+        if text[i] == '{':
+            # Avoid starting inside an already matched fenced block
+            if any(start <= i < end for start, end, _ in combined):
+                continue
+            
+            brace_count = 0
+            for j in range(i, len(text)):
+                if text[j] == '{':
+                    brace_count += 1
+                elif text[j] == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        candidate = text[i:j+1]
+                        if '"a2ui"' in candidate or "'a2ui'" in candidate:
+                            try:
+                                payload = yaml.safe_load(candidate)
+                                if isinstance(payload, dict) and 'a2ui' in payload:
+                                    # Ensure this doesn't overlap/intersect with fenced blocks
+                                    if not any(start <= i < end or start <= j+1 < end for start, end, _ in combined):
+                                        combined.append((i, j+1, payload))
+                            except Exception:
+                                pass
+                        break
+
+    # Sort candidates by their starting position and filter out nested/overlapping sub-blocks
+    combined.sort(key=lambda x: x[0])
+    filtered: list[tuple[int, int, dict]] = []
+    for start, end, payload in combined:
+        if not any(f[0] <= start and end <= f[1] for f in filtered):
+            filtered.append((start, end, payload))
 
     last_end = 0
-    combined: list[tuple[int, int, str]] = []
-
-    # Collect both fenced and bare blocks
-    for m in fenced_re.finditer(text):
-        combined.append((m.start(), m.end(), m.group(1)))
-    
-    for m in bare_re.finditer(text):
-        # Avoid overlapping with already found fenced blocks
-        if any(c[0] <= m.start() < c[1] for c in combined):
-            continue
-        combined.append((m.start(), m.end(), m.group(1)))
-
-    combined.sort(key=lambda x: x[0])
-
-    for start, end, json_str in combined:
-        try:
-            import yaml
-            # Use yaml.safe_load as it is a superset of JSON and handles "Franken-JSON" (mixed YAML/JSON)
-            payload = yaml.safe_load(json_str)
-        except Exception as e:  # nosec B112
-            log.debug("Failed to parse regex candidate JSON/YAML block: %s", e)
-            continue
-
-        if not isinstance(payload, dict) or 'a2ui' not in payload:
-            continue
-
+    for start, end, payload in filtered:
         # Text before this block
         before = text[last_end:start].strip()
         if before:
@@ -548,6 +564,9 @@ def _build_agent(
         if len(tool_log) >= 10:
             log.warning("Agent exceeded max API calls limit for a single turn.")
             raise RuntimeError("Agent exceeded maximum allowed tool calls (Limit 10 per turn).")
+
+        # Clean method input in case LLM appends trailing commas, quotes, or whitespace
+        method = method.strip().strip(",").strip("'").strip('"').upper()
 
         log.info(f"⚡ Universal tool call_api_endpoint called: path='{path}', method='{method}', params='{params[:200]}...' (truncated)" if params and len(params) > 200 else f"⚡ Universal tool call_api_endpoint called: path='{path}', method='{method}', params='{params}'")
         params_dict: dict = _parse_params_robust(params)
@@ -1257,7 +1276,69 @@ def _build_agent(
         "- MEDIA PLAYERS: If you return YouTube links, video links, or audio URLs, you MUST output a standalone A2UI JSON payload with the 'videoplayer' or 'audioplayer' component instead of a raw markdown link.\n"
         "- A2UI SUBMISSIONS: When a user submits a form, you will receive a message with the form values. Extract these values and immediately use them to EXECUTE or RETRY the tool call.\n"
         "- NO AD-HOC FIELDS: NEVER invent fields that are not present in the tool specification.\n"
-        "- AFTER the A2UI block, you may add a very brief explanatory sentence.\"\n"
+        "- AFTER the A2UI block, you may add a very brief explanatory sentence.\n\n"
+        "A2UI FLIGHTS RENDERING PROTOCOL:\n"
+        "When the user searches for flights (e.g. calling /search_flights), "
+        "you MUST format the results using a custom 'flights' component instead of a markdown table.\n"
+        "This component renders flight cards with schedules, airlines, stops, carbon emissions, and direct booking links.\n\n"
+        "FLIGHTS TEMPLATE:\n"
+        "```a2ui\n"
+        "{\n"
+        "  \"a2ui\": {\n"
+        "    \"component\": \"flights\",\n"
+        "    \"data\": [\n"
+        "      {\n"
+        "        \"airline\": \"[Airline Name, e.g. Duffel Airways]\",\n"
+        "        \"logo_url\": \"[Logo URL, if returned by API]\",\n"
+        "        \"price\": \"[Total price amount, e.g. 44.49]\",\n"
+        "        \"currency\": \"[Currency code, e.g. USD]\",\n"
+        "        \"offer_id\": \"[Unique offer ID]\",\n"
+        "        \"redirect_url\": \"[Booking redirect URL]\",\n"
+        "        \"slices\": [\n"
+        "          {\n"
+        "            \"origin\": \"[3-letter IATA origin, e.g. CJB]\",\n"
+        "            \"destination\": \"[3-letter IATA destination, e.g. MAA]\",\n"
+        "            \"departure_time\": \"[Departure time in HH:MM format, e.g. 06:58]\",\n"
+        "            \"arrival_time\": \"[Arrival time in HH:MM format, e.g. 08:05]\",\n"
+        "            \"duration\": \"[Formatted duration, e.g. 1 hr 7 min]\",\n"
+        "            \"duration_minutes\": [Duration in minutes as number, e.g. 67],\n"
+        "            \"stops_count\": [Number of layovers, 0 for direct],\n"
+        "            \"stops_text\": \"[e.g. Non-stop, 1 stop]\",\n"
+        "            \"carbon_emissions\": \"[Carbon emissions in kg, e.g. 43]\",\n"
+        "            \"airline\": \"[Airline Name]\",\n"
+        "            \"logo_url\": \"[Logo URL]\",\n"
+        "            \"flight_number\": \"[Flight Number, e.g. ZZ 4359]\",\n"
+        "            \"change_penalty\": \"[Change policy/fee details]\",\n"
+        "            \"refund_penalty\": \"[Refund policy/fee details]\",\n"
+        "            \"segments\": [\n"
+        "              {\n"
+        "                \"flight_number\": \"[Flight Number]\",\n"
+        "                \"airline\": \"[Airline Name]\",\n"
+        "                \"logo_url\": \"[Logo URL]\",\n"
+        "                \"origin\": \"[Origin Airport Code]\",\n"
+        "                \"origin_name\": \"[Origin Airport Name]\",\n"
+        "                \"destination\": \"[Destination Airport Code]\",\n"
+        "                \"destination_name\": \"[Destination Airport Name]\",\n"
+        "                \"departure_time\": \"[Departure Time]\",\n"
+        "                \"arrival_time\": \"[Arrival Time]\",\n"
+        "                \"duration\": \"[Leg Duration]\",\n"
+        "                \"cabin_class\": \"[Cabin Class name]\",\n"
+        "                \"aircraft_name\": \"[Aircraft Name]\",\n"
+        "                \"baggage_checked\": \"[Checked baggage string]\",\n"
+        "                \"baggage_carry_on\": \"[Carry-on baggage string]\",\n"
+        "                \"wifi\": \"[Wifi availability]\",\n"
+        "                \"power\": \"[Power outlet availability]\",\n"
+        "                \"seat_pitch\": \"[Seat pitch]\",\n"
+        "                \"layover\": \"[Layover time and airport name, if any]\"\n"
+        "              }\n"
+        "            ]\n"
+        "          }\n"
+        "        ]\n"
+        "      }\n"
+        "    ]\n"
+        "  }\n"
+        "}\n"
+        "```\"\n"
     )
 
     base_instruction = (
@@ -1304,7 +1385,7 @@ def _build_agent(
     settings = get_settings()
     model_name = model or settings.default_llm_model
 
-    adk_model = LiteLlm(model=model_name, num_retries=3, max_tokens=1024)
+    adk_model = LiteLlm(model=model_name, num_retries=3, max_tokens=4096)
 
     async def auto_save_session_to_memory_callback(callback_context):
         """Automatically ingest the completed session into long-term memory."""

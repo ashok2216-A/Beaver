@@ -50,7 +50,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { toast } from "sonner"
 import Link from "next/link"
-import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval } from "@/components/a2ui/components"
+import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval, A2FlightsList } from "@/components/a2ui/components"
 
 interface Agent {
   id: number
@@ -935,6 +935,11 @@ export default function AgentBuilderPage() {
                                   (() => {
                                     const a2data = chunk.content as any;
                                     const comp = a2data?.a2ui?.component?.toLowerCase?.();
+                                    if (comp === 'flights' || comp === 'flight_list') {
+                                      return (
+                                        <A2FlightsList data={a2data} />
+                                      );
+                                    }
                                     if (comp === 'audioplayer' || comp === 'audio') {
                                       return (
                                         <A2AudioPlayer

@@ -250,6 +250,16 @@
       "mcp_server_url": "composio:apify",
       "source_type": "mcp_sse",
       "description": "Run web scraping, data extraction, and automation actors on the Apify platform."
+    },
+    {
+      "id": "duffel_flights",
+      "name": "Duffel Flights",
+      "category": "Travel",
+      "domain": "duffel.com",
+      "mcp_server_url": "custom_tools:duffel_flights",
+      "source_type": "rest",
+      "auth_type": "API_KEY",
+      "description": "Comprehensive integration for flight suggestions, searches, seat maps, bookings, and cancellations."
     }
   ]
 }

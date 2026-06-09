@@ -80,6 +80,14 @@ def get_integration_registry() -> Dict[str, Dict[str, Any]]:
             "aliases": ["code-interpreter", "codeinterpreter"],
             "env_var_names": []
         }
+        
+        registry["duffel"] = {
+            "provider_name": "duffel",
+            "composio_slug": None,
+            "auth_type": "API_KEY",
+            "aliases": ["duffel", "duffel_flights", "duffelflights"],
+            "env_var_names": ["DUFFEL_API_KEY"]
+        }
             
         _DYNAMIC_REGISTRY = registry
         return registry

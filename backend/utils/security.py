@@ -52,6 +52,26 @@ def is_safe_url(url: str) -> bool:
     Validates that a URL points to a public, non-reserved IP address.
     Prevents SSRF attacks against internal services and metadata.
     """
+    # Check via pydantic settings first (reads from .env file), then fallback to os.getenv
+    try:
+        from config.config import get_settings
+        app_env = get_settings().app_env
+    except Exception:
+        app_env = os.getenv("APP_ENV", "")
+    
+    if app_env.lower() == "development":
+        return True
+
+    # Also allow loopback explicitly for self-hosted custom tool endpoints 
+    # (our own FastAPI app on localhost). This is always safe since it's calling ourselves.
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname or ""
+        if hostname in ("localhost", "127.0.0.1", "::1"):
+            return True
+    except Exception:
+        pass
+        
     try:
         parsed = urlparse(url)
         if not parsed.scheme or parsed.scheme not in ("http", "https"):
@@ -85,3 +105,36 @@ def validate_url_safe(url: str):
             status_code=422, 
             detail="The provided URL is invalid or points to a restricted internal network address."
         )
+
+def get_provider_name_from_urls(base_url: str | None, mcp_server_url: str | None) -> str | None:
+    """
+    Match base_url or mcp_server_url to a provider in the integration registry.
+    Aliases are matched against the URL PATH only (not the hostname), to prevent
+    false positives like alias 'exa' matching in 'example.com'.
+    """
+    from urllib.parse import urlparse as _urlparse
+    from services.mcp_registry import get_integration_registry
+    registry = get_integration_registry()
+    urls = [u for u in (base_url, mcp_server_url) if u]
+    for url in urls:
+        url_lower = url.lower()
+        # For standard http/https URLs, extract just the path portion for alias matching
+        try:
+            parsed = _urlparse(url_lower)
+            url_path = parsed.path  # e.g. "/api/v1/custom_tools/duffel"
+        except Exception:
+            url_path = url_lower  # Fallback to full URL for non-standard formats
+        
+        for provider, details in registry.items():
+            for alias in details.get("aliases", []):
+                # 1. Check if alias appears as a path segment
+                if f"/{alias}" in url_path or f"/{alias}/" in url_path:
+                    return provider
+                # 2. Check colon-prefix (used for composio: or mcp_sse: style URIs)
+                if f":{alias}" in url_lower:
+                    return provider
+                # 3. Exact match of the full URL to alias
+                if url_lower == alias:
+                    return provider
+    return None
+

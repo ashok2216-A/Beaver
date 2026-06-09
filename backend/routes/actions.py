@@ -67,6 +67,20 @@ async def approve_action(
             else:
                 data = mcp_res
         else:
+            from utils.security import get_provider_name_from_urls
+            from models.models import UserIntegration
+            auth_secret_val = agent.auth_secret
+            if not auth_secret_val:
+                mcp_url = ep_def.mcp_server_url if ep_def else None
+                provider_name = get_provider_name_from_urls(agent.base_url, mcp_url)
+                if provider_name:
+                    user_integ = db.query(UserIntegration).filter(
+                        UserIntegration.user_id == user.id,
+                        UserIntegration.provider == provider_name.lower()
+                    ).first()
+                    if user_integ:
+                        auth_secret_val = user_integ.access_token
+
             from services.executor import call_api
             data, status, latency = await call_api(
                 base_url=agent.base_url,
@@ -75,7 +89,7 @@ async def approve_action(
                 endpoint_params=ep_def.parameters if ep_def else [],
                 extracted_params=action.params,
                 auth_type=agent.auth_type,
-                auth_secret=agent.auth_secret,
+                auth_secret=auth_secret_val,
                 auth_header=agent.auth_header,
                 custom_headers=agent.custom_headers,
             )

@@ -6,7 +6,7 @@ import json
 import logging
 
 import yaml
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Form, status, Query
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Form, status, Query, Request
 from sqlalchemy.orm import Session, defer
 from sqlalchemy import func, case, or_
 
@@ -76,10 +76,67 @@ def list_templates():
         return {"templates": []}
 
 
+def get_duffel_openapi_spec(app) -> dict:
+    from fastapi.openapi.utils import get_openapi
+    
+    # Compile the full OpenAPI schema from the running FastAPI app
+    full_openapi = get_openapi(
+        title=app.title,
+        version=app.version,
+        openapi_version="3.0.0",
+        routes=app.routes,
+    )
+    
+    # Extract paths belonging to the custom tools router
+    custom_paths = {}
+    duffel_prefix = "/api/v1/custom_tools/duffel"
+    
+    for path, path_item in full_openapi.get("paths", {}).items():
+        if path.startswith(duffel_prefix):
+            # Strip the prefix so the agent invokes them relative to base_url
+            relative_path = path[len(duffel_prefix):]
+            if not relative_path:
+                relative_path = "/"
+            custom_paths[relative_path] = path_item
+            
+    # Assemble the clean OpenAPI spec
+    return {
+        "openapi": "3.0.0",
+        "info": {
+            "title": "Duffel Flights Custom API",
+            "version": "1.0.0",
+            "description": "Stateless proxy routing tools to the Duffel flights API."
+        },
+        "paths": custom_paths,
+        "components": {
+            "schemas": full_openapi.get("components", {}).get("schemas", {})
+        }
+    }
+
+
 @router.get("/templates/{template_id}")
-def get_template(template_id: str):
+def get_template(template_id: str, request: Request):
     """Return template details from its file, or fallback to manifest metadata."""
     import os
+    
+    if template_id == "duffel_flights":
+        server_base = str(request.base_url).rstrip("/")
+        app = request.app
+        spec = get_duffel_openapi_spec(app)
+        
+        return {
+            "id": "duffel_flights",
+            "name": "Duffel Flights",
+            "category": "Travel",
+            "domain": "duffel.com",
+            "base_url": f"{server_base}/api/v1/custom_tools/duffel",
+            "source_type": "rest",
+            "auth_type": "bearer",
+            "auth_header": "Authorization",
+            "description": "Comprehensive integration for flight suggestions, searches, seat maps, bookings, and cancellations.",
+            "api_spec": json.dumps(spec)
+        }
+
     template_path = os.path.join(os.path.dirname(__file__), "..", "templates", f"{template_id}.json")
     
     # Try loading from file first (for complex templates with custom logic)
@@ -245,8 +302,26 @@ def _agent_out(agent: Agent, ep_count: int | None = None, precalc_mcp_url: str |
                             has_secret = True
                 except Exception as e:
                     log.warning(f"Error checking OAuth status for agent {agent.id}: {e}")
-        else:
-            has_secret = True
+    if not has_secret:
+        from utils.security import get_provider_name_from_urls
+        provider = get_provider_name_from_urls(agent.base_url, mcp_url)
+        if provider:
+            if connected_providers is not None:
+                if provider.lower() in connected_providers:
+                    has_secret = True
+            else:
+                from database.database import SessionLocal
+                from models.models import UserIntegration
+                try:
+                    with SessionLocal() as db_session:
+                        user_integ = db_session.query(UserIntegration).filter(
+                            UserIntegration.user_id == str(agent.owner_id),
+                            UserIntegration.provider == provider.lower()
+                        ).first()
+                        if user_integ:
+                            has_secret = True
+                except Exception as e:
+                    log.warning(f"Error checking UserIntegration for agent {agent.id}: {e}")
 
     return AgentOut(
         id=agent.id,
@@ -354,6 +429,19 @@ def create_agent(
                 detail="Free plan limit reached (1 agent). Please upgrade to Pro for unlimited agents."
             )
 
+    auth_secret_val = data.auth_secret
+    if not auth_secret_val:
+        from utils.security import get_provider_name_from_urls, decrypt_secret
+        provider_name = get_provider_name_from_urls(data.base_url, data.mcp_server_url or data.base_url)
+        if provider_name:
+            from models.models import UserIntegration
+            user_integ = db.query(UserIntegration).filter(
+                UserIntegration.user_id == user.id,
+                UserIntegration.provider == provider_name.lower()
+            ).first()
+            if user_integ:
+                auth_secret_val = decrypt_secret(user_integ.access_token)
+
     agent = Agent(
         owner_id=user.id,
         name=data.name,
@@ -361,7 +449,7 @@ def create_agent(
         base_url=data.base_url,
         system_prompt=data.system_prompt,
         auth_type=data.auth_type,
-        auth_secret=encrypt_secret(data.auth_secret),
+        auth_secret=encrypt_secret(auth_secret_val or ""),
         auth_header=data.auth_header,
         model_id=data.model_id,
         custom_headers=encrypt_dict(data.custom_headers),
