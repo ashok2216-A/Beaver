@@ -267,13 +267,24 @@ class DuffelClient:
                         "refund_penalty": refund_penalty
                     })
                 
+                import urllib.parse
+                airline_name = o.get("owner", {}).get("name", "")
+                
+                if airline_name:
+                    # Uses DuckDuckGo's 'I'm feeling lucky' (!ducky) feature to automatically 
+                    # redirect to the first search result (the official airline website)
+                    query = urllib.parse.quote(f"!ducky {airline_name} official airline website")
+                    redirect_url = f"https://duckduckgo.com/?q={query}"
+                else:
+                    redirect_url = f"https://www.kayak.com/flights/{origin}-{destination}/{departure_date}?sort=price_a"
+
                 clean_offers.append({
-                    "airline": o.get("owner", {}).get("name"),
+                    "airline": airline_name,
                     "logo_url": o.get("owner", {}).get("logo_symbol_url"),
                     "price": o.get("total_amount"),
                     "currency": o.get("total_currency"),
                     "offer_id": o.get("id"),
-                    "redirect_url": self.build_redirect_url(o.get("id")),
+                    "redirect_url": redirect_url,
                     "slices": offer_slices
                 })
 
@@ -283,10 +294,6 @@ class DuffelClient:
 
             log.info(f"Found {len(clean_offers)} offers")
             return clean_offers
-
-    def build_redirect_url(self, offer_id: str):
-        # YOUR FRONTEND CHECKOUT PAGE
-        return f"https://yourapp.com/checkout?offer_id={offer_id}"
 
     async def get_offer_details(self, offer_id: str):
         async with httpx.AsyncClient() as client:

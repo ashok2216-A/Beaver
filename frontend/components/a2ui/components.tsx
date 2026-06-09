@@ -922,72 +922,77 @@ export function A2FlightsList({ data }: A2FlightsListProps) {
               {/* Main row */}
               <div
                 onClick={() => toggleExpand(offer.offer_id)}
-                className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer select-none"
+                className="p-3 md:p-4 flex flex-nowrap items-center justify-between gap-3 md:gap-4 cursor-pointer select-none"
               >
-                <div className="flex items-center gap-4 flex-1">
-                  {/* Airline Logo */}
-                  <div className="w-12 h-12 shrink-0 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center overflow-hidden">
-                    {offer.logo_url || primarySlice.logo_url ? (
-                      <img
-                        src={offer.logo_url || primarySlice.logo_url}
-                        alt={offer.airline}
-                        className="w-8 h-8 object-contain"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                          e.currentTarget.nextElementSibling?.setAttribute('style', 'display:block')
-                        }}
-                      />
-                    ) : null}
-                    <div style={{ display: offer.logo_url || primarySlice.logo_url ? 'none' : 'block' }}>
-                      {/* Premium fallback plane icon */}
-                      <svg className="w-6 h-6 text-slate-400" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L14 19v-5.5l7 2.5z"/>
-                      </svg>
+                <div className="flex flex-nowrap items-center gap-3 md:gap-4 flex-1 min-w-0">
+                  {/* Airline Logo & Name */}
+                  <div className="flex flex-col items-center justify-center shrink-0 min-w-[64px] px-1">
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-50/80 border border-slate-100 rounded-xl flex items-center justify-center overflow-hidden shadow-sm">
+                      {offer.logo_url || primarySlice.logo_url ? (
+                        <img
+                          src={offer.logo_url || primarySlice.logo_url}
+                          alt={offer.airline}
+                          className="w-7 h-7 md:w-8 md:h-8 object-contain"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                            e.currentTarget.nextElementSibling?.setAttribute('style', 'display:block')
+                          }}
+                        />
+                      ) : null}
+                      <div style={{ display: offer.logo_url || primarySlice.logo_url ? 'none' : 'block' }}>
+                        {/* Premium fallback plane icon */}
+                        <svg className="w-5 h-5 md:w-6 md:h-6 text-slate-400" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L14 19v-5.5l7 2.5z"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="text-[9px] md:text-[10px] text-slate-500 mt-1.5 font-bold text-center whitespace-nowrap">
+                      {offer.airline}
                     </div>
                   </div>
 
-                  {/* Flight Info Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
+                  {/* Flight Info - Sizes items naturally based on content length rather than rigid equal grid columns */}
+                  <div className="flex items-center justify-between gap-2 md:gap-4 flex-1 min-w-0">
                     {/* Times */}
-                    <div>
-                      <div className="text-base font-bold text-slate-900">
+                    <div className="min-w-0 flex flex-col items-start">
+                      <div className="text-[11px] md:text-xs font-bold text-slate-900 tracking-tight whitespace-nowrap">
                         {primarySlice.departure_time} – {primarySlice.arrival_time}
                       </div>
-                      <div className="text-xs text-slate-500 mt-0.5">{offer.airline}</div>
+                      <div className="text-[9px] md:text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-bold whitespace-nowrap">Time</div>
                     </div>
 
                     {/* Duration & Route */}
-                    <div>
-                      <div className="text-sm font-semibold text-slate-700">{primarySlice.duration}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">
+                    <div className="min-w-0 flex flex-col items-start">
+                      <div className="text-[11px] md:text-xs font-semibold text-slate-700 whitespace-nowrap">{primarySlice.duration}</div>
+                      <div className="text-[10px] md:text-xs text-slate-500 mt-0.5 font-medium whitespace-nowrap">
                         {primarySlice.origin}–{primarySlice.destination}
                       </div>
                     </div>
 
                     {/* Stops */}
-                    <div className="flex items-center">
-                      <span className={`text-sm font-bold ${primarySlice.stops_count === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    <div className="min-w-0 flex flex-col items-center">
+                      <span className={`text-[11px] md:text-xs font-bold whitespace-nowrap ${primarySlice.stops_count === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
                         {primarySlice.stops_text}
                       </span>
                     </div>
 
                     {/* CO2 Emissions */}
-                    <div>
-                      <div className="text-sm font-semibold text-slate-700">
+                    <div className="min-w-0 hidden sm:flex flex-col items-start">
+                      <div className="text-[11px] md:text-xs font-semibold text-slate-700 whitespace-nowrap">
                         {primarySlice.carbon_emissions} kg CO2e
                       </div>
-                      <div className="text-xs text-slate-400 mt-0.5">Avg emissions</div>
+                      <div className="text-[9px] md:text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-bold whitespace-nowrap">Avg emissions</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Price & Action */}
-                <div className="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 border-slate-100 pt-3 md:pt-0">
-                  <div className="text-left md:text-right">
-                    <div className="text-lg font-extrabold text-emerald-600">
+                <div className="flex items-center justify-end gap-2 md:gap-4 shrink-0 pl-2">
+                  <div className="text-right">
+                    <div className="text-base md:text-lg font-extrabold text-emerald-600 tracking-tight whitespace-nowrap">
                       {currencySymbol}{Number(offer.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
-                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5 font-bold">
+                    <div className="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5 font-bold whitespace-nowrap">
                       {isRoundTrip ? 'round trip' : 'one-way'}
                     </div>
                   </div>
