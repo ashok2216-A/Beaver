@@ -16,6 +16,13 @@ class DuffelClient:
         }
 
     async def suggest_places(self, query: str):
+        """
+        Search for airports or cities by name or IATA code.
+        Use this tool to find the official Duffel place ID or IATA code for a city/airport.
+        
+        Args:
+            query (str): The search term. MUST be a valid city name, airport name, or IATA code (e.g. "London", "Heathrow", "JFK"). Cannot be empty.
+        """
         async with httpx.AsyncClient() as client:
             r = await client.get(
                 f"{self.base_url}/places/suggestions",

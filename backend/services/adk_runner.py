@@ -173,7 +173,7 @@ def _sanitize_mcp_params(tool_name: str, params: dict, endpoint_params: list[dic
             equiv_classes = [
                 {"to", "recipient_email", "recipient", "email"},
                 {"url", "link", "uri", "website"},
-                {"body", "text", "content", "message", "html"},
+                {"body", "text", "content", "html"},
                 {"query", "q", "search_query", "keyword"},
                 {"code", "code_to_execute", "script"}
             ]
@@ -965,6 +965,27 @@ def _build_agent(
                 "note": "Audio was generated successfully. DO NOT generate your own <audio> tags or markdown audio links. Just tell the user the audio is ready."
             })
 
+        if path == "/search_flights" and status == 200:
+            log.info("Flight search detected. Storing massive flight payload in sideband.")
+            
+            actual_data = data.get("data", data) if isinstance(data, dict) else data
+            
+            audio_artifacts.append({
+                "type": "a2ui",
+                "content": {
+                    "a2ui": {
+                        "component": "flights",
+                        "data": actual_data
+                    }
+                }
+            })
+            return json.dumps({
+                "status_code": status,
+                "data": f"Found {len(actual_data) if isinstance(actual_data, list) else 0} flights. They have been displayed to the user automatically via the A2UI sideband.",
+                "latency_ms": latency,
+                "note": "Flights displayed to user automatically. DO NOT output the a2ui block yourself. Just tell the user you found them."
+            })
+
         # ─── Error Handling & Self-Healing Logic ───
         # Final Error Handling & A2UI Fallback
         if status >= 400:
@@ -1276,10 +1297,7 @@ def _build_agent(
         "- MEDIA PLAYERS: If you return YouTube links, video links, or audio URLs, you MUST output a standalone A2UI JSON payload with the 'videoplayer' or 'audioplayer' component instead of a raw markdown link.\n"
         "- A2UI SUBMISSIONS: When a user submits a form, you will receive a message with the form values. Extract these values and immediately use them to EXECUTE or RETRY the tool call.\n"
         "- NO AD-HOC FIELDS: NEVER invent fields that are not present in the tool specification.\n"
-        "- AFTER the A2UI block, you may add a very brief explanatory sentence.\n\n"
-        "A2UI FLIGHTS RENDERING PROTOCOL:\n"
-        "When the user searches for flights (e.g. calling /search_flights), you MUST format the tool's JSON output array using the custom 'flights' A2UI component.\n"
-        "Output an ```a2ui block exactly like this: {\"a2ui\": {\"component\": \"flights\", \"data\": <insert the tool's output array here>}}\n"
+        "- AFTER the A2UI block, you may add a very brief explanatory sentence.\n"
     )
 
     base_instruction = (

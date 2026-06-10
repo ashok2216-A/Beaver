@@ -280,7 +280,11 @@ export default function LogsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <AgentAvatar id={log.agent_id} size="sm" />
+                          <img 
+                            src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(log.agent_name || `Agent #${log.agent_id}`)}`} 
+                            alt={log.agent_name || `Agent #${log.agent_id}`} 
+                            className="w-8 h-8 rounded-lg object-cover bg-slate-50 dark:bg-slate-800 shrink-0" 
+                          />
                           <span className="text-sm font-semibold text-foreground truncate max-w-[150px]">
                             {log.agent_name || `Agent #${log.agent_id}`}
                           </span>
