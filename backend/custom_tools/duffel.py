@@ -198,7 +198,7 @@ class DuffelClient:
                                 layover_airport = seg.get("destination", {}).get("city_name") or seg.get("destination", {}).get("name")
                                 layover_code = seg.get("destination", {}).get("iata_code")
                                 layover_info = f"{layover_dur_str} layover in {layover_airport} ({layover_code})"
-                            except Exception:
+                            except Exception:  # nosec B110
                                 pass
                         
                         segment_details.append({

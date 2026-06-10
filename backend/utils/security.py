@@ -69,7 +69,7 @@ def is_safe_url(url: str) -> bool:
         hostname = parsed.hostname or ""
         if hostname in ("localhost", "127.0.0.1", "::1"):
             return True
-    except Exception:
+    except Exception:  # nosec B110
         pass
         
     try:

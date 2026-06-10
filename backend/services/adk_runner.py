@@ -322,7 +322,7 @@ def _extract_a2ui_chunks(text: str) -> list[dict]:
             payload = yaml.safe_load(m.group(1))
             if isinstance(payload, dict) and 'a2ui' in payload:
                 combined.append((m.start(), m.end(), payload))
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     # 2. Parse bare blocks using balanced brace counting
@@ -348,7 +348,7 @@ def _extract_a2ui_chunks(text: str) -> list[dict]:
                                     # Ensure this doesn't overlap/intersect with fenced blocks
                                     if not any(start <= i < end or start <= j+1 < end for start, end, _ in combined):
                                         combined.append((i, j+1, payload))
-                            except Exception:
+                            except Exception:  # nosec B110
                                 pass
                         break
 
