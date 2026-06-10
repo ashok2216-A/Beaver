@@ -24,7 +24,6 @@ from utils.security import validate_url_safe, encrypt_secret, decrypt_secret
 from slowapi import Limiter
 
 from slowapi.util import get_remote_address
-from fastapi import Request
 
 def encrypt_dict(d: dict | None) -> dict:
     if not d: 
@@ -362,7 +361,7 @@ def _enrich_mcp_parameters_with_defaults(mcp_url: str, tools: list[dict]) -> lis
             break
             
     if not manifest_path:
-        log.warning(f"Could not load manifest.json to enrich parameter defaults. Path not found.")
+        log.warning("Could not load manifest.json to enrich parameter defaults. Path not found.")
         return tools
         
     try:

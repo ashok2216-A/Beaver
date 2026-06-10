@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
-from typing import List, Optional, Any
+from typing import List, Optional
 from custom_tools.duffel import DuffelClient
 
 router = APIRouter(prefix="/custom_tools/duffel", tags=["Custom Tools - Duffel Flights"])
