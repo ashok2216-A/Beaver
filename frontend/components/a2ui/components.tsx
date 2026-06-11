@@ -1227,4 +1227,111 @@ export function A2FlightsList({ data }: A2FlightsListProps) {
   )
 }
 
+interface A2MapProps {
+  data: {
+    a2ui: {
+      component: string
+      query?: string
+      lat?: number | string
+      lng?: number | string
+      zoom?: number | string
+      type?: 'roadmap' | 'satellite' | 'hybrid' | 'terrain'
+      title?: string
+    }
+  }
+}
+
+export function A2Map({ data }: A2MapProps) {
+  const a2ui = data?.a2ui || {}
+  const [mapType, setMapType] = useState<'roadmap' | 'satellite' | 'hybrid' | 'terrain'>(
+    a2ui.type || 'roadmap'
+  )
+
+  const query = a2ui.query || ''
+  const lat = a2ui.lat
+  const lng = a2ui.lng
+  const zoom = a2ui.zoom || 13
+  const title = a2ui.title || query || (lat && lng ? `Location (${lat}, ${lng})` : 'Map View')
+
+  const mapTypeParam = mapType === 'satellite' ? 'k' : mapType === 'hybrid' ? 'h' : mapType === 'terrain' ? 'p' : 'm'
+  const searchQuery = query ? query : (lat && lng ? `${lat},${lng}` : '')
+  
+  if (!searchQuery) {
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm font-medium mt-4">
+        Invalid map location data provided.
+      </div>
+    )
+  }
+
+  const embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(searchQuery)}&t=${mapTypeParam}&z=${zoom}&ie=UTF8&iwloc=&output=embed`
+
+  return (
+    <div className="w-full bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 mt-4 p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-12v8.25m-9.75 3.975c-.078.03-.154.07-.225.122A1.5 1.5 0 001.5 16.5v4.5A1.5 1.5 0 003 22.5h18a1.5 1.5 0 001.5-1.5v-4.5a1.5 1.5 0 00-1.225-1.403m-15.55 0L6 16.5m12 0l-1.225-1.403m0 0L12 13.5m0 0L7.05 16.5m4.95-3V3m0 0L8.25 6.75M12 3l3.75 3.75" />
+          </svg>
+          <span className="text-sm font-bold tracking-tight text-slate-800">{title}</span>
+        </div>
+
+        {/* Map Type Controls */}
+        <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+          <button
+            onClick={() => setMapType('roadmap')}
+            className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
+              mapType === 'roadmap'
+                ? 'bg-white text-indigo-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Map
+          </button>
+          <button
+            onClick={() => setMapType('satellite')}
+            className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
+              mapType === 'satellite'
+                ? 'bg-white text-indigo-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Satellite
+          </button>
+        </div>
+      </div>
+
+      {/* Map Iframe */}
+      <div className="relative w-full h-[320px] rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-50">
+        <iframe
+          src={embedUrl}
+          width="100%"
+          height="100%"
+          style={{ border: 0 }}
+          allowFullScreen={false}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          className="absolute inset-0"
+        />
+      </div>
+
+      {/* Footer / Actions */}
+      <div className="flex justify-end gap-3 mt-3">
+        <a
+          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:text-indigo-600 border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 rounded-xl transition-all shadow-sm"
+        >
+          <span>Open in Google Maps</span>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  )
+}
+
 

@@ -139,7 +139,11 @@ function NewAgentContent() {
 
         if (templatesRes.ok) {
           const data = await templatesRes.json();
-          setTemplates(data.templates || []);
+          const rawTemplates = data.templates || [];
+          // Hide composio, perplexity, and soundcloud integrations from the frontend UI
+          const hiddenIds = ["composio", "perplexity", "soundcloud"];
+          const filtered = rawTemplates.filter((t: any) => !hiddenIds.includes((t.id || "").toLowerCase()));
+          setTemplates(filtered);
         }
 
         if (oauthRes.ok) {
@@ -217,7 +221,7 @@ function NewAgentContent() {
     const id = (t.id || "").toLowerCase();
     if (id === "google_maps") return "https://www.google.com/s2/favicons?sz=128&domain=maps.google.com";
     if (id === "duffel_flights" || id === "duffel") return "https://www.google.com/s2/favicons?sz=128&domain=duffel.com";
-    if (id === "apify") return "https://cdn.simpleicons.org/apify";
+    if (id === "apify") return "https://www.google.com/s2/favicons?sz=128&domain=apify.com";
     if (id === "gmail") return "https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg";
     if (id === "google_calendar") return "https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg";
     if (id === "google_drive") return "https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg";
