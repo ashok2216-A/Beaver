@@ -807,3 +807,424 @@ export function A2HumanApproval({ data, onApprove, onReject }: A2HumanApprovalPr
   )
 }
 
+
+interface FlightSegment {
+  flight_number: string
+  airline: string
+  logo_url?: string
+  origin: string
+  origin_name?: string
+  destination: string
+  destination_name?: string
+  departure_time: string
+  arrival_time: string
+  duration: string
+  cabin_class: string
+  aircraft_name: string
+  baggage_checked: string
+  baggage_carry_on: string
+  wifi: string
+  power: string
+  seat_pitch: string
+  origin_terminal?: string | null
+  destination_terminal?: string | null
+  distance_km?: string | null
+  layover?: string
+}
+
+interface FlightSlice {
+  origin: string
+  destination: string
+  departure_time: string
+  arrival_time: string
+  duration: string
+  duration_minutes: number
+  stops_count: number
+  stops_text: string
+  carbon_emissions: string
+  airline: string
+  logo_url: string
+  flight_number: string
+  segments?: FlightSegment[]
+  change_penalty?: string
+  refund_penalty?: string
+}
+
+interface FlightOffer {
+  airline: string
+  logo_url?: string
+  price: string
+  currency: string
+  offer_id: string
+  redirect_url: string
+  slices: FlightSlice[]
+}
+
+interface A2FlightsListProps {
+  data: {
+    a2ui: {
+      component: string
+      data: FlightOffer[]
+    }
+  }
+}
+
+export function A2FlightsList({ data }: A2FlightsListProps) {
+  const offers = data?.a2ui?.data || []
+  const [expandedOfferId, setExpandedOfferId] = useState<string | null>(null)
+
+  const getCurrencySymbol = (code: string) => {
+    switch (code?.toUpperCase()) {
+      case 'USD': return '$'
+      case 'EUR': return '€'
+      case 'GBP': return '£'
+      case 'INR': return '₹'
+      default: return code + ' '
+    }
+  }
+
+  const toggleExpand = (id: string) => {
+    setExpandedOfferId(expandedOfferId === id ? null : id)
+  }
+
+  if (offers.length === 0) {
+    return (
+      <div className="p-6 bg-slate-900/30 border border-slate-800 rounded-2xl text-center text-slate-400 text-sm font-medium mt-4">
+        No flights found matching the criteria.
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-full space-y-4 mt-4">
+      <div className="flex items-center gap-2 mb-1">
+        <svg className="w-5 h-5 text-indigo-600" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L14 19v-5.5l7 2.5z"/>
+        </svg>
+        <span className="text-sm font-bold tracking-wide text-slate-700 uppercase">Available Flights</span>
+      </div>
+
+      <div className="space-y-3">
+        {offers.map((offer) => {
+          const isExpanded = expandedOfferId === offer.offer_id
+          const currencySymbol = getCurrencySymbol(offer.currency)
+          const primarySlice = offer.slices?.[0]
+          
+          if (!primarySlice) return null
+
+          const isRoundTrip = offer.slices.length > 1
+
+          return (
+            <div
+              key={offer.offer_id}
+              className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl overflow-hidden transition-all duration-200 shadow-sm hover:shadow-md"
+            >
+              {/* Main row */}
+              <div
+                onClick={() => toggleExpand(offer.offer_id)}
+                className="p-3 md:p-4 flex flex-nowrap items-center justify-between gap-3 md:gap-4 cursor-pointer select-none"
+              >
+                <div className="flex flex-nowrap items-center gap-3 md:gap-4 flex-1 min-w-0">
+                  {/* Airline Logo & Name */}
+                  <div className="flex flex-col items-center justify-center shrink-0 min-w-[64px] px-1">
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-50/80 border border-slate-100 rounded-xl flex items-center justify-center overflow-hidden shadow-sm">
+                      {offer.logo_url || primarySlice.logo_url ? (
+                        <img
+                          src={offer.logo_url || primarySlice.logo_url}
+                          alt={offer.airline}
+                          className="w-7 h-7 md:w-8 md:h-8 object-contain"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                            e.currentTarget.nextElementSibling?.setAttribute('style', 'display:block')
+                          }}
+                        />
+                      ) : null}
+                      <div style={{ display: offer.logo_url || primarySlice.logo_url ? 'none' : 'block' }}>
+                        {/* Premium fallback plane icon */}
+                        <svg className="w-5 h-5 md:w-6 md:h-6 text-slate-400" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L14 19v-5.5l7 2.5z"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="text-[9px] md:text-[10px] text-slate-500 mt-1.5 font-bold text-center whitespace-nowrap">
+                      {offer.airline}
+                    </div>
+                  </div>
+
+                  {/* Flight Info - Sizes items naturally based on content length rather than rigid equal grid columns */}
+                  <div className="flex items-center justify-between gap-2 md:gap-4 flex-1 min-w-0">
+                    {/* Times */}
+                    <div className="min-w-0 flex flex-col items-start">
+                      <div className="text-[11px] md:text-xs font-bold text-slate-900 tracking-tight whitespace-nowrap">
+                        {primarySlice.departure_time} – {primarySlice.arrival_time}
+                      </div>
+                      <div className="text-[9px] md:text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-bold whitespace-nowrap">Time</div>
+                    </div>
+
+                    {/* Duration & Route */}
+                    <div className="min-w-0 flex flex-col items-start">
+                      <div className="text-[11px] md:text-xs font-semibold text-slate-700 whitespace-nowrap">{primarySlice.duration}</div>
+                      <div className="text-[10px] md:text-xs text-slate-500 mt-0.5 font-medium whitespace-nowrap">
+                        {primarySlice.origin}–{primarySlice.destination}
+                      </div>
+                    </div>
+
+                    {/* Stops */}
+                    <div className="min-w-0 flex flex-col items-center">
+                      <span className={`text-[11px] md:text-xs font-bold whitespace-nowrap ${primarySlice.stops_count === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {primarySlice.stops_text}
+                      </span>
+                    </div>
+
+                    {/* CO2 Emissions */}
+                    <div className="min-w-0 hidden sm:flex flex-col items-start">
+                      <div className="text-[11px] md:text-xs font-semibold text-slate-700 whitespace-nowrap">
+                        {primarySlice.carbon_emissions} kg CO2e
+                      </div>
+                      <div className="text-[9px] md:text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-bold whitespace-nowrap">Avg emissions</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Price & Action */}
+                <div className="flex items-center justify-end gap-2 md:gap-4 shrink-0 pl-2">
+                  <div className="text-right">
+                    <div className="text-base md:text-lg font-extrabold text-emerald-600 tracking-tight whitespace-nowrap">
+                      {currencySymbol}{Number(offer.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                    <div className="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5 font-bold whitespace-nowrap">
+                      {isRoundTrip ? 'round trip' : 'one-way'}
+                    </div>
+                  </div>
+
+                  <div className="text-slate-500">
+                    <svg
+                      className={`w-5 h-5 transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Expanded details */}
+              {isExpanded && (
+                <div className="px-6 pb-5 pt-2 border-t border-slate-100 bg-slate-50/50 space-y-4">
+                  {offer.slices.map((slice, sliceIdx) => (
+                    <div key={sliceIdx} className="space-y-4">
+                      {isRoundTrip && (
+                        <div className="text-xs font-bold text-indigo-600 uppercase tracking-widest mt-2">
+                          {sliceIdx === 0 ? 'Outbound Flight' : 'Return Flight'}
+                        </div>
+                      )}
+
+                      {/* Slice Conditions / Policies */}
+                      {(slice.change_penalty || slice.refund_penalty) && (
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500 border-b border-slate-200/40 pb-2 mb-2">
+                          {slice.refund_penalty && slice.refund_penalty !== "Refund rules unavailable" && (
+                            <div className="flex items-center gap-1">
+                              <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                              </svg>
+                              <span className="font-medium text-slate-600">{slice.refund_penalty}</span>
+                            </div>
+                          )}
+                          {slice.change_penalty && slice.change_penalty !== "Change rules unavailable" && (
+                            <div className="flex items-center gap-1">
+                              <svg className="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3 3L22 4" />
+                              </svg>
+                              <span className="font-medium text-slate-600">{slice.change_penalty}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Segments list */}
+                      {(slice.segments && slice.segments.length > 0 ? slice.segments : [slice]).map((seg: any, segIdx) => {
+                        const isSegmentObject = !!slice.segments
+                        
+                        return (
+                          <div key={segIdx} className="space-y-3">
+                            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm hover:border-slate-300 transition-colors">
+                              {/* Leg Details header */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3 mb-3">
+                                <div className="space-y-1">
+                                  <div className="text-xs font-bold text-slate-600 flex items-center gap-2">
+                                    <span>Flight Number:</span>
+                                    <span className="font-mono text-slate-800 font-extrabold bg-slate-50 px-2 py-0.5 rounded border border-slate-200">{seg.flight_number || 'N/A'}</span>
+                                    {isSegmentObject && (
+                                      <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-100/50">
+                                        Leg {segIdx + 1}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-slate-500">
+                                    Airline: <span className="font-semibold text-slate-700">{seg.airline || offer.airline}</span>
+                                    {seg.aircraft_name && seg.aircraft_name !== "Aircraft details not available" && (
+                                      <span className="ml-2 pl-2 border-l border-slate-200">
+                                        Aircraft: <span className="font-semibold text-slate-700">{seg.aircraft_name}</span>
+                                      </span>
+                                    )}
+                                    {seg.distance_km && (
+                                      <span className="ml-2 pl-2 border-l border-slate-200">
+                                        Distance: <span className="font-semibold text-slate-700">{seg.distance_km} km</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="text-xs text-slate-500 sm:text-right">
+                                  <div>Departing: <span className="font-bold text-slate-800">{seg.departure_time}</span></div>
+                                  <div className="mt-0.5">Arriving: <span className="font-bold text-slate-800">{seg.arrival_time}</span></div>
+                                </div>
+                              </div>
+
+                              {/* Origin and Destination airports details */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600">
+                                <div className="flex items-start gap-2">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1 shrink-0" />
+                                  <div>
+                                    <div className="font-bold text-slate-800">
+                                      {seg.origin} · {seg.origin_name || 'Airport'}
+                                      {seg.origin_terminal && (
+                                        <span className="ml-1.5 text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1 py-0.5 rounded">
+                                          T{seg.origin_terminal}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 mt-0.5">Origin Airport</div>
+                                  </div>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1 shrink-0" />
+                                  <div>
+                                    <div className="font-bold text-slate-800">
+                                      {seg.destination} · {seg.destination_name || 'Airport'}
+                                      {seg.destination_terminal && (
+                                        <span className="ml-1.5 text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1 py-0.5 rounded">
+                                          T{seg.destination_terminal}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 mt-0.5">Destination Airport</div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Baggage & Amenities Grid */}
+                              {isSegmentObject && (
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-500">
+                                  {/* Baggage */}
+                                  <div className="space-y-1">
+                                    <span className="font-bold uppercase tracking-wider text-[9px] text-slate-400 block">Baggage Allowance</span>
+                                    <div className="flex items-center gap-1.5">
+                                      <svg className="w-3.5 h-3.5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                      </svg>
+                                      <span className="font-medium text-slate-700">{seg.baggage_checked}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <svg className="w-3.5 h-3.5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                      </svg>
+                                      <span className="font-medium text-slate-700">{seg.baggage_carry_on}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Amenities */}
+                                  <div className="space-y-1">
+                                    <span className="font-bold uppercase tracking-wider text-[9px] text-slate-400 block">Onboard Amenities</span>
+                                    {seg.wifi !== "Wifi details unavailable" && (
+                                      <div className="flex items-center gap-1.5">
+                                        <svg className="w-3.5 h-3.5 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071a10.5 10.5 0 0114.14 0M1.34 6.344a17.5 17.5 0 0121.32 0" />
+                                        </svg>
+                                        <span className="font-medium text-slate-700">{seg.wifi}</span>
+                                      </div>
+                                    )}
+                                    {seg.power !== "Power details unavailable" && (
+                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                        <svg className="w-3.5 h-3.5 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        <span className="font-medium text-slate-700">{seg.power}</span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Seat & Cabin */}
+                                  <div className="space-y-1">
+                                    <span className="font-bold uppercase tracking-wider text-[9px] text-slate-400 block">Class & Comfort</span>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded px-1.5 text-[9px] uppercase tracking-wider">
+                                        {seg.cabin_class}
+                                      </span>
+                                      <span className="font-medium text-slate-700">{seg.seat_pitch}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Layover Alert */}
+                            {seg.layover && (
+                              <div className="flex items-center justify-center py-2 px-4 bg-amber-500/5 border border-dashed border-amber-200 rounded-xl text-xs font-semibold text-amber-700 gap-1.5 my-1">
+                                <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>{seg.layover}</span>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))}
+
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                    <a
+                      href={offer.redirect_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-xs shadow-md shadow-emerald-950/20 transition-all gap-1.5"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 5v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2H5c-1.11 0-2 .9-2 2zm16 14H5V5h14v14z"/>
+                      </svg>
+                      Book Now
+                    </a>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigator.clipboard.writeText(offer.offer_id)
+                        alert('Offer ID copied to clipboard!')
+                      }}
+                      className="inline-flex items-center justify-center px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs border border-slate-200 transition-all gap-1.5"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                      </svg>
+                      Copy Offer ID
+                    </button>
+                    
+                    <span className="text-[10px] font-mono text-slate-500 ml-auto break-all select-all">
+                      ID: {offer.offer_id}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+

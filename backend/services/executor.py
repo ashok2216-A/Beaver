@@ -147,11 +147,22 @@ async def call_api(
         url = "https://" + url.replace("//", "/")
 
     log.info(f"EXECUTOR: Final Constructed URL: {url}")
-    
+
+    import os
+    is_local = "localhost" in url or "127.0.0.1" in url
+
     # SEC-13: Block SSRF and Insecure Credential transmission
-    validate_url_safe(url)
-    
-    if url.startswith("http://") and auth_secret:
+    # Validate BEFORE the httpx call, but handle HTTPException gracefully
+    try:
+        validate_url_safe(url)
+    except Exception as ssrf_exc:
+        log.warning(f"SSRF check blocked URL: {url} — {ssrf_exc}")
+        return {
+            "error": "ssrf_blocked",
+            "detail": f"The URL was blocked by the security validator: {ssrf_exc}"
+        }, 422, 0
+
+    if url.startswith("http://") and auth_secret and not (is_local or os.getenv("APP_ENV") == "development"):
         return {
             "error": "insecure_transport",
             "detail": "For security reasons, authentication secrets can only be sent over HTTPS. Please update the Agent's base_url to use https://."
@@ -164,7 +175,7 @@ async def call_api(
         }, 400, 0
 
     # SEC-13: Warn when credentials are sent over unencrypted HTTP
-    if url.startswith("http://") and auth_secret:
+    if url.startswith("http://") and auth_secret and not is_local:
         log.warning("API call with credentials sent over unencrypted HTTP: %s", url.split("?")[0])
 
     # Classify remaining params by their spec location

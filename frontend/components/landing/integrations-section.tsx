@@ -11,8 +11,9 @@ const integrations = [
   { name: "Salesforce", description: "Update leads and query your CRM directly from a chat interface.", icon: "https://www.vectorlogo.zone/logos/salesforce/salesforce-icon.svg" },
   { name: "Zendesk", description: "Resolve tier-1 support tickets autonomously with API access.", icon: "https://cdn.simpleicons.org/zendesk" },
   { name: "GitHub", description: "Manage issues, pull requests, and repo stats via agent commands.", icon: "https://cdn.simpleicons.org/github" },
-  { name: "Postman", description: "Import collections and test your agents with your existing workflows.", icon: "https://cdn.simpleicons.org/postman" },
+  { name: "Google Maps", description: "Calculate routes, search places, get directions, and geocode addresses dynamically.", icon: "https://www.google.com/s2/favicons?sz=128&domain=maps.google.com" },
   { name: "Linear", description: "Streamline issue tracking and team updates through natural language.", icon: "https://cdn.simpleicons.org/linear" },
+  { name: "Apify", description: "Run web scraping, data extraction, and automation actors on the Apify platform.", icon: "https://cdn.simpleicons.org/apify" },
 ];
 
 function SignalWaveCanvas() {
@@ -208,7 +209,7 @@ export function IntegrationsSection() {
             <div className="relative h-full bg-black/40 backdrop-blur-2xl border border-white/10 rounded-[24px] p-6 text-center flex flex-col justify-between">
               <div className="flex flex-wrap justify-center items-center gap-3 md:gap-4 mb-6">
                 {[
-                  "snowflake", "notion", "hubspot", "figma", "gitlab", "asana", "spotify", "gmail", "googledrive", "googlesheets", "googlecalendar",
+                  "snowflake", "notion", "hubspot", "figma", "gitlab", "asana", "spotify", "gmail", "googledrive", "googlesheets", "googlecalendar", "googlemaps",
                   "trello", "zoom", "pipedrive", "atlassian", "linear", "intercom", "zendesk", "dropbox", "airtable", "webflow", "framer",
                   "sentry", "datadog", "posthog", "vercel"
                 ].map((icon) => (

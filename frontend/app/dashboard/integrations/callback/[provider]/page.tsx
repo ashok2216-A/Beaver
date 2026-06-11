@@ -41,6 +41,7 @@ export default function OAuthCallbackPage({ params }: { params: Promise<{ provid
             'google_drive': 'googledrive',
             'google_sheets': 'googlesheets',
             'google_docs': 'googledocs',
+            'google_maps': 'googlemaps',
             'github_mcp': 'github',
             'slack_mcp': 'slack',
             'notion': 'notion',
@@ -48,6 +49,7 @@ export default function OAuthCallbackPage({ params }: { params: Promise<{ provid
             'youtube': 'youtube',
             'linear': 'linear',
             'jira': 'jira',
+            'apify': 'apify',
           }
           const toolkit = toolkitMap[pending.templateId] || pending.templateId
           if (toolkit) {

@@ -17,23 +17,22 @@ def get_integration_registry() -> Dict[str, Dict[str, Any]]:
         
     registry = {}
     
+    # 1. Try to fetch dynamic toolkits from Composio
     try:
         from config.config import get_settings
         import requests
         
         settings = get_settings()
+        toolkits = []
         if not settings.composio_api_key:
             log.warning("No composio_api_key found. Cannot fetch dynamic toolkits.")
-            _DYNAMIC_REGISTRY = {}
-            return {}
-            
-        r = requests.get("https://backend.composio.dev/api/v3.1/toolkits", headers={"x-api-key": settings.composio_api_key}, timeout=2.0)
-        if r.status_code == 200:
-            toolkits = r.json().get("items", [])
         else:
-            log.error(f"Failed to fetch toolkits from Composio API: {r.status_code} - {r.text}")
-            toolkits = []
-        
+            r = requests.get("https://backend.composio.dev/api/v3.1/toolkits", headers={"x-api-key": settings.composio_api_key}, timeout=2.0)
+            if r.status_code == 200:
+                toolkits = r.json().get("items", [])
+            else:
+                log.error(f"Failed to fetch toolkits from Composio API: {r.status_code} - {r.text}")
+                
         for t in toolkits:
             slug = t.get("slug")
             if not slug:
@@ -58,36 +57,40 @@ def get_integration_registry() -> Dict[str, Dict[str, Any]]:
                 if name_clean not in aliases:
                     aliases.append(name_clean)
                 if "google" in name.lower() and name.lower() != "google":
-                    # e.g. "Google Sheets" -> "google sheets"
                     aliases.append(name.lower())
                     
             # Remove duplicates
             aliases = list(set([a.lower() for a in aliases if a]))
             
             registry[slug] = {
-                "provider_name": slug, # We use the slug as the provider_name for simplicity
+                "provider_name": slug,
                 "composio_slug": slug,
                 "auth_type": auth_type,
                 "aliases": aliases,
-                "env_var_names": [] # Composio manages env vars usually
+                "env_var_names": []
             }
-            
-        # Add local custom apps just in case
-        registry["code_interpreter"] = {
-            "provider_name": "code_interpreter",
-            "composio_slug": "codeinterpreter",
-            "auth_type": "NONE",
-            "aliases": ["code-interpreter", "codeinterpreter"],
-            "env_var_names": []
-        }
-            
-        _DYNAMIC_REGISTRY = registry
-        return registry
-        
     except Exception as e:
-        log.error(f"Error building dynamic integration registry: {e}")
-        _DYNAMIC_REGISTRY = {}
-        return {}
+        log.error(f"Error fetching dynamic integration registry from Composio: {e}")
+
+    # 2. Always register local custom integrations
+    registry["code_interpreter"] = {
+        "provider_name": "code_interpreter",
+        "composio_slug": "codeinterpreter",
+        "auth_type": "NONE",
+        "aliases": ["code-interpreter", "codeinterpreter"],
+        "env_var_names": []
+    }
+    
+    registry["duffel"] = {
+        "provider_name": "duffel",
+        "composio_slug": None,
+        "auth_type": "API_KEY",
+        "aliases": ["duffel", "duffel_flights", "duffelflights"],
+        "env_var_names": ["DUFFEL_API_KEY"]
+    }
+        
+    _DYNAMIC_REGISTRY = registry
+    return registry
 
 
 def get_integration_by_alias(alias: str) -> Optional[Dict[str, Any]]:

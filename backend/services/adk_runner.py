@@ -173,7 +173,7 @@ def _sanitize_mcp_params(tool_name: str, params: dict, endpoint_params: list[dic
             equiv_classes = [
                 {"to", "recipient_email", "recipient", "email"},
                 {"url", "link", "uri", "website"},
-                {"body", "text", "content", "message", "html"},
+                {"body", "text", "content", "html"},
                 {"query", "q", "search_query", "keyword"},
                 {"code", "code_to_execute", "script"}
             ]
@@ -207,6 +207,14 @@ def _sanitize_mcp_params(tool_name: str, params: dict, endpoint_params: list[dic
             final_params["user_id"] = "me"
         elif "userId" in valid_keys and "userId" not in final_params:
             final_params["userId"] = "me"
+            
+        # Dynamically inject template parameter defaults if they are missing or empty
+        for p in endpoint_params:
+            if isinstance(p, dict) and "name" in p and "default" in p:
+                p_name = p["name"]
+                if p_name not in final_params or final_params[p_name] is None or final_params[p_name] == "":
+                    final_params[p_name] = p["default"]
+                    log.info(f"Dynamic param sanitizer: injected default '{p['default']}' for parameter '{p_name}' in tool {tool_name}")
             
         return final_params
         
@@ -298,45 +306,61 @@ def _mcp_path_matches_score(template: str, actual: str) -> float:
 def _extract_a2ui_chunks(text: str) -> list[dict]:
     """
     Scan the agent answer for embedded ```a2ui ... ``` fenced blocks or
-    raw {"a2ui": ...} JSON objects. Returns a list of message chunks:
+    raw {"a2ui": ...} JSON/YAML objects. Returns a list of message chunks:
       [{"type": "text", "content": "..."}, {"type": "a2ui", "content": {...}}, ...]
     Falls back to a single text chunk when no A2UI payload is found.
     """
+    import yaml
     chunks: list[dict] = []
 
-    # Pattern 1: fenced code block  ```a2ui\n{...}\n```
+    # 1. Parse fenced blocks first: ```a2ui ... ```
     fenced_re = re.compile(r'```a2ui\s*(\{.*?\})\s*```', re.DOTALL)
-    # Pattern 2: bare JSON object that starts with {"a2ui":
-    # We use a lookahead to try and find the outermost brace by expecting a newline or end of string.
-    bare_re = re.compile(r'(\{\s*"a2ui"\s*:.*?\}(?=\s*($|\n|\*\*|###)))', re.DOTALL)
+    combined: list[tuple[int, int, dict]] = []
+
+    for m in fenced_re.finditer(text):
+        try:
+            payload = yaml.safe_load(m.group(1))
+            if isinstance(payload, dict) and 'a2ui' in payload:
+                combined.append((m.start(), m.end(), payload))
+        except Exception:  # nosec B110
+            pass
+
+    # 2. Parse bare blocks using balanced brace counting
+    # This correctly handles nested structures without falling victim to regex limitations.
+    for i in range(len(text)):
+        if text[i] == '{':
+            # Avoid starting inside an already matched fenced block
+            if any(start <= i < end for start, end, _ in combined):
+                continue
+            
+            brace_count = 0
+            for j in range(i, len(text)):
+                if text[j] == '{':
+                    brace_count += 1
+                elif text[j] == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        candidate = text[i:j+1]
+                        if '"a2ui"' in candidate or "'a2ui'" in candidate:
+                            try:
+                                payload = yaml.safe_load(candidate)
+                                if isinstance(payload, dict) and 'a2ui' in payload:
+                                    # Ensure this doesn't overlap/intersect with fenced blocks
+                                    if not any(start <= i < end or start <= j+1 < end for start, end, _ in combined):
+                                        combined.append((i, j+1, payload))
+                            except Exception:  # nosec B110
+                                pass
+                        break
+
+    # Sort candidates by their starting position and filter out nested/overlapping sub-blocks
+    combined.sort(key=lambda x: x[0])
+    filtered: list[tuple[int, int, dict]] = []
+    for start, end, payload in combined:
+        if not any(f[0] <= start and end <= f[1] for f in filtered):
+            filtered.append((start, end, payload))
 
     last_end = 0
-    combined: list[tuple[int, int, str]] = []
-
-    # Collect both fenced and bare blocks
-    for m in fenced_re.finditer(text):
-        combined.append((m.start(), m.end(), m.group(1)))
-    
-    for m in bare_re.finditer(text):
-        # Avoid overlapping with already found fenced blocks
-        if any(c[0] <= m.start() < c[1] for c in combined):
-            continue
-        combined.append((m.start(), m.end(), m.group(1)))
-
-    combined.sort(key=lambda x: x[0])
-
-    for start, end, json_str in combined:
-        try:
-            import yaml
-            # Use yaml.safe_load as it is a superset of JSON and handles "Franken-JSON" (mixed YAML/JSON)
-            payload = yaml.safe_load(json_str)
-        except Exception as e:  # nosec B112
-            log.debug("Failed to parse regex candidate JSON/YAML block: %s", e)
-            continue
-
-        if not isinstance(payload, dict) or 'a2ui' not in payload:
-            continue
-
+    for start, end, payload in filtered:
         # Text before this block
         before = text[last_end:start].strip()
         if before:
@@ -540,6 +564,9 @@ def _build_agent(
         if len(tool_log) >= 10:
             log.warning("Agent exceeded max API calls limit for a single turn.")
             raise RuntimeError("Agent exceeded maximum allowed tool calls (Limit 10 per turn).")
+
+        # Clean method input in case LLM appends trailing commas, quotes, or whitespace
+        method = method.strip().strip(",").strip("'").strip('"').upper()
 
         log.info(f"⚡ Universal tool call_api_endpoint called: path='{path}', method='{method}', params='{params[:200]}...' (truncated)" if params and len(params) > 200 else f"⚡ Universal tool call_api_endpoint called: path='{path}', method='{method}', params='{params}'")
         params_dict: dict = _parse_params_robust(params)
@@ -938,10 +965,38 @@ def _build_agent(
                 "note": "Audio was generated successfully. DO NOT generate your own <audio> tags or markdown audio links. Just tell the user the audio is ready."
             })
 
+        if path == "/search_flights" and status == 200:
+            log.info("Flight search detected. Storing massive flight payload in sideband.")
+            
+            actual_data = data.get("data", data) if isinstance(data, dict) else data
+            
+            audio_artifacts.append({
+                "type": "a2ui",
+                "content": {
+                    "a2ui": {
+                        "component": "flights",
+                        "data": actual_data
+                    }
+                }
+            })
+            return json.dumps({
+                "status_code": status,
+                "data": f"Found {len(actual_data) if isinstance(actual_data, list) else 0} flights. They have been displayed to the user automatically via the A2UI sideband.",
+                "latency_ms": latency,
+                "note": "Flights displayed to user automatically. DO NOT output the a2ui block yourself. Just tell the user you found them."
+            })
+
         # ─── Error Handling & Self-Healing Logic ───
         # Final Error Handling & A2UI Fallback
         if status >= 400:
             log.warning(f"Tool Error {status} from {path} after internal attempts.")
+
+            # Generate a corrective A2UI form dynamically if there is a validation error
+            a2ui_form = None
+            try:
+                a2ui_form = await _generate_corrective_a2ui(status, path, method, data, current_payload)
+            except Exception as e:
+                log.warning(f"Failed to generate corrective A2UI: {e}")
 
             hint = "The API returned an error."
             if isinstance(data, dict):
@@ -993,16 +1048,24 @@ def _build_agent(
                     "response":    data,
                 })
 
-                return json.dumps({
+                resp_payload = {
                     "status_code": status,
                     "error_details": data,
                     "hint": hint,
-                    "note": (
+                }
+                if a2ui_form:
+                    resp_payload["a2ui"] = a2ui_form.get("a2ui")
+                    resp_payload["note"] = (
+                        f"CRITICAL: The API call to {method.upper()} {path} failed. "
+                        f"A corrective input form has been generated. You MUST output the exact 'a2ui' JSON block above to the user using the ```a2ui code block format, and stop your turn immediately."
+                    )
+                else:
+                    resp_payload["note"] = (
                         f"CRITICAL: The API call to {method.upper()} {path} failed. "
                         f"DO NOT generate any JSON forms. Instead, explain the issue to the user clearly using the error details "
                         f"and ask them to provide the missing information or corrections directly in the chat so you can retry."
                     )
-                })
+                return json.dumps(resp_payload)
             
             tool_log.append({
                 "path":        path,
@@ -1234,7 +1297,7 @@ def _build_agent(
         "- MEDIA PLAYERS: If you return YouTube links, video links, or audio URLs, you MUST output a standalone A2UI JSON payload with the 'videoplayer' or 'audioplayer' component instead of a raw markdown link.\n"
         "- A2UI SUBMISSIONS: When a user submits a form, you will receive a message with the form values. Extract these values and immediately use them to EXECUTE or RETRY the tool call.\n"
         "- NO AD-HOC FIELDS: NEVER invent fields that are not present in the tool specification.\n"
-        "- AFTER the A2UI block, you may add a very brief explanatory sentence.\"\n"
+        "- AFTER the A2UI block, you may add a very brief explanatory sentence.\n"
     )
 
     base_instruction = (
@@ -1281,7 +1344,7 @@ def _build_agent(
     settings = get_settings()
     model_name = model or settings.default_llm_model
 
-    adk_model = LiteLlm(model=model_name, num_retries=3, max_tokens=1024)
+    adk_model = LiteLlm(model=model_name, num_retries=3, max_tokens=8192)
 
     async def auto_save_session_to_memory_callback(callback_context):
         """Automatically ingest the completed session into long-term memory."""

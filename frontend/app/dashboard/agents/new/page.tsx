@@ -87,7 +87,7 @@ function NewAgentContent() {
       localStorage.removeItem('oauth_pending_template');
       try {
         const pending = JSON.parse(pendingRaw);
-        const { templateId, name, mcpUrl, sType, desc, aType } = pending;
+        const { templateId, name, mcpUrl, sType, desc, aType, apiSpec } = pending;
 
         // Restore state and show the configuration form
         setAgentName(name);
@@ -96,6 +96,9 @@ function NewAgentContent() {
         setSourceType(sType || "mcp_sse");
         setDescription(desc);
         setAuthType(aType);
+        if (apiSpec) {
+          setApiSpec(apiSpec);
+        }
         setTab("manual");
 
         toast.success(`OAuth connected! Review your agent settings and click Save Integration.`);
@@ -212,6 +215,9 @@ function NewAgentContent() {
 
   const getLogoForTemplate = (t: Template) => {
     const id = (t.id || "").toLowerCase();
+    if (id === "google_maps") return "https://www.google.com/s2/favicons?sz=128&domain=maps.google.com";
+    if (id === "duffel_flights" || id === "duffel") return "https://www.google.com/s2/favicons?sz=128&domain=duffel.com";
+    if (id === "apify") return "https://cdn.simpleicons.org/apify";
     if (id === "gmail") return "https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg";
     if (id === "google_calendar") return "https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg";
     if (id === "google_drive") return "https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg";
@@ -255,6 +261,9 @@ function NewAgentContent() {
         setSourceType(sType);
         setDescription(desc);
         setAuthType(aType);
+        if (detail.api_spec) {
+          setApiSpec(detail.api_spec);
+        }
         setTab("manual");
         toast.info(`Loaded configuration for connected engine "${name}".`);
         return;
@@ -277,6 +286,9 @@ function NewAgentContent() {
             setSourceType(sType);
             setDescription(desc);
             setAuthType(aType);
+            if (detail.api_spec) {
+              setApiSpec(detail.api_spec);
+            }
             setTab("manual");
             toast.info(`Review configuration for ${name} and click Save Integration.`);
             
@@ -297,7 +309,8 @@ function NewAgentContent() {
               mcpUrl,
               sType,
               desc,
-              aType
+              aType,
+              apiSpec: detail.api_spec || ""
             }));
             setApiKeyModalProvider(t);
             return;
@@ -311,7 +324,8 @@ function NewAgentContent() {
             mcpUrl,
             sType,
             desc,
-            aType
+            aType,
+            apiSpec: detail.api_spec || ""
           }));
 
           // Redirect to OAuth provider authorization page
@@ -387,6 +401,9 @@ function NewAgentContent() {
       setSourceType(sType);
       setDescription(desc);
       setAuthType(aType);
+      if (detail.api_spec) {
+        setApiSpec(detail.api_spec);
+      }
       setTab("manual");
       
       if (aType !== "none") {

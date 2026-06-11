@@ -31,10 +31,33 @@ def parse_openapi(spec: Any) -> List[Dict[str, Any]]:
             # Extract request body (OpenAPI 3.x)
             request_body = {}
             if "requestBody" in details:
-                # Basic extraction of the first content type found
                 content = details["requestBody"].get("content", {})
                 for content_type, media_type in content.items():
-                    request_body = media_type.get("schema", {})
+                    schema = media_type.get("schema", {})
+                    
+                    def resolve_refs(obj, seen=None):
+                        if seen is None:
+                            seen = set()
+                        if isinstance(obj, dict):
+                            if "$ref" in obj:
+                                ref = obj["$ref"]
+                                if ref in seen:
+                                    return {} # Prevent infinite recursion
+                                seen.add(ref)
+                                parts = ref.lstrip("#/").split("/")
+                                curr = spec
+                                try:
+                                    for part in parts:
+                                        curr = curr[part]
+                                    return resolve_refs(curr, seen)
+                                except Exception:
+                                    return obj
+                            return {k: resolve_refs(v, seen.copy()) for k, v in obj.items()}
+                        elif isinstance(obj, list):
+                            return [resolve_refs(x, seen.copy()) for x in obj]
+                        return obj
+                        
+                    request_body = resolve_refs(schema)
                     break
 
             endpoints.append({
