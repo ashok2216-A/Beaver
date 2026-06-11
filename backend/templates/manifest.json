@@ -252,6 +252,42 @@
       "description": "Stream audio, fetch user tracks, and manage audio profiles."
     },
     {
+      "id": "google_classroom",
+      "name": "Google Classroom",
+      "category": "Productivity",
+      "domain": "classroom.google.com",
+      "mcp_server_url": "composio:googleclassroom",
+      "source_type": "mcp_sse",
+      "description": "Manage courses, assignments, student rosters, and grades."
+    },
+    {
+      "id": "whatsapp",
+      "name": "WhatsApp",
+      "category": "Social & CRM",
+      "domain": "whatsapp.com",
+      "mcp_server_url": "composio:whatsapp",
+      "source_type": "mcp_sse",
+      "description": "Send messages, media, and automated alerts on WhatsApp."
+    },
+    {
+      "id": "telegram",
+      "name": "Telegram",
+      "category": "Social & CRM",
+      "domain": "telegram.org",
+      "mcp_server_url": "composio:telegram",
+      "source_type": "mcp_sse",
+      "description": "Create chat bots, send messages, and manage Telegram channels."
+    },
+    {
+      "id": "discord",
+      "name": "Discord",
+      "category": "Social & CRM",
+      "domain": "discord.com",
+      "mcp_server_url": "composio:discord",
+      "source_type": "mcp_sse",
+      "description": "Send messages to channels, manage server roles, and interact with Discord servers."
+    },
+    {
       "id": "apify",
       "name": "Apify",
       "category": "AI & Search",

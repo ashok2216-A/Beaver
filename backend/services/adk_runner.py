@@ -561,10 +561,7 @@ def _build_agent(
             JSON string containing keys "data" (API response) and
             "status_code" (HTTP status).
         """
-        if len(tool_log) >= 10:
-            log.warning("Agent exceeded max API calls limit for a single turn.")
-            raise RuntimeError("Agent exceeded maximum allowed tool calls (Limit 10 per turn).")
-
+        # Removed tool call limit per user request
         # Clean method input in case LLM appends trailing commas, quotes, or whitespace
         method = method.strip().strip(",").strip("'").strip('"').upper()
 

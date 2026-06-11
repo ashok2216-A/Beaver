@@ -234,6 +234,10 @@ function NewAgentContent() {
     if (id === "instagram") return "https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg";
     if (id === "youtube") return "https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg";
     if (id === "spotify") return "https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg";
+    if (id === "google_classroom") return "https://upload.wikimedia.org/wikipedia/commons/1/19/Google_Classroom_Logo.svg";
+    if (id === "whatsapp") return "https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg";
+    if (id === "telegram") return "https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg";
+    if (id === "discord") return "https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a6a49cf127bf92de1e2_icon_clyde_blurple_RGB.png";
     return `https://www.google.com/s2/favicons?sz=128&domain=${t.domain}`;
   };
 
