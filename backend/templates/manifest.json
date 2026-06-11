@@ -90,6 +90,15 @@
       }
     },
     {
+      "id": "google_chat",
+      "name": "Google Chat",
+      "category": "Productivity",
+      "domain": "chat.google.com",
+      "mcp_server_url": "composio:google_chat",
+      "source_type": "mcp_sse",
+      "description": "Send Google Chat messages, list spaces, manage memberships, and automate group chats."
+    },
+    {
       "id": "github_mcp",
       "name": "GitHub",
       "category": "DevTools",

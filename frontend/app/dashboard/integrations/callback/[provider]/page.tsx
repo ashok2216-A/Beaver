@@ -42,6 +42,7 @@ export default function OAuthCallbackPage({ params }: { params: Promise<{ provid
             'google_sheets': 'googlesheets',
             'google_docs': 'googledocs',
             'google_maps': 'googlemaps',
+            'google_chat': 'google_chat',
             'github_mcp': 'github',
             'slack_mcp': 'slack',
             'notion': 'notion',

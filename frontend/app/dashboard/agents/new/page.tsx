@@ -220,6 +220,7 @@ function NewAgentContent() {
   const getLogoForTemplate = (t: Template) => {
     const id = (t.id || "").toLowerCase();
     if (id === "google_maps") return "https://www.google.com/s2/favicons?sz=128&domain=maps.google.com";
+    if (id === "google_chat") return "https://www.google.com/s2/favicons?sz=128&domain=chat.google.com";
     if (id === "duffel_flights" || id === "duffel") return "https://www.google.com/s2/favicons?sz=128&domain=duffel.com";
     if (id === "apify") return "https://www.google.com/s2/favicons?sz=128&domain=apify.com";
     if (id === "gmail") return "https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg";
