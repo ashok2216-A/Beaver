@@ -305,6 +305,87 @@
       "source_type": "rest",
       "auth_type": "API_KEY",
       "description": "Comprehensive integration for flight suggestions, searches, seat maps, bookings, and cancellations."
+    },
+    {
+      "id": "bitbucket",
+      "name": "Bitbucket",
+      "category": "DevTools",
+      "domain": "bitbucket.org",
+      "mcp_server_url": "composio:bitbucket",
+      "source_type": "mcp_sse",
+      "description": "Manage repositories, pull requests, commits, and automate pipeline workflows."
+    },
+    {
+      "id": "google_tasks",
+      "name": "Google Tasks",
+      "category": "Productivity",
+      "domain": "tasks.google.com",
+      "mcp_server_url": "composio:googletasks",
+      "source_type": "mcp_sse",
+      "description": "Create task lists, manage to-do items, set due dates, and track tasks."
+    },
+    {
+      "id": "figma",
+      "name": "Figma",
+      "category": "Productivity",
+      "domain": "figma.com",
+      "mcp_server_url": "composio:figma",
+      "source_type": "mcp_sse",
+      "description": "Inspect design files, manage comments, and automate design asset workflows."
+    },
+    {
+      "id": "reddit",
+      "name": "Reddit",
+      "category": "Social & CRM",
+      "domain": "reddit.com",
+      "mcp_server_url": "composio:reddit",
+      "source_type": "mcp_sse",
+      "description": "Search subreddits, retrieve posts, submit comments, and track trends."
+    },
+    {
+      "id": "elevenlabs",
+      "name": "ElevenLabs",
+      "category": "AI & Search",
+      "domain": "elevenlabs.io",
+      "mcp_server_url": "composio:elevenlabs",
+      "source_type": "mcp_sse",
+      "description": "Generate high-quality AI voices, convert text to speech, and manage voice profiles."
+    },
+    {
+      "id": "linkedin",
+      "name": "LinkedIn",
+      "category": "Social & CRM",
+      "domain": "linkedin.com",
+      "mcp_server_url": "composio:linkedin",
+      "source_type": "mcp_sse",
+      "description": "Post updates, manage company profiles, and automate professional networking."
+    },
+    {
+      "id": "openweathermap",
+      "name": "OpenWeatherMap",
+      "category": "Productivity",
+      "domain": "openweathermap.org",
+      "mcp_server_url": "composio:weathermap",
+      "source_type": "mcp_sse",
+      "description": "Get current weather updates, forecasts, and historical weather data."
+    },
+    {
+      "id": "google_meet",
+      "name": "Google Meet",
+      "category": "Productivity",
+      "domain": "meet.google.com",
+      "mcp_server_url": "composio:googlemeet",
+      "source_type": "mcp_sse",
+      "description": "Schedule video meetings, manage meet codes, and organize virtual events."
+    },
+    {
+      "id": "dropbox",
+      "name": "Dropbox",
+      "category": "Storage",
+      "domain": "dropbox.com",
+      "mcp_server_url": "composio:dropbox",
+      "source_type": "mcp_sse",
+      "description": "Upload files, share links, download folder contents, and manage cloud storage."
     }
   ]
 }

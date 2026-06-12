@@ -1334,4 +1334,162 @@ export function A2Map({ data }: A2MapProps) {
   )
 }
 
+// ─── A2UI WEATHER CARD ─────────────────────────────────────────────────────────
+
+export interface A2WeatherCardProps {
+  data: {
+    a2ui: {
+      component: string;
+      data?: {
+        location: string;
+        temp_max: number;
+        temp_min: number;
+        condition: string;
+        forecast?: {
+          day: string;
+          condition: string;
+          temp: number;
+        }[];
+      };
+    };
+  };
+}
+
+const SunnyIcon = () => (
+  <img 
+    src="https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Sun/3D/sun_3d.png" 
+    alt="Sunny" 
+    className="w-9 h-9 object-contain"
+    loading="lazy"
+  />
+)
+
+const PartlyCloudyIcon = () => (
+  <img 
+    src="https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Sun%20behind%20cloud/3D/sun_behind_cloud_3d.png" 
+    alt="Partly Cloudy" 
+    className="w-9 h-9 object-contain"
+    loading="lazy"
+  />
+)
+
+const CloudyIcon = () => (
+  <img 
+    src="https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Cloud/3D/cloud_3d.png" 
+    alt="Cloudy" 
+    className="w-9 h-9 object-contain"
+    loading="lazy"
+  />
+)
+
+const RainyIcon = () => (
+  <img 
+    src="https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Cloud%20with%20rain/3D/cloud_with_rain_3d.png" 
+    alt="Rainy" 
+    className="w-9 h-9 object-contain"
+    loading="lazy"
+  />
+)
+
+const SnowyIcon = () => (
+  <img 
+    src="https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Cloud%20with%20snow/3D/cloud_with_snow_3d.png" 
+    alt="Snowy" 
+    className="w-9 h-9 object-contain"
+    loading="lazy"
+  />
+)
+
+const StormyIcon = () => (
+  <img 
+    src="https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/Cloud%20with%20lightning%20and%20rain/3D/cloud_with_lightning_and_rain_3d.png" 
+    alt="Stormy" 
+    className="w-9 h-9 object-contain"
+    loading="lazy"
+  />
+)
+
+const getWeatherIcon = (condition: string) => {
+  const cond = (condition || '').toLowerCase()
+  if (cond.includes('clear') || cond.includes('sun') || cond.includes('sunny')) return <SunnyIcon />
+  if (cond.includes('partly') || cond.includes('scattered') || cond.includes('few clouds')) return <PartlyCloudyIcon />
+  if (cond.includes('cloud') || cond.includes('overcast') || cond.includes('mist') || cond.includes('fog')) return <CloudyIcon />
+  if (cond.includes('rain') || cond.includes('drizzle') || cond.includes('shower')) return <RainyIcon />
+  if (cond.includes('snow') || cond.includes('sleet') || cond.includes('hail')) return <SnowyIcon />
+  if (cond.includes('storm') || cond.includes('thunder') || cond.includes('lightning')) return <StormyIcon />
+  return <SunnyIcon />
+}
+
+export function A2WeatherCard({ data }: A2WeatherCardProps) {
+  const weather = data?.a2ui?.data
+  
+  if (!weather) {
+    return (
+      <div className="p-6 bg-slate-900/30 border border-slate-800 rounded-2xl text-center text-slate-400 text-sm font-medium mt-4">
+        No weather data provided.
+      </div>
+    )
+  }
+
+  const { location = 'Unknown Location', temp_max = 0, temp_min = 0, condition = 'Unknown', forecast = [] } = weather
+  const roundedMax = Math.round(temp_max)
+  const roundedMin = Math.round(temp_min)
+  const showSecondTemp = roundedMax !== roundedMin
+
+  return (
+    <div className="w-full max-w-[360px] bg-[#F7F8FA] dark:bg-slate-900 border border-[#E5E7EB] dark:border-slate-800 rounded-[28px] p-5 shadow-[0_4px_16px_rgba(0,0,0,0.02)] mt-4">
+      {/* Title */}
+      <div className="text-[13px] font-medium text-[#7E7E7E] dark:text-slate-400 mb-3 pl-1">
+        Weather Current
+      </div>
+
+      {/* Main card */}
+      <div className="bg-white dark:bg-slate-950 border border-[#E5E7EB] dark:border-slate-800/80 rounded-[20px] p-5 flex flex-col">
+        {/* Temp block - left aligned, big bold black fonts */}
+        <div className="flex justify-start mb-6">
+          <div className="flex items-baseline gap-2.5 pl-1">
+            <span className="text-[40px] font-semibold text-[#111827] dark:text-white leading-none">
+              {roundedMax}°
+            </span>
+            {showSecondTemp && (
+              <span className="text-[26px] font-semibold text-[#6B7280] dark:text-slate-400 leading-none">
+                {roundedMin}°
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Location Name */}
+        <div className="text-[24px] font-semibold text-[#111827] dark:text-white mb-2 text-center">
+          {location}
+        </div>
+
+        {/* Condition */}
+        <div className="text-[15px] font-medium text-[#4B5563]/80 dark:text-slate-400 text-center mb-8">
+          {condition}
+        </div>
+
+        {/* 5-day Forecast - Grid with no top border, updated font weights/sizes */}
+        {forecast && forecast.length > 0 && (
+          <div className="grid grid-cols-5 gap-1">
+            {forecast.slice(0, 5).map((f, idx) => (
+              <div key={idx} className="flex flex-col items-center">
+                <span className="text-[14px] font-medium text-[#9CA3AF] dark:text-slate-500 mb-3">
+                  {f.day}
+                </span>
+                <div className="h-9 w-9 flex items-center justify-center mb-3">
+                  {getWeatherIcon(f.condition)}
+                </div>
+                <span className="text-[15px] font-medium text-[#4B5563] dark:text-slate-300">
+                  {Math.round(f.temp)}°
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 
