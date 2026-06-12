@@ -139,7 +139,11 @@ function NewAgentContent() {
 
         if (templatesRes.ok) {
           const data = await templatesRes.json();
-          setTemplates(data.templates || []);
+          const rawTemplates = data.templates || [];
+          // Hide composio, perplexity, and soundcloud integrations from the frontend UI
+          const hiddenIds = ["composio", "perplexity", "soundcloud"];
+          const filtered = rawTemplates.filter((t: any) => !hiddenIds.includes((t.id || "").toLowerCase()));
+          setTemplates(filtered);
         }
 
         if (oauthRes.ok) {
@@ -216,8 +220,9 @@ function NewAgentContent() {
   const getLogoForTemplate = (t: Template) => {
     const id = (t.id || "").toLowerCase();
     if (id === "google_maps") return "https://www.google.com/s2/favicons?sz=128&domain=maps.google.com";
+    if (id === "google_chat") return "https://www.google.com/s2/favicons?sz=128&domain=chat.google.com";
     if (id === "duffel_flights" || id === "duffel") return "https://www.google.com/s2/favicons?sz=128&domain=duffel.com";
-    if (id === "apify") return "https://cdn.simpleicons.org/apify";
+    if (id === "apify") return "https://www.google.com/s2/favicons?sz=128&domain=apify.com";
     if (id === "gmail") return "https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg";
     if (id === "google_calendar") return "https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg";
     if (id === "google_drive") return "https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg";
@@ -229,6 +234,19 @@ function NewAgentContent() {
     if (id === "instagram") return "https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg";
     if (id === "youtube") return "https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg";
     if (id === "spotify") return "https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg";
+    if (id === "google_classroom") return "https://upload.wikimedia.org/wikipedia/commons/1/19/Google_Classroom_Logo.svg";
+    if (id === "whatsapp") return "https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg";
+    if (id === "telegram") return "https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg";
+    if (id === "discord") return "https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a6a49cf127bf92de1e2_icon_clyde_blurple_RGB.png";
+    if (id === "google_tasks") return "https://static.wikia.nocookie.net/logopedia/images/f/f1/Google_Tasks.svg";
+    if (id === "figma") return "https://www.google.com/s2/favicons?sz=128&domain=figma.com";
+    if (id === "reddit") return "https://www.google.com/s2/favicons?sz=128&domain=reddit.com";
+    if (id === "elevenlabs") return "https://www.google.com/s2/favicons?sz=128&domain=elevenlabs.io";
+    if (id === "linkedin") return "https://www.google.com/s2/favicons?sz=128&domain=linkedin.com";
+    if (id === "openweathermap") return "https://www.google.com/s2/favicons?sz=128&domain=openweathermap.org";
+    if (id === "google_meet") return "https://upload.wikimedia.org/wikipedia/commons/9/9b/Google_Meet_icon_(2020).svg";
+    if (id === "dropbox") return "https://www.google.com/s2/favicons?sz=128&domain=dropbox.com";
+    if (id === "bitbucket") return "https://www.google.com/s2/favicons?sz=128&domain=bitbucket.org";
     return `https://www.google.com/s2/favicons?sz=128&domain=${t.domain}`;
   };
 
@@ -352,31 +370,66 @@ function NewAgentContent() {
           );
 
           let isSuccess = false;
-          // Listen for the success message from the callback page
+          let timer: NodeJS.Timeout;
+          const channel = new BroadcastChannel('oauth_channel');
+
+          const cleanup = () => {
+            window.removeEventListener('message', handleMessage);
+            window.removeEventListener('storage', handleStorage);
+            try {
+              channel.close();
+            } catch (e) {}
+            if (timer) clearInterval(timer);
+          };
+
+          const handleSuccess = () => {
+            if (isSuccess) return;
+            isSuccess = true;
+            cleanup();
+            
+            // Optimistically update state so the UI button reflects the connection
+            setOauthIntegrations(prev => [...prev, { provider: oauthProvider }]);
+            setConnectedTools(prev => {
+              const next = [...prev, t.id];
+              try { localStorage.setItem("beaver_connected_tools", JSON.stringify(next)); } catch (e) {}
+              return next;
+            });
+
+            resumePendingTemplate();
+            setActionLoading(null);
+          };
+
           const handleMessage = (event: MessageEvent) => {
             if (event.data === 'oauth_success') {
-              isSuccess = true;
-              window.removeEventListener('message', handleMessage);
-              
-              // Optimistically update state so the UI button reflects the connection
-              setOauthIntegrations(prev => [...prev, { provider: oauthProvider }]);
-              setConnectedTools(prev => {
-                const next = [...prev, t.id];
-                try { localStorage.setItem("beaver_connected_tools", JSON.stringify(next)); } catch (e) {}
-                return next;
-              });
-
-              resumePendingTemplate();
-              setActionLoading(null);
+              handleSuccess();
             }
           };
+
+          const handleStorage = (event: StorageEvent) => {
+            if (event.key === 'oauth_success_trigger' && event.newValue) {
+              try {
+                const data = JSON.parse(event.newValue);
+                if (data.provider === oauthProvider) {
+                  localStorage.removeItem('oauth_success_trigger');
+                  handleSuccess();
+                }
+              } catch (e) {}
+            }
+          };
+
           window.addEventListener('message', handleMessage);
+          window.addEventListener('storage', handleStorage);
+          
+          channel.onmessage = (event) => {
+            if (event.data && event.data.type === 'oauth_success' && event.data.provider === oauthProvider) {
+              handleSuccess();
+            }
+          };
 
           // Poll to stop loading state if user manually closes the popup
-          const timer = setInterval(() => {
+          timer = setInterval(() => {
             if (popup && popup.closed) {
-              clearInterval(timer);
-              window.removeEventListener('message', handleMessage);
+              cleanup();
               
               if (!isSuccess) {
                 // If closed without the callback success message, it means the user aborted or it failed.

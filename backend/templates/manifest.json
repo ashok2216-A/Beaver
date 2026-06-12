@@ -90,6 +90,15 @@
       }
     },
     {
+      "id": "google_chat",
+      "name": "Google Chat",
+      "category": "Productivity",
+      "domain": "chat.google.com",
+      "mcp_server_url": "composio:google_chat",
+      "source_type": "mcp_sse",
+      "description": "Send Google Chat messages, list spaces, manage memberships, and automate group chats."
+    },
+    {
       "id": "github_mcp",
       "name": "GitHub",
       "category": "DevTools",
@@ -243,6 +252,42 @@
       "description": "Stream audio, fetch user tracks, and manage audio profiles."
     },
     {
+      "id": "google_classroom",
+      "name": "Google Classroom",
+      "category": "Productivity",
+      "domain": "classroom.google.com",
+      "mcp_server_url": "composio:googleclassroom",
+      "source_type": "mcp_sse",
+      "description": "Manage courses, assignments, student rosters, and grades."
+    },
+    {
+      "id": "whatsapp",
+      "name": "WhatsApp",
+      "category": "Social & CRM",
+      "domain": "whatsapp.com",
+      "mcp_server_url": "composio:whatsapp",
+      "source_type": "mcp_sse",
+      "description": "Send messages, media, and automated alerts on WhatsApp."
+    },
+    {
+      "id": "telegram",
+      "name": "Telegram",
+      "category": "Social & CRM",
+      "domain": "telegram.org",
+      "mcp_server_url": "composio:telegram",
+      "source_type": "mcp_sse",
+      "description": "Create chat bots, send messages, and manage Telegram channels."
+    },
+    {
+      "id": "discord",
+      "name": "Discord",
+      "category": "Social & CRM",
+      "domain": "discord.com",
+      "mcp_server_url": "composio:discord",
+      "source_type": "mcp_sse",
+      "description": "Send messages to channels, manage server roles, and interact with Discord servers."
+    },
+    {
       "id": "apify",
       "name": "Apify",
       "category": "AI & Search",
@@ -260,6 +305,87 @@
       "source_type": "rest",
       "auth_type": "API_KEY",
       "description": "Comprehensive integration for flight suggestions, searches, seat maps, bookings, and cancellations."
+    },
+    {
+      "id": "bitbucket",
+      "name": "Bitbucket",
+      "category": "DevTools",
+      "domain": "bitbucket.org",
+      "mcp_server_url": "composio:bitbucket",
+      "source_type": "mcp_sse",
+      "description": "Manage repositories, pull requests, commits, and automate pipeline workflows."
+    },
+    {
+      "id": "google_tasks",
+      "name": "Google Tasks",
+      "category": "Productivity",
+      "domain": "tasks.google.com",
+      "mcp_server_url": "composio:googletasks",
+      "source_type": "mcp_sse",
+      "description": "Create task lists, manage to-do items, set due dates, and track tasks."
+    },
+    {
+      "id": "figma",
+      "name": "Figma",
+      "category": "Productivity",
+      "domain": "figma.com",
+      "mcp_server_url": "composio:figma",
+      "source_type": "mcp_sse",
+      "description": "Inspect design files, manage comments, and automate design asset workflows."
+    },
+    {
+      "id": "reddit",
+      "name": "Reddit",
+      "category": "Social & CRM",
+      "domain": "reddit.com",
+      "mcp_server_url": "composio:reddit",
+      "source_type": "mcp_sse",
+      "description": "Search subreddits, retrieve posts, submit comments, and track trends."
+    },
+    {
+      "id": "elevenlabs",
+      "name": "ElevenLabs",
+      "category": "AI & Search",
+      "domain": "elevenlabs.io",
+      "mcp_server_url": "composio:elevenlabs",
+      "source_type": "mcp_sse",
+      "description": "Generate high-quality AI voices, convert text to speech, and manage voice profiles."
+    },
+    {
+      "id": "linkedin",
+      "name": "LinkedIn",
+      "category": "Social & CRM",
+      "domain": "linkedin.com",
+      "mcp_server_url": "composio:linkedin",
+      "source_type": "mcp_sse",
+      "description": "Post updates, manage company profiles, and automate professional networking."
+    },
+    {
+      "id": "openweathermap",
+      "name": "OpenWeatherMap",
+      "category": "Productivity",
+      "domain": "openweathermap.org",
+      "mcp_server_url": "composio:weathermap",
+      "source_type": "mcp_sse",
+      "description": "Get current weather updates, forecasts, and historical weather data."
+    },
+    {
+      "id": "google_meet",
+      "name": "Google Meet",
+      "category": "Productivity",
+      "domain": "meet.google.com",
+      "mcp_server_url": "composio:googlemeet",
+      "source_type": "mcp_sse",
+      "description": "Schedule video meetings, manage meet codes, and organize virtual events."
+    },
+    {
+      "id": "dropbox",
+      "name": "Dropbox",
+      "category": "Storage",
+      "domain": "dropbox.com",
+      "mcp_server_url": "composio:dropbox",
+      "source_type": "mcp_sse",
+      "description": "Upload files, share links, download folder contents, and manage cloud storage."
     }
   ]
 }

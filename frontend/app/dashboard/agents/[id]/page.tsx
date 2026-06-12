@@ -50,7 +50,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { toast } from "sonner"
 import Link from "next/link"
-import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval, A2FlightsList } from "@/components/a2ui/components"
+import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval, A2FlightsList, A2Map, A2WeatherCard } from "@/components/a2ui/components"
 
 interface Agent {
   id: number
@@ -929,7 +929,7 @@ export default function AgentBuilderPage() {
                       <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-muted/50 prose-pre:border prose-pre:border-border/50">
                         {m.role === 'assistant' && m.chunks && m.chunks.length > 0 ? (
                           <div className="space-y-3">
-                            {m.chunks.map((chunk, chunkIdx) => (
+                    {m.chunks.map((chunk, chunkIdx) => (
                               <div key={chunkIdx}>
                                 {chunk.type === 'a2ui' ? (
                                   (() => {
@@ -938,6 +938,16 @@ export default function AgentBuilderPage() {
                                     if (comp === 'flights' || comp === 'flight_list') {
                                       return (
                                         <A2FlightsList data={a2data} />
+                                      );
+                                    }
+                                    if (comp === 'weather' || comp === 'weather_card') {
+                                      return (
+                                        <A2WeatherCard data={a2data} />
+                                      );
+                                    }
+                                    if (comp === 'map' || comp === 'google_maps') {
+                                      return (
+                                        <A2Map data={a2data} />
                                       );
                                     }
                                     if (comp === 'audioplayer' || comp === 'audio') {

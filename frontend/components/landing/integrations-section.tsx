@@ -13,7 +13,7 @@ const integrations = [
   { name: "GitHub", description: "Manage issues, pull requests, and repo stats via agent commands.", icon: "https://cdn.simpleicons.org/github" },
   { name: "Google Maps", description: "Calculate routes, search places, get directions, and geocode addresses dynamically.", icon: "https://www.google.com/s2/favicons?sz=128&domain=maps.google.com" },
   { name: "Linear", description: "Streamline issue tracking and team updates through natural language.", icon: "https://cdn.simpleicons.org/linear" },
-  { name: "Apify", description: "Run web scraping, data extraction, and automation actors on the Apify platform.", icon: "https://cdn.simpleicons.org/apify" },
+  { name: "Apify", description: "Run web scraping, data extraction, and automation actors on the Apify platform.", icon: "https://www.google.com/s2/favicons?sz=128&domain=apify.com" },
 ];
 
 function SignalWaveCanvas() {

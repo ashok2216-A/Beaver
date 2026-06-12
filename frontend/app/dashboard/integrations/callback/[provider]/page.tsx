@@ -42,6 +42,7 @@ export default function OAuthCallbackPage({ params }: { params: Promise<{ provid
             'google_sheets': 'googlesheets',
             'google_docs': 'googledocs',
             'google_maps': 'googlemaps',
+            'google_chat': 'google_chat',
             'github_mcp': 'github',
             'slack_mcp': 'slack',
             'notion': 'notion',
@@ -50,6 +51,15 @@ export default function OAuthCallbackPage({ params }: { params: Promise<{ provid
             'linear': 'linear',
             'jira': 'jira',
             'apify': 'apify',
+            'google_tasks': 'googletasks',
+            'google_meet': 'googlemeet',
+            'openweathermap': 'weathermap',
+            'figma': 'figma',
+            'reddit': 'reddit',
+            'linkedin': 'linkedin',
+            'dropbox': 'dropbox',
+            'bitbucket': 'bitbucket',
+            'elevenlabs': 'elevenlabs',
           }
           const toolkit = toolkitMap[pending.templateId] || pending.templateId
           if (toolkit) {
@@ -66,34 +76,133 @@ export default function OAuthCallbackPage({ params }: { params: Promise<{ provid
 
       setStatus('success')
       
+      // Triple-redundant communication:
+      // 1. window.opener.postMessage
       if (window.opener) {
-        window.opener.postMessage('oauth_success', '*');
-        window.close();
-      } else {
-        const returnUrl = localStorage.getItem('oauth_return_to') || '/dashboard/agents/new?tab=templates';
-        localStorage.removeItem('oauth_return_to');
-        router.push(returnUrl);
+        try {
+          window.opener.postMessage('oauth_success', '*');
+        } catch (e) {
+          console.warn('postMessage to opener failed:', e);
+        }
       }
+
+      // 2. BroadcastChannel
+      try {
+        const bc = new BroadcastChannel('oauth_channel');
+        bc.postMessage({ type: 'oauth_success', provider: resolvedParams.provider });
+        bc.close();
+      } catch (e) {
+        console.warn('BroadcastChannel failed:', e);
+      }
+
+      // 3. localStorage event trigger
+      try {
+        localStorage.setItem('oauth_success_trigger', JSON.stringify({
+          provider: resolvedParams.provider,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        console.warn('localStorage trigger failed:', e);
+      }
+
+      // Auto-close popup after 1.5 seconds if permitted by browser
+      const timer = setTimeout(() => {
+        try {
+          window.close();
+        } catch (e) {
+          console.warn('Auto-close failed:', e);
+        }
+      }, 1500);
+
+      return () => clearTimeout(timer);
     }
 
     processCallback()
-  }, [searchParams, router, getToken])
+  }, [searchParams, router, getToken, resolvedParams.provider])
 
   if (status === 'error') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <AlertCircle className="w-12 h-12 text-rose-500 mb-4" />
-        <h1 className="text-xl font-semibold mb-2">Connection Failed</h1>
-        <p className="text-muted-foreground mb-6">{errorMessage}</p>
-        <Button onClick={() => window.close()}>Close Window</Button>
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] dark:bg-slate-950 p-4 font-sans relative overflow-hidden">
+        {/* Background Ambient Gradients */}
+        <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] md:w-[40vw] md:h-[40vw] rounded-full bg-rose-500/10 dark:bg-rose-500/20 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[70vw] h-[70vw] md:w-[40vw] md:h-[40vw] rounded-full bg-orange-500/10 dark:bg-orange-500/20 blur-[100px] pointer-events-none" />
+
+        <div className="w-full max-w-[400px] bg-white dark:bg-slate-900 rounded-[24px] shadow-sm border border-slate-100 dark:border-slate-800 p-8 relative text-center z-10">
+          <div className="flex justify-center mb-6">
+            <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-950/30 text-rose-500 animate-pulse animate-duration-1000">
+              <AlertCircle className="w-10 h-10" />
+            </div>
+          </div>
+
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">
+            Connection Failed
+          </h1>
+          <p className="text-[15px] text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
+            {errorMessage || "OAuth authorization was denied or failed."}
+          </p>
+
+          <Button 
+            onClick={() => {
+              try { window.close(); } catch (e) {}
+            }}
+            className="w-full h-12 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium transition-colors shadow-sm shadow-rose-500/20"
+          >
+            Close Window
+          </Button>
+        </div>
       </div>
     )
   }
 
-  // Return a simple loader while processing, otherwise null to close instantly
+  if (status === 'success') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] dark:bg-slate-950 p-4 font-sans relative overflow-hidden">
+        {/* Background Ambient Gradients */}
+        <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] md:w-[40vw] md:h-[40vw] rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[70vw] h-[70vw] md:w-[40vw] md:h-[40vw] rounded-full bg-teal-500/10 dark:bg-teal-500/20 blur-[100px] pointer-events-none" />
+
+        <div className="w-full max-w-[400px] bg-white dark:bg-slate-900 rounded-[24px] shadow-sm border border-slate-100 dark:border-slate-800 p-8 relative text-center z-10">
+          <div className="flex justify-center mb-6">
+            <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500 animate-bounce">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+          </div>
+
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">
+            Connected!
+          </h1>
+          <p className="text-[15px] text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
+            Integration authorized successfully. You can now close this window or return to the dashboard.
+          </p>
+
+          <Button 
+            onClick={() => {
+              try { window.close(); } catch (e) {}
+            }}
+            className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors shadow-sm shadow-emerald-500/20"
+          >
+            Close Window
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Return a beautiful processing view
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Loader className="w-6 h-6 animate-spin text-primary" text={false} />
+    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] dark:bg-slate-950 p-4 font-sans relative overflow-hidden">
+      {/* Background Ambient Gradients */}
+      <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] md:w-[40vw] md:h-[40vw] rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[70vw] h-[70vw] md:w-[40vw] md:h-[40vw] rounded-full bg-purple-500/10 dark:bg-purple-500/20 blur-[100px] pointer-events-none" />
+
+      <div className="w-full max-w-[400px] bg-white dark:bg-slate-900 rounded-[24px] shadow-sm border border-slate-100 dark:border-slate-800 p-8 relative text-center z-10">
+        <div className="flex justify-center mb-6">
+          <Loader className="w-10 h-10 animate-spin text-primary" text={false} />
+        </div>
+        <p className="text-[15px] text-slate-500 dark:text-slate-400 font-medium">
+          Completing authorization connection...
+        </p>
+      </div>
     </div>
   )
 }

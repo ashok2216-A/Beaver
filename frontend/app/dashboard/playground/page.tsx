@@ -8,7 +8,7 @@ import { useAuth, useUser } from "@clerk/nextjs"
 import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval, A2FlightsList } from "@/components/a2ui/components"
+import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval, A2FlightsList, A2Map, A2WeatherCard } from "@/components/a2ui/components"
 
 interface MessageChunk {
   type: 'text' | 'a2ui'
@@ -455,6 +455,16 @@ export default function PlaygroundPage() {
                                 if (comp === 'flights' || comp === 'flight_list') {
                                   return (
                                     <A2FlightsList data={a2data} />
+                                  );
+                                }
+                                if (comp === 'weather' || comp === 'weather_card') {
+                                  return (
+                                    <A2WeatherCard data={a2data} />
+                                  );
+                                }
+                                if (comp === 'map' || comp === 'google_maps') {
+                                  return (
+                                    <A2Map data={a2data} />
                                   );
                                 }
                                 if (comp === 'audioplayer' || comp === 'audio') {
