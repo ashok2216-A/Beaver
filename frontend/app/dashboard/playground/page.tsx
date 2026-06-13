@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Sparkles, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2, Terminal, Activity, Edit, Search, Paperclip, Mic, AtSign, ArrowUp, ExternalLink } from "lucide-react"
 import { useAuth, useUser } from "@clerk/nextjs"
+import { useSearchParams } from "next/navigation"
 import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -104,6 +105,19 @@ export default function PlaygroundPage() {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview')
   const [copied, setCopied] = useState(false)
   const [iframeKey, setIframeKey] = useState(0)
+
+  const [isMobile, setIsMobile] = useState(false)
+  const searchParams = useSearchParams()
+  const isEmbed = searchParams.get('embed') === 'true'
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024)
+    }
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const handleCopySandboxCode = () => {
     const rawCode = activeA2UI?.a2ui?.html || activeA2UI?.a2ui?.code || "";
@@ -395,10 +409,10 @@ export default function PlaygroundPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] -m-6 flex overflow-hidden bg-transparent">
+    <div className={cn("flex overflow-hidden bg-transparent w-full", isEmbed ? "h-screen m-0" : "h-[calc(100vh-4rem)] -m-6")}>
       
       {/* V0 Style History Sidebar */}
-      <div className="w-64 flex flex-col bg-transparent border-r border-slate-200 dark:border-slate-800 p-4 shrink-0 animate-in slide-in-from-left duration-300">
+      <div className="hidden md:flex w-64 flex-col bg-transparent border-r border-slate-200 dark:border-slate-800 p-4 shrink-0 animate-in slide-in-from-left duration-300">
         
         <div className="mb-6 px-1">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Chat</h1>
@@ -902,7 +916,7 @@ export default function PlaygroundPage() {
       </div>
 
         {/* Drag Handle for Resizing Side Panel */}
-        {isSidePanelOpen && (
+        {isSidePanelOpen && !isMobile && (
           <div 
             onMouseDown={startResizingSidePanel}
             className="w-1 cursor-col-resize hover:bg-primary/40 bg-transparent transition-all z-10 flex items-center justify-center group shrink-0"
@@ -914,8 +928,11 @@ export default function PlaygroundPage() {
         {/* Right Column: Artifact Preview */}
         {isSidePanelOpen && (
           <aside 
-            style={{ width: `${sidePanelWidth}px` }}
-            className="flex flex-col bg-card/30 backdrop-blur-xl shrink-0 h-full overflow-hidden border-l border-border/30 relative z-10"
+            style={{ width: isMobile ? '100%' : `${sidePanelWidth}px` }}
+            className={cn(
+              "flex flex-col shrink-0 h-full overflow-hidden border-l border-border/30 relative z-10",
+              isMobile ? "absolute inset-0 z-50 bg-slate-950" : "bg-card/30 backdrop-blur-xl"
+            )}
           >
             {/* Header with Title, Tabs, Copy/Refresh Options and Close Button */}
             <div className="p-4 flex items-center justify-between border-b border-border/50 bg-card/50 shrink-0 select-none">

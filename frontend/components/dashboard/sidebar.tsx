@@ -20,7 +20,8 @@ import {
   CreditCard,
   Plus,
   Users,
-  MessageCircle
+  MessageCircle,
+  ExternalLink
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -131,11 +132,23 @@ export function DashboardSidebar({
                             )}
                           />
                           <span className={cn(
-                            "transition-all duration-300 origin-left truncate",
+                            "transition-all duration-300 origin-left truncate flex-1",
                             isCollapsed ? "opacity-0 w-0 scale-0 invisible" : "opacity-100 w-auto scale-100 visible ml-3"
                           )}>
                             {item.name}
                           </span>
+                          {!isCollapsed && item.name === "Chat" && (
+                            <a 
+                              href={item.href + "?embed=true"}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="opacity-0 group-hover:opacity-100 ml-auto p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-muted-foreground hover:text-foreground transition-all duration-200 flex items-center justify-center shrink-0"
+                              title="Open in new tab"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          )}
                           {isCollapsed && (
                             <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-2.5 py-1 bg-popover text-popover-foreground text-[11px] font-bold rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 shadow-glow-sm border border-border pointer-events-none z-[100] whitespace-nowrap">
                               {item.name}
