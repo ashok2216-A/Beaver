@@ -5,7 +5,6 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Sparkles, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2, Terminal, Activity, Edit, Search, Paperclip, Mic, AtSign, ArrowUp, ExternalLink } from "lucide-react"
 import { useAuth, useUser } from "@clerk/nextjs"
-import { useSearchParams } from "next/navigation"
 import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -107,8 +106,7 @@ export default function PlaygroundPage() {
   const [iframeKey, setIframeKey] = useState(0)
 
   const [isMobile, setIsMobile] = useState(false)
-  const searchParams = useSearchParams()
-  const isEmbed = searchParams.get('embed') === 'true'
+  const [isEmbed, setIsEmbed] = useState(false)
 
   useEffect(() => {
     const handleResize = () => {
@@ -116,6 +114,11 @@ export default function PlaygroundPage() {
     }
     handleResize()
     window.addEventListener('resize', handleResize)
+
+    if (typeof window !== 'undefined') {
+      setIsEmbed(window.location.search.includes('embed=true'))
+    }
+
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
