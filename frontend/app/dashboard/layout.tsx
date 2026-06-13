@@ -5,7 +5,7 @@ import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { DashboardHeader } from "@/components/dashboard/header"
 import { cn } from "@/lib/utils"
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
 import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
@@ -48,8 +48,13 @@ export default function DashboardLayout({
     checkOnboarding()
   }, [isLoaded, isSignedIn, getToken, router])
 
-  const searchParams = useSearchParams()
-  const isEmbed = searchParams.get('embed') === 'true'
+  const [isEmbed, setIsEmbed] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsEmbed(window.location.search.includes('embed=true'))
+    }
+  }, [])
 
   // Hide sidebar/header on the agent builder (IDE) page AND the OAuth callback popup window
   const isBuilderPage = pathname.match(/\/dashboard\/agents\/\d+$/)
