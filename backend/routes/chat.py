@@ -223,7 +223,7 @@ Conversation:
                 messages=[{"role": "user", "content": prompt}],
                 temperature=1.0,
                 max_tokens=20,
-                timeout=15.0
+                timeout=45.0
             )
             
             raw_ids = response.choices[0].message.content.strip()
