@@ -5,7 +5,7 @@ import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { DashboardHeader } from "@/components/dashboard/header"
 import { cn } from "@/lib/utils"
 
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@clerk/nextjs"
 import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
@@ -48,6 +48,9 @@ export default function DashboardLayout({
     checkOnboarding()
   }, [isLoaded, isSignedIn, getToken, router])
 
+  const searchParams = useSearchParams()
+  const isEmbed = searchParams.get('embed') === 'true'
+
   // Hide sidebar/header on the agent builder (IDE) page AND the OAuth callback popup window
   const isBuilderPage = pathname.match(/\/dashboard\/agents\/\d+$/)
   const isCallbackPage = pathname.includes('/dashboard/integrations/callback')
@@ -60,7 +63,7 @@ export default function DashboardLayout({
     )
   }
 
-  if (isBuilderPage || isCallbackPage) {
+  if (isBuilderPage || isCallbackPage || isEmbed) {
     return (
       <div
         className="min-h-screen"

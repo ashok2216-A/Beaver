@@ -509,6 +509,49 @@ export function A2VideoPlayer({ label, src, title }: A2VideoPlayerProps) {
   )
 }
 
+// Image Component
+export interface A2ImageProps {
+  data: {
+    a2ui: {
+      component: 'image';
+      url: string;
+      label?: string;
+      size?: 'sm' | 'md' | 'lg';
+    };
+  };
+}
+
+export function A2Image({ data }: A2ImageProps) {
+  const url = data?.a2ui?.url || '';
+  const label = data?.a2ui?.label || '';
+  const size = data?.a2ui?.size || 'md';
+
+  if (!url) return null;
+
+  let widthStyle = 'w-full';
+  if (size === 'sm') widthStyle = 'max-w-xs';
+  else if (size === 'md') widthStyle = 'max-w-md';
+  else if (size === 'lg') widthStyle = 'max-w-xl';
+
+  return (
+    <div className="w-full flex flex-col items-center justify-center bg-white dark:bg-slate-900 rounded-xl p-3 shadow-sm mt-2">
+      <div className={`overflow-hidden rounded-lg ${widthStyle}`}>
+        <img 
+          src={url} 
+          alt={label} 
+          className="w-full h-auto object-contain select-none"
+          loading="lazy"
+        />
+      </div>
+      {label && (
+        <span className="text-xs text-muted-foreground mt-2 text-center font-medium italic">
+          {label}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ─── A2UI INPUT FORM ──────────────────────────────────────────────────────────
 // Top-level component: renders the full input form described by the agent's a2ui JSON
 
@@ -1490,6 +1533,220 @@ export function A2WeatherCard({ data }: A2WeatherCardProps) {
       </div>
     </div>
   )
+}
+export interface A2SandboxProps {
+  data: {
+    a2ui: {
+      component: 'sandbox' | 'iframe' | 'preview';
+      html?: string;
+      code?: string;
+      title?: string;
+    };
+  };
+  activeTab?: 'preview' | 'code';
+  iframeKey?: number;
+  isControlled?: boolean;
+  onCopy?: () => void;
+  copied?: boolean;
+}
+
+export function A2Sandbox({ 
+  data, 
+  activeTab: parentActiveTab, 
+  iframeKey: parentIframeKey, 
+  isControlled = false,
+  onCopy,
+  copied: parentCopied
+}: A2SandboxProps) {
+  const [localActiveTab, setLocalActiveTab] = useState<'preview' | 'code'>('preview');
+  const [localCopied, setLocalCopied] = useState(false);
+  const [localIframeKey, setLocalIframeKey] = useState(0);
+
+  const activeTab = isControlled ? (parentActiveTab || 'preview') : localActiveTab;
+  const iframeKey = isControlled ? (parentIframeKey || 0) : localIframeKey;
+  const copied = isControlled ? (parentCopied || false) : localCopied;
+  const setActiveTab = isControlled ? () => {} : setLocalActiveTab;
+  const setIframeKey = isControlled ? () => {} : setLocalIframeKey;
+
+  const rawCode = data?.a2ui?.html || data?.a2ui?.code || "";
+  const title = data?.a2ui?.title || "Generative Preview";
+
+  // Clean/wrap code to guarantee it compiles with Tailwind
+  let srcDoc = rawCode;
+  if (srcDoc && !srcDoc.includes("<html") && !srcDoc.includes("<body")) {
+    srcDoc = `
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <script src="https://cdn.tailwindcss.com"></script>
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; }
+          </style>
+        </head>
+        <body class="p-6 bg-slate-900 text-white min-h-screen">
+          ${srcDoc}
+        </body>
+      </html>
+    `;
+  } else if (srcDoc && !srcDoc.includes("tailwindcss.com")) {
+    srcDoc = srcDoc.replace("</head>", `<script src="https://cdn.tailwindcss.com"></script></head>`);
+  }
+
+  const handleCopy = () => {
+    if (isControlled && onCopy) {
+      onCopy();
+      return;
+    }
+    navigator.clipboard.writeText(rawCode);
+    setLocalCopied(true);
+    setTimeout(() => setLocalCopied(false), 2000);
+  };
+
+  const handleRefresh = () => {
+    setLocalIframeKey(prev => prev + 1);
+  };
+
+  if (isControlled) {
+    return (
+      <div className="flex-1 min-h-[440px] flex flex-col relative bg-slate-900 w-full h-full">
+        {activeTab === 'preview' ? (
+          <iframe
+            key={iframeKey}
+            srcDoc={srcDoc}
+            title={title}
+            sandbox="allow-scripts"
+            className="w-full h-full flex-1 border-none min-h-[440px]"
+          />
+        ) : (
+          <div className="flex-1 flex flex-col bg-slate-950 font-mono text-xs text-slate-300 leading-relaxed custom-scrollbar selection:bg-indigo-500/30 select-text p-5">
+            <pre className="m-0 leading-6 tab-size-2 overflow-auto">
+              <code>{rawCode}</code>
+            </pre>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full bg-slate-900 rounded-2xl overflow-hidden shadow-md mt-2 flex flex-col min-h-[440px]">
+      <iframe
+        key={iframeKey}
+        srcDoc={srcDoc}
+        title={title}
+        sandbox="allow-scripts"
+        className="w-full h-full flex-1 border-none min-h-[440px]"
+      />
+    </div>
+  );
+}
+
+export interface A2ArtifactPlaceholderProps {
+  data: any;
+  onOpen: () => void;
+}
+
+export function A2ArtifactPlaceholder({ data, onOpen }: A2ArtifactPlaceholderProps) {
+  const comp = data?.a2ui?.component?.toLowerCase?.() || "";
+  const title = data?.a2ui?.title || data?.a2ui?.label || "Artifact Preview";
+
+  // Map component type to icon path and name
+  let iconName = "Code";
+  let iconColor = "text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40";
+  let componentTypeName = "Live Preview";
+
+  if (comp === "flights" || comp === "flight_list") {
+    iconName = "Plane";
+    iconColor = "text-blue-500 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40";
+    componentTypeName = "Flight Search";
+  } else if (comp === "weather" || comp === "weather_card") {
+    iconName = "Cloud";
+    iconColor = "text-emerald-500 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40";
+    componentTypeName = "Weather Card";
+  } else if (comp === "map" || comp === "google_maps") {
+    iconName = "Map";
+    iconColor = "text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40";
+    componentTypeName = "Map view";
+  } else if (comp === "audioplayer" || comp === "audio") {
+    iconName = "Audio";
+    iconColor = "text-purple-500 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40";
+    componentTypeName = "Audio Player";
+  } else if (comp === "videoplayer" || comp === "video" || comp === "youtube") {
+    iconName = "Video";
+    iconColor = "text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/40";
+    componentTypeName = "Video Player";
+  }
+
+  return (
+    <div className="w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow mt-2">
+      <div className="flex items-center gap-3">
+        {/* Left: Icon box */}
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${iconColor}`}>
+          {iconName === "Plane" && (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5C20.5 3 18.5 3.5 17 5L13.5 8.5L5.3 6.7L3.5 8.5l9.2 3.6l-3.3 3.3L5 14.2L3.5 15.7l3.8 2.2l2.2 3.8l1.5-1.5l-1.2-4.4l3.3-3.3l3.6 9.2l1.8-1.8z"/>
+            </svg>
+          )}
+          {iconName === "Cloud" && (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17.5 19A3.5 3.5 0 0 0 21 15.5A3.5 3.5 0 0 0 17.5 12c-.125 0-.25.01-.375.03A5 5 0 1 0 8 16h9.5"/>
+            </svg>
+          )}
+          {iconName === "Map" && (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+              <line x1="9" y1="3" x2="9" y2="18"/>
+              <line x1="15" y1="6" x2="15" y2="21"/>
+            </svg>
+          )}
+          {iconName === "Audio" && (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 18V5l12-2v13"/>
+              <circle cx="6" cy="18" r="3"/>
+              <circle cx="18" cy="16" r="3"/>
+            </svg>
+          )}
+          {iconName === "Video" && (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+          )}
+          {iconName === "Code" && (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 18 22 12 16 6"/>
+              <polyline points="8 6 2 12 8 18"/>
+            </svg>
+          )}
+        </div>
+
+        {/* Center: Info text */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            {componentTypeName}
+          </p>
+          <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate mt-0.5">
+            {title}
+          </h4>
+        </div>
+
+        {/* Right: Trigger button */}
+        <button
+          onClick={onOpen}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-100/40 dark:border-indigo-900/30 transition-colors shadow-sm"
+        >
+          <span>Open</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
 }
 
 

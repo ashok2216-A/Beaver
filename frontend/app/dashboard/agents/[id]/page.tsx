@@ -50,7 +50,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { toast } from "sonner"
 import Link from "next/link"
-import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval, A2FlightsList, A2Map, A2WeatherCard } from "@/components/a2ui/components"
+import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval, A2FlightsList, A2Map, A2WeatherCard, A2Sandbox, A2ArtifactPlaceholder, A2Image } from "@/components/a2ui/components"
 
 interface Agent {
   id: number
@@ -137,6 +137,8 @@ export default function AgentBuilderPage() {
   const [isSavingEndpoint, setIsSavingEndpoint] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(380)
   const [settingsWidth, setSettingsWidth] = useState(340)
+  const [activeRightTab, setActiveRightTab] = useState<'settings' | 'preview'>('settings')
+  const [activeA2UI, setActiveA2UI] = useState<any>(null)
   const isResizingLeft = useRef(false)
   const isResizingRight = useRef(false)
 
@@ -399,6 +401,23 @@ export default function AgentBuilderPage() {
                   }
                   return updated
                 })
+                if (data.data.chunks) {
+                  const artifactChunk = data.data.chunks.find((chunk: any) => {
+                    if (chunk.type !== 'a2ui') return false;
+                    const comp = chunk.content?.a2ui?.component?.toLowerCase?.();
+                    return [
+                      'flights', 'flight_list',
+                      'weather', 'weather_card',
+                      'sandbox', 'iframe', 'preview',
+                      'map', 'google_maps',
+                      'audioplayer', 'audio',
+                      'videoplayer', 'video', 'youtube'
+                    ].includes(comp);
+                  });
+                  if (artifactChunk) {
+                    setActiveA2UI(artifactChunk.content);
+                  }
+                }
               }
               if (data.type === 'error') {
                 toast.error(data.text)
@@ -576,6 +595,20 @@ export default function AgentBuilderPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {settingsWidth === 0 && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="rounded-xl font-bold h-10 px-4 border-border/50 bg-background/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+              onClick={() => {
+                setSettingsWidth(340)
+                setActiveRightTab('settings')
+              }}
+            >
+              <Settings2 className="mr-2 h-4 w-4" />
+              Settings
+            </Button>
+          )}
           <Button 
             variant="outline" 
             size="sm" 
@@ -935,37 +968,25 @@ export default function AgentBuilderPage() {
                                   (() => {
                                     const a2data = chunk.content as any;
                                     const comp = a2data?.a2ui?.component?.toLowerCase?.();
-                                    if (comp === 'flights' || comp === 'flight_list') {
-                                      return (
-                                        <A2FlightsList data={a2data} />
-                                      );
+                                    if (comp === 'image') {
+                                      return <A2Image data={a2data} />;
                                     }
-                                    if (comp === 'weather' || comp === 'weather_card') {
+                                    if (comp === 'flights' || comp === 'flight_list' ||
+                                        comp === 'weather' || comp === 'weather_card' ||
+                                        comp === 'sandbox' || comp === 'iframe' || comp === 'preview' ||
+                                        comp === 'map' || comp === 'google_maps' ||
+                                        comp === 'audioplayer' || comp === 'audio' ||
+                                        comp === 'videoplayer' || comp === 'video' || comp === 'youtube') {
                                       return (
-                                        <A2WeatherCard data={a2data} />
-                                      );
-                                    }
-                                    if (comp === 'map' || comp === 'google_maps') {
-                                      return (
-                                        <A2Map data={a2data} />
-                                      );
-                                    }
-                                    if (comp === 'audioplayer' || comp === 'audio') {
-                                      return (
-                                        <A2AudioPlayer
-                                          label={a2data.a2ui.label}
-                                          src={a2data.a2ui.src}
-                                          data={a2data.a2ui.data}
-                                          title={a2data.a2ui.title}
-                                        />
-                                      );
-                                    }
-                                    if (comp === 'videoplayer' || comp === 'video' || comp === 'youtube') {
-                                      return (
-                                        <A2VideoPlayer
-                                          label={a2data.a2ui.label}
-                                          src={a2data.a2ui.src}
-                                          title={a2data.a2ui.title}
+                                        <A2ArtifactPlaceholder
+                                          data={a2data}
+                                          onOpen={() => {
+                                            setActiveA2UI(a2data);
+                                            setActiveRightTab('preview');
+                                            if (settingsWidth < 280) {
+                                              setSettingsWidth(450);
+                                            }
+                                          }}
                                         />
                                       );
                                     }
@@ -1137,174 +1158,262 @@ export default function AgentBuilderPage() {
         </main>
 
         {/* Drag Handle for Resizing Right Panel */}
-        <div 
-          onMouseDown={startResizingRight}
-          className="w-1 cursor-col-resize hover:bg-primary/40 bg-transparent transition-all z-10 flex items-center justify-center group shrink-0"
-        >
-          <div className="h-10 w-[2px] rounded bg-muted-foreground/20 group-hover:bg-primary/80 transition-colors pointer-events-none select-none" />
-        </div>
+        {settingsWidth > 0 && (
+          <div 
+            onMouseDown={startResizingRight}
+            className="w-1 cursor-col-resize hover:bg-primary/40 bg-transparent transition-all z-10 flex items-center justify-center group shrink-0"
+          >
+            <div className="h-10 w-[2px] rounded bg-muted-foreground/20 group-hover:bg-primary/80 transition-colors pointer-events-none select-none" />
+          </div>
+        )}
 
-        {/* Right Panel: Settings & Configuration */}
+        {/* Right Panel: Settings & Configuration & Preview */}
         <aside 
           style={{ width: `${settingsWidth}px` }} 
-          className="flex flex-col bg-card/30 backdrop-blur-xl shrink-0 h-full overflow-hidden select-none border-l border-border/30 relative z-10"
+          className="flex flex-col bg-card/30 backdrop-blur-xl shrink-0 h-full overflow-hidden border-l border-border/30 relative z-10"
         >
-          <div className="p-5 flex items-center justify-between border-b border-border/50">
-            <div className="flex items-center gap-2">
-              <Settings2 className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-bold">Agent Settings</h2>
-            </div>
-            {isSaving && <Loader className="h-4 w-4 animate-spin text-primary" />}
-          </div>
-          
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-            <form id="agent-settings-form" onSubmit={handleSaveChanges} className="p-6 space-y-8 pb-10">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Name</label>
-                  <Input name="name" defaultValue={agent.name} className="h-11 rounded-xl bg-background/50 border-border/50" />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Description</label>
-                    <span className="text-[9px] font-bold text-muted-foreground/50">{(agent?.description?.length || 0)}/100</span>
-                  </div>
-                  <Textarea 
-                    name="description" 
-                    defaultValue={agent.description} 
-                    maxLength={100}
-                    onChange={(e) => setAgent(prev => prev ? {...prev, description: e.target.value} : null)}
-                    className="min-h-[80px] rounded-xl bg-background/50 border-border/50 text-xs leading-relaxed resize-none"
-                    placeholder="Short description of the agent's capabilities..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">System Prompt</label>
-                    <span className="text-[9px] font-bold text-muted-foreground/50">{(agent?.system_prompt?.length || 0)}/100</span>
-                  </div>
-                  <Textarea 
-                    name="system_prompt" 
-                    defaultValue={agent.system_prompt} 
-                    maxLength={100}
-                    onChange={(e) => setAgent(prev => prev ? {...prev, system_prompt: e.target.value} : null)}
-                    className="min-h-[160px] rounded-xl bg-background/50 border-border/50 text-xs leading-relaxed resize-none"
-                    placeholder="Defines the agent's behavior..."
-                  />
-                  <p className="text-[10px] text-muted-foreground italic">Personality, rules, and constraints.</p>
-                </div>
-
-                {!isIntegrationAgent && (
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Base API URL</label>
-                    <Input name="base_url" defaultValue={agent.base_url} className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs" />
-                  </div>
+          {/* Header tabs toggle */}
+          <div className="p-4 flex flex-col gap-2 border-b border-border/50 bg-card/50 shrink-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl flex-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveRightTab('settings')}
+                  className={cn(
+                    "flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                    activeRightTab === 'settings'
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/20"
+                  )}
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                  <span>Settings</span>
+                </button>
+                {activeA2UI && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveRightTab('preview')}
+                    className={cn(
+                      "flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                      activeRightTab === 'preview'
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-background/20"
+                    )}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                    <span>Preview</span>
+                  </button>
                 )}
               </div>
+              <button
+                type="button"
+                onClick={() => setSettingsWidth(0)}
+                className="h-8 w-8 flex items-center justify-center rounded-lg border border-border/50 bg-background/50 hover:bg-background text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                title="Collapse Panel"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </div>
 
-              {!isIntegrationAgent && (
-                <div className="space-y-6 pt-6 border-t border-border/50">
-                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-primary">Authentication</h3>
-                  
+          {activeRightTab === 'preview' && activeA2UI ? (
+            <div className="flex-1 min-h-0 flex flex-col bg-slate-950/5 select-text">
+              <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+                {(() => {
+                  const comp = activeA2UI?.a2ui?.component?.toLowerCase?.();
+                  if (comp === 'image') {
+                    return <A2Image data={activeA2UI} />;
+                  }
+                  if (comp === 'flights' || comp === 'flight_list') {
+                    return <A2FlightsList data={activeA2UI} />;
+                  }
+                  if (comp === 'weather' || comp === 'weather_card') {
+                    return <A2WeatherCard data={activeA2UI} />;
+                  }
+                  if (comp === 'sandbox' || comp === 'iframe' || comp === 'preview') {
+                    return <A2Sandbox data={activeA2UI} />;
+                  }
+                  if (comp === 'map' || comp === 'google_maps') {
+                    return <A2Map data={activeA2UI} />;
+                  }
+                  if (comp === 'audioplayer' || comp === 'audio') {
+                    return (
+                      <A2AudioPlayer
+                        label={activeA2UI.a2ui.label}
+                        src={activeA2UI.a2ui.src}
+                        data={activeA2UI.a2ui.data}
+                        title={activeA2UI.a2ui.title}
+                      />
+                    );
+                  }
+                  if (comp === 'videoplayer' || comp === 'video' || comp === 'youtube') {
+                    return (
+                      <A2VideoPlayer
+                        label={activeA2UI.a2ui.label}
+                        src={activeA2UI.a2ui.src}
+                        title={activeA2UI.a2ui.title}
+                      />
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+                <form id="agent-settings-form" onSubmit={handleSaveChanges} className="p-6 space-y-8 pb-10">
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-foreground/70">Auth Type</label>
-                      <select 
-                        name="auth_type" 
-                        defaultValue={agent?.auth_type} 
-                        className="w-full h-11 rounded-xl border border-border/50 bg-background/50 px-4 text-xs outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
-                      >
-                        <option value="none">None</option>
-                        <option value="bearer">Bearer Token</option>
-                        <option value="apikey">Custom Header (API Key)</option>
-                        <option value="query_key">Query Parameter (URL)</option>
-                      </select>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Name</label>
+                      <Input name="name" defaultValue={agent.name} className="h-11 rounded-xl bg-background/50 border-border/50" />
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-foreground/70">Custom Header Name</label>
-                      <Input name="auth_header" defaultValue={agent?.auth_header} placeholder="Authorization" className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs" />
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Description</label>
+                        <span className="text-[9px] font-bold text-muted-foreground/50">{(agent?.description?.length || 0)}/100</span>
+                      </div>
+                      <Textarea 
+                        name="description" 
+                        defaultValue={agent.description} 
+                        maxLength={100}
+                        onChange={(e) => setAgent(prev => prev ? {...prev, description: e.target.value} : null)}
+                        className="min-h-[80px] rounded-xl bg-background/50 border-border/50 text-xs leading-relaxed resize-none"
+                        placeholder="Short description of the agent's capabilities..."
+                      />
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-foreground/70">Auth Secret / Token</label>
-                      <Input type="password" name="auth_secret" defaultValue={agent?.auth_secret} placeholder="sk-••••••••••••" className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs" />
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">System Prompt</label>
+                        <span className="text-[9px] font-bold text-muted-foreground/50">{(agent?.system_prompt?.length || 0)}/100</span>
+                      </div>
+                      <Textarea 
+                        name="system_prompt" 
+                        defaultValue={agent.system_prompt} 
+                        maxLength={100}
+                        onChange={(e) => setAgent(prev => prev ? {...prev, system_prompt: e.target.value} : null)}
+                        className="min-h-[160px] rounded-xl bg-background/50 border-border/50 text-xs leading-relaxed resize-none"
+                        placeholder="Defines the agent's behavior..."
+                      />
+                      <p className="text-[10px] text-muted-foreground italic">Personality, rules, and constraints.</p>
                     </div>
+
+                    {!isIntegrationAgent && (
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Base API URL</label>
+                        <Input name="base_url" defaultValue={agent.base_url} className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs" />
+                      </div>
+                    )}
                   </div>
 
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-foreground/70">Global Headers</label>
-                      <button 
-                        type="button" 
-                        onClick={() => setCustomHeaders([...customHeaders, ['', '']])}
-                        className="text-[10px] font-bold text-primary hover:underline"
-                      >
-                        + Add Pair
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      {customHeaders.map(([k, v], idx) => (
-                        <div key={idx} className="flex gap-2 group">
-                          <Input 
-                            placeholder="Key" 
-                            value={k} 
-                            onChange={(e) => {
-                              const newHeaders = [...customHeaders];
-                              newHeaders[idx][0] = e.target.value;
-                              setCustomHeaders(newHeaders);
-                            }}
-                            className="h-8 rounded-lg bg-background/50 border-border/50 text-[10px] font-mono px-2"
-                          />
-                          <Input 
-                            placeholder="Value" 
-                            value={v}
-                            onChange={(e) => {
-                              const newHeaders = [...customHeaders];
-                              newHeaders[idx][1] = e.target.value;
-                              setCustomHeaders(newHeaders);
-                            }}
-                            className="h-8 rounded-lg bg-background/50 border-border/50 text-[10px] font-mono px-2"
-                          />
-                          <button 
-                            type="button"
-                            onClick={() => setCustomHeaders(customHeaders.filter((_, i) => i !== idx))}
-                            className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
+                  {!isIntegrationAgent && (
+                    <div className="space-y-6 pt-6 border-t border-border/50">
+                      <h3 className="text-[10px] font-bold uppercase tracking-widest text-primary">Authentication</h3>
+                      
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-foreground/70">Auth Type</label>
+                          <select 
+                            name="auth_type" 
+                            defaultValue={agent?.auth_type} 
+                            className="w-full h-11 rounded-xl border border-border/50 bg-background/50 px-4 text-xs outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <option value="none">None</option>
+                            <option value="bearer">Bearer Token</option>
+                            <option value="apikey">Custom Header (API Key)</option>
+                            <option value="query_key">Query Parameter (URL)</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-foreground/70">Custom Header Name</label>
+                          <Input name="auth_header" defaultValue={agent?.auth_header} placeholder="Authorization" className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs" />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-foreground/70">Auth Secret / Token</label>
+                          <Input type="password" name="auth_secret" defaultValue={agent?.auth_secret} placeholder="sk-••••••••••••" className="h-11 rounded-xl bg-background/50 border-border/50 font-mono text-xs" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-foreground/70">Global Headers</label>
+                          <button 
+                            type="button" 
+                            onClick={() => setCustomHeaders([...customHeaders, ['', '']])}
+                            className="text-[10px] font-bold text-primary hover:underline"
+                          >
+                            + Add Pair
                           </button>
                         </div>
-                      ))}
+                        <div className="space-y-2">
+                          {customHeaders.map(([k, v], idx) => (
+                            <div key={idx} className="flex gap-2 group">
+                              <Input 
+                                placeholder="Key" 
+                                value={k} 
+                                onChange={(e) => {
+                                  const newHeaders = [...customHeaders];
+                                  newHeaders[idx][0] = e.target.value;
+                                  setCustomHeaders(newHeaders);
+                                }}
+                                className="h-8 rounded-lg bg-background/50 border-border/50 text-[10px] font-mono px-2"
+                              />
+                              <Input 
+                                placeholder="Value" 
+                                value={v}
+                                onChange={(e) => {
+                                  const newHeaders = [...customHeaders];
+                                  newHeaders[idx][1] = e.target.value;
+                                  setCustomHeaders(newHeaders);
+                                }}
+                                className="h-8 rounded-lg bg-background/50 border-border/50 text-[10px] font-mono px-2"
+                              />
+                              <button 
+                                type="button"
+                                onClick={() => setCustomHeaders(customHeaders.filter((_, i) => i !== idx))}
+                                className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-4 pt-6 border-t border-border/50">
+                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-primary">Engine</h3>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-foreground/70">Model ID</label>
+                      <select 
+                        name="model_id" 
+                        defaultValue={agent.model_id} 
+                        className="w-full h-11 rounded-xl border border-border/50 bg-background/50 px-4 text-xs outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
+                      >
+                        <option value="gemini/gemini-3.1-flash-lite">mistral-small (Mistral)</option>
+                        <option value="mistral/mistral-large-latest">mistral-large (Mistral)</option>
+                        <option value="openai/gpt-4o-mini">gpt-4o-mini (OpenAI)</option>
+                      </select>
                     </div>
                   </div>
-                </div>
-              )}
-
-              <div className="space-y-4 pt-6 border-t border-border/50">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-primary">Engine</h3>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-foreground/70">Model ID</label>
-                  <select 
-                    name="model_id" 
-                    defaultValue={agent.model_id} 
-                    className="w-full h-11 rounded-xl border border-border/50 bg-background/50 px-4 text-xs outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
-                  >
-                    <option value="gemini/gemini-3.1-flash-lite">mistral-small (Mistral)</option>
-                    <option value="mistral/mistral-large-latest">mistral-large (Mistral)</option>
-                    <option value="openai/gpt-4o-mini">gpt-4o-mini (OpenAI)</option>
-                  </select>
-                </div>
+                </form>
               </div>
-            </form>
-          </div>
 
-          <div className="p-5 border-t border-border/50 bg-card/30">
-            <Button type="submit" form="agent-settings-form" variant="hero" className="w-full h-11 rounded-xl shadow-glow font-bold" disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
+              <div className="p-5 border-t border-border/50 bg-card/30">
+                <Button type="submit" form="agent-settings-form" variant="hero" className="w-full h-11 rounded-xl shadow-glow font-bold" disabled={isSaving}>
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </>
+          )}
         </aside>
       </div>
 
