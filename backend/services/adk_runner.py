@@ -1024,7 +1024,7 @@ def _build_agent(
                         if val < 45:
                             return val * 9/5 + 32
                         return val
-                    except:
+                    except Exception:
                         return 70
 
                 main_info = actual_data.get("main", {}) if isinstance(actual_data.get("main"), dict) else actual_data
