@@ -1001,8 +1001,8 @@ def _build_agent(
             if isinstance(actual_data, str):
                 try:
                     actual_data = json.loads(actual_data)
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.debug(f"Failed to parse weather data as JSON: {e}")
             if isinstance(actual_data, dict):
                 actual_data = actual_data.get("data", actual_data)
             if isinstance(actual_data, dict) and "weather_info" in actual_data:
@@ -1024,7 +1024,7 @@ def _build_agent(
                         if val < 45:
                             return val * 9/5 + 32
                         return val
-                    except:
+                    except Exception:
                         return 70
 
                 main_info = actual_data.get("main", {}) if isinstance(actual_data.get("main"), dict) else actual_data
