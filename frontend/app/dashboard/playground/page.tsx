@@ -3,7 +3,7 @@ import { Loader } from "@/components/ui/loader";
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Sparkles, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2, Terminal, Activity, Edit, Search, Paperclip, Mic, AtSign, ArrowUp, ExternalLink } from "lucide-react"
+import { Sparkles, Bot, User, Server, ArrowRight, ChevronDown, Plus, Trash2, Terminal, Activity, Edit, Search, Paperclip, Mic, AtSign, ArrowUp, ExternalLink, Trello, Clock, Calculator, Presentation, Gamepad2 } from "lucide-react"
 import { useAuth, useUser } from "@clerk/nextjs"
 import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
@@ -49,7 +49,7 @@ function A2UIResponseWrapper({ a2data, comp, onOpenPreview, children }: A2UIResp
   const title = comp === 'sandbox' || comp === 'iframe' || comp === 'preview' ? (a2data?.a2ui?.title || 'Artifact') : `${comp.replace('_', ' ')} card`;
 
   return (
-    <div className="flex flex-col gap-2 w-full max-w-lg">
+    <div className={cn("flex flex-col gap-2 w-full", (comp === 'sandbox' || comp === 'iframe' || comp === 'preview') ? "max-w-none" : "max-w-lg")}>
       <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground/60 px-1 select-none w-full min-w-0">
         <div 
           onClick={() => setIsCollapsed(!isCollapsed)} 
@@ -61,13 +61,76 @@ function A2UIResponseWrapper({ a2data, comp, onOpenPreview, children }: A2UIResp
             {title}
           </span>
         </div>
-        <button
-          onClick={onOpenPreview}
-          className="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-all flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-widest bg-indigo-50/50 dark:bg-indigo-950/20 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 px-2.5 py-1 rounded-lg border border-indigo-200/30 dark:border-indigo-800/30 shadow-sm active:scale-95 duration-200 shrink-0"
-        >
-          <span>Preview</span>
-          <ExternalLink className="w-2.5 h-2.5 text-indigo-500/80 dark:text-indigo-400/80" />
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {['sandbox', 'iframe', 'preview'].includes(comp) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const rawCode = a2data?.a2ui?.html || a2data?.a2ui?.code || "";
+                if (rawCode) {
+                  let srcDoc = rawCode;
+                  if (srcDoc && !srcDoc.includes("<html") && !srcDoc.includes("<body")) {
+                    srcDoc = `
+                      <!DOCTYPE html>
+                      <html lang="en">
+                        <head>
+                          <meta charset="UTF-8">
+                          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                          <script src="https://cdn.tailwindcss.com"></script>
+                          <style>
+                            body { font-family: system-ui, -apple-system, sans-serif; }
+                            /* Custom styled premium scrollbar for sandboxed document viewports */
+                            ::-webkit-scrollbar {
+                              width: 8px;
+                              height: 8px;
+                            }
+                            ::-webkit-scrollbar-track {
+                              background: #000000;
+                            }
+                            ::-webkit-scrollbar-thumb {
+                              background: #27272a;
+                              border-radius: 9999px;
+                            }
+                            ::-webkit-scrollbar-thumb:hover {
+                              background: #3f3f46;
+                            }
+                            html {
+                              scroll-behavior: smooth;
+                            }
+                          </style>
+                        </head>
+                        <body class="p-6 bg-black text-white min-h-screen">
+                          ${srcDoc}
+                        </body>
+                      </html>
+                    `;
+                  } else if (srcDoc && !srcDoc.includes("tailwindcss.com")) {
+                    srcDoc = srcDoc.replace("</head>", `<script src="https://cdn.tailwindcss.com"></script></head>`);
+                  }
+                  const newTab = window.open();
+                  if (newTab) {
+                    newTab.document.open();
+                    newTab.document.write(srcDoc);
+                    newTab.document.close();
+                  }
+                }
+              }}
+              title="Open in new browser tab"
+              className="text-slate-600 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 transition-all flex items-center gap-1 font-bold text-[10px] uppercase tracking-widest bg-slate-100/50 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-900 px-2 py-1 rounded-lg border border-slate-200/40 dark:border-slate-800/40 shadow-sm active:scale-95 duration-200 shrink-0"
+            >
+              <span>New Tab</span>
+              <ExternalLink className="w-2.5 h-2.5" />
+            </button>
+          )}
+
+          <button
+            onClick={onOpenPreview}
+            className="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-all flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-widest bg-indigo-50/50 dark:bg-indigo-950/20 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 px-2.5 py-1 rounded-lg border border-indigo-200/30 dark:border-indigo-800/30 shadow-sm active:scale-95 duration-200 shrink-0"
+          >
+            <span>Preview</span>
+            <ExternalLink className="w-2.5 h-2.5 text-indigo-500/80 dark:text-indigo-400/80" />
+          </button>
+        </div>
       </div>
       
       <div className={cn(
@@ -104,6 +167,7 @@ export default function PlaygroundPage() {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview')
   const [copied, setCopied] = useState(false)
   const [iframeKey, setIframeKey] = useState(0)
+  const activeIframeRef = useRef<HTMLIFrameElement | null>(null)
 
   const [isMobile, setIsMobile] = useState(false)
   const [isEmbed, setIsEmbed] = useState(false)
@@ -138,6 +202,59 @@ export default function PlaygroundPage() {
     setCopied(false);
     setIframeKey(prev => prev + 1);
   }, [activeA2UI]);
+
+  const handleOpenInNewTab = () => {
+    const rawCode = activeA2UI?.a2ui?.html || activeA2UI?.a2ui?.code || "";
+    if (!rawCode) return;
+
+    let srcDoc = rawCode;
+    if (srcDoc && !srcDoc.includes("<html") && !srcDoc.includes("<body")) {
+      srcDoc = `
+        <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; }
+              /* Custom styled premium scrollbar for sandboxed document viewports */
+              ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+              }
+              ::-webkit-scrollbar-track {
+                background: #000000;
+              }
+              ::-webkit-scrollbar-thumb {
+                background: #27272a;
+                border-radius: 9999px;
+              }
+              ::-webkit-scrollbar-thumb:hover {
+                background: #3f3f46;
+              }
+              html {
+                scroll-behavior: smooth;
+              }
+            </style>
+          </head>
+          <body class="p-6 bg-black text-white min-h-screen">
+            ${srcDoc}
+          </body>
+        </html>
+      `;
+    } else if (srcDoc && !srcDoc.includes("tailwindcss.com")) {
+      srcDoc = srcDoc.replace("</head>", `<script src="https://cdn.tailwindcss.com"></script></head>`);
+    }
+
+    const newTab = window.open();
+    if (newTab) {
+      newTab.document.open();
+      newTab.document.write(srcDoc);
+      newTab.document.close();
+    }
+  };
+
   const isResizingSidePanel = useRef(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -209,6 +326,37 @@ export default function PlaygroundPage() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
+
+  useEffect(() => {
+    const handleIframeMessage = (event: MessageEvent) => {
+      if (event.data && typeof event.data === 'object') {
+        const { type, action, message: msgText } = event.data;
+        if (type === 'a2ui-action') {
+          if (action === 'send' && msgText) {
+            handleSend(msgText);
+          } else if (action === 'set-input' && msgText) {
+            setInput(msgText);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('message', handleIframeMessage);
+    return () => window.removeEventListener('message', handleIframeMessage);
+  }, [sessionId, selectedAgent, isOrchestratorMode, input, isLoading]);
+
+  useEffect(() => {
+    if (activeIframeRef.current) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage && lastMessage.role === 'assistant') {
+        activeIframeRef.current.contentWindow?.postMessage({
+          type: 'a2ui-agent-reply',
+          message: lastMessage.content,
+          chunks: lastMessage.chunks
+        }, '*');
+      }
+    }
+  }, [messages]);
 
   const handleAgentSelect = (agent: Agent) => {
     setSelectedAgent(agent)
@@ -529,7 +677,7 @@ export default function PlaygroundPage() {
           </div>
         )}
 
-        <div className={cn("w-full max-w-3xl px-4 md:px-6 pb-40 space-y-8", messages.length > 0 ? "pt-10" : "pt-0")}>
+        <div className={cn("w-full max-w-3xl px-4 md:px-6 pb-60 space-y-8", messages.length > 0 ? "pt-10" : "pt-0")}>
         {isLoadingConversation ? (
           <div className="flex flex-col items-center justify-center py-32 space-y-4 animate-in fade-in duration-300">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center">
@@ -540,6 +688,11 @@ export default function PlaygroundPage() {
         ) : (
           messages.filter(m => !m.content.startsWith('[System:')).map((message) => {
             const isAI = message.role === 'assistant'
+            const hasPreviewComponent = message.chunks?.some(chunk => {
+              if (chunk.type !== 'a2ui') return false;
+              const comp = (chunk.content as any)?.a2ui?.component?.toLowerCase?.();
+              return comp === 'sandbox' || comp === 'iframe' || comp === 'preview';
+            });
           return (
             <div
               key={message.id}
@@ -561,9 +714,10 @@ export default function PlaygroundPage() {
               </div>
 
               {/* Message Block */}
-              <div className={cn("space-y-2 max-w-[85%]", !isAI ? "flex flex-col items-end" : "flex flex-col items-start")}>
+              <div className={cn("space-y-2", hasPreviewComponent ? "max-w-[95%] w-full" : "max-w-[85%]", !isAI ? "flex flex-col items-end" : "flex flex-col items-start")}>
                 <div className={cn(
-                  "rounded-2xl px-5 py-3.5 text-sm leading-relaxed w-fit max-w-full shadow-sm transition-all duration-200",
+                  "rounded-2xl px-5 py-3.5 text-sm leading-relaxed shadow-sm transition-all duration-200",
+                  hasPreviewComponent ? "w-full" : "w-fit max-w-full",
                   isAI 
                     ? "text-foreground bg-white/60 dark:bg-white/10 border border-black/5 dark:border-white/10 rounded-bl-sm backdrop-blur-md shadow-sm" 
                     : "text-foreground bg-white/40 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-br-sm backdrop-blur-md shadow-sm"
@@ -780,7 +934,7 @@ export default function PlaygroundPage() {
       <div className={cn(
         "absolute left-1/2 -translate-x-1/2 w-full max-w-[800px] px-4 z-20 transition-all duration-500",
         messages.length === 0 && !isLoadingConversation
-          ? "top-[55%] -translate-y-1/2"
+          ? "top-[58%] -translate-y-1/2"
           : "bottom-4"
       )}>
         
@@ -870,48 +1024,256 @@ export default function PlaygroundPage() {
 
         {/* Suggestion Cards directly below input box */}
         {messages.length === 0 && !isLoadingConversation && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full mt-4 pb-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full mt-4 pb-2">
             {[
               { 
-                icon: <Terminal className="w-4 h-4 text-emerald-500" />, 
-                title: "Debug Code", 
-                desc: "Find errors in my Python script and optimize it for performance.",
-                tag: "Engineering"
+                icon: <Trello className="w-4 h-4 text-emerald-500" />, 
+                title: "Kanban Task Board", 
+                desc: `Generate a premium, interactive Kanban Task Board using Tailwind CSS and vanilla Javascript.
+
+Please wrap it in the a2ui "preview" component format. The UI should include:
+- A modern, dark-mode glassmorphic interface with Outfit/Inter typography.
+- Three task columns: "To Do", "In Progress", and "Done".
+- Dynamic task creation: A quick form to add tasks (title, description, priority badge).
+- Interactivity: Move tasks between columns using buttons (e.g., "→", "←") and double-click to delete.
+- Subtle animations, hover scale effects, and clean status indicators.`,
+                tag: "Kanban"
               },
               { 
-                icon: <Search className="w-4 h-4 text-blue-500" />, 
-                title: "Analyze Data", 
-                desc: "Summarize the latest CSV upload and identify key metrics.",
-                tag: "Data Science"
+                icon: <Clock className="w-4 h-4 text-blue-500" />, 
+                title: "Classic Pomodoro", 
+                desc: `Generate a minimalist, premium Pomodoro Timer using Tailwind CSS and inline Javascript.
+
+Please wrap it in the a2ui "preview" component format. Features needed:
+- A high-end dark neumorphic interface with a large circular countdown timer.
+- Animated progress circle indicating the elapsed time.
+- Standard Pomodoro intervals: "Work" (25m), "Short Break" (5m), and "Long Break" (15m).
+- Play/Pause/Reset controls with smooth transition icons.
+- Sound-free visual notification (e.g., pulsing glow or screen flash) when the timer reaches zero.`,
+                tag: "Productivity"
               },
               { 
-                icon: <Sparkles className="w-4 h-4 text-purple-500" />, 
-                title: "Brainstorm", 
-                desc: "Generate creative ideas for our upcoming Q4 marketing campaign.",
-                tag: "Marketing"
+                icon: <Calculator className="w-4 h-4 text-purple-500" />, 
+                title: "SIP Portfolio Calculator", 
+                desc: `Generate an interactive Financial Portfolio/SIP Calculator using Tailwind CSS and inline JS.
+
+Please wrap it in the a2ui "preview" component format. Features:
+- Clean dashboards with sliders to adjust:
+  - Monthly Investment Amount (₹)
+  - Expected Annual Return Rate (%)
+  - Time Horizon (Years)
+- Live calculations demonstrating the Total Invested Amount, Estimated Returns, and Total Wealth Gain.
+- Dynamic visual breakdown (e.g., a styled SVG donut chart or progress bars comparing invested vs. gained wealth).
+- Future value comparison table shown in a clean modal or side panel.`,
+                tag: "Finance"
+              },
+              { 
+                icon: <Clock className="w-4 h-4 text-indigo-500" />, 
+                title: "Neumorphic Pomodoro", 
+                desc: `Generate a premium, minimalist Pomodoro Timer using Tailwind CSS and vanilla Javascript.
+
+Please wrap it in the a2ui "preview" component format. The UI must follow these specifications:
+
+1. Neumorphic Design & Styling:
+   - High-end dark neumorphic theme with a slate/zinc background (e.g., bg-slate-900).
+   - Use soft, double-drop shadows (light top-left, dark bottom-right) to create extruded and recessed neumorphic buttons and frames.
+   - Use Outfit or Inter font via Google Fonts.
+
+2. Visual Elements:
+   - A large, elegant circular countdown timer as the focal point.
+   - An interactive SVG progress circle that smoothly drains/fills indicating the elapsed time.
+   - Visual mode tabs: "Work" (25 min), "Short Break" (5 min), and "Long Break" (15 min) designed as recessed switches.
+
+3. Interactivity & Functionality:
+   - Responsive Play, Pause, and Reset buttons with smooth hover scaling and click states.
+   - Sound-free visual alert when the timer hits zero (e.g., the outer border pulses with a neon crimson or emerald glow, and a clean overlay notification slides in).
+   - A simple list underneath to track "Completed Cycles".
+
+Ensure all CSS variables for neumorphic shadows and the JS timer logic are fully inline and self-contained in the HTML structure.`,
+                tag: "Timer"
+              },
+              { 
+                icon: <Presentation className="w-4 h-4 text-pink-500" />, 
+                title: "Stock Market Presentation", 
+                desc: `Generate a premium, modern Interactive Presentation Slide Deck about the Stock Market using Tailwind CSS and inline Javascript.
+
+Please wrap it in the a2ui "preview" component format. The presentation should follow these specifications:
+
+1. Design & Theme (Modern Fintech Aesthetic):
+   - A high-end dark slate/zinc background (e.g., bg-slate-950) with glowing gradient accents (indigo/emerald).
+   - Premium typography (like Inter or Outfit) via Google Fonts.
+   - Smooth slide transition animations (fade-in, slide-over).
+
+2. Slide Structure & Content:
+   - Slide 1: Title Slide — "Understanding the Stock Market" (stunning hero typography and a glowing mock stock trend illustration).
+   - Slide 2: How It Works — Visual cards explaining buyers, sellers, order books, and exchanges (NSE, BSE, NYSE).
+   - Slide 3: Key Metrics — Recessed cards detailing P/E Ratio, Market Cap, and Dividend Yield.
+   - Slide 4: Interactive Risk Calculator — A live mini-slider tool where users select their risk tolerance to see recommended portfolio allocations (e.g., Stocks, Bonds, Gold).
+   - Slide 5: Market Summary — Actionable key takeaways for new investors.
+
+3. Navigation & Interactive Controls:
+   - Previous and Next buttons styled with glassmorphic hover effects.
+   - A horizontal slide indicator dot bar at the bottom showing active progress.
+   - A slide index sidebar or dropdown to skip directly to any slide.
+
+Ensure all layout, SVG icons, and transition JS logic are fully inline and self-contained in the HTML code.`,
+                tag: "Slides"
+              },
+              {
+                icon: <Gamepad2 className="w-4 h-4 text-cyan-500" />,
+                title: "Interactive Tic-Tac-Toe",
+                desc: `Generate a premium interactive Tic-Tac-Toe game using Tailwind CSS and inline JS. Wrap it in a preview component.
+
+Specifications:
+
+Design:
+- A beautiful dark-theme glassmorphic interface with soft purple/cyan neon highlights.
+- Smooth hover scaling and animations for grid cells.
+
+Bidirectional Event Handling:
+- User Move -> Agent: When the player clicks a cell, update the board visually with "X" and automatically send a message to the chat using:
+  window.parent.postMessage({
+    type: 'a2ui-action',
+    action: 'send',
+    message: \`[Tic-Tac-Toe Move] I played X at grid cell index \${index}. Here is the current board state: \${JSON.stringify(boardState)}. It is your turn! Please analyze the board and play your move. Reply strictly in this format: "AI_MOVE: <index>" (where index is 0-8).\`
+  }, '*');
+
+- Agent Move -> Iframe: Register a message listener in the iframe:
+  window.addEventListener('message', (event) => {
+    const data = event.data;
+    if (data && data.type === 'a2ui-agent-reply') {
+      // Check if the agent's reply contains "AI_MOVE: X"
+      const match = data.message.match(/AI_MOVE:\\s*(\\d)/i);
+      if (match) {
+        const aiMoveIndex = parseInt(match[1]);
+        // Automatically play "O" at aiMoveIndex and update the UI!
+      }
+    }
+  });
+
+Include a clean status panel indicating who's turn it is and a "Reset Game" button.`,
+                tag: "Game"
               }
-            ].map((suggestion, idx) => (
-              <button 
-                key={idx}
-                onClick={() => {
-                  setInput(suggestion.desc)
-                }}
-                className="flex flex-col items-start gap-2 p-3.5 rounded-2xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/60 dark:border-slate-800/60 shadow-sm hover:shadow-md hover:bg-white dark:hover:bg-slate-900 hover:-translate-y-0.5 transition-all duration-300 text-left group"
-              >
-                <div className="flex items-center justify-between w-full">
-                  <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 group-hover:scale-110 transition-transform">
-                    {suggestion.icon}
+            ].map((suggestion, idx) => {
+              const themes: Record<string, {
+                badgeBg: string;
+                badgeText: string;
+                badgeBorder: string;
+                iconBg: string;
+                hoverBorder: string;
+                hoverGlow: string;
+                gradientText: string;
+              }> = {
+                "Kanban": {
+                  badgeBg: "bg-emerald-50 dark:bg-emerald-950/40",
+                  badgeText: "text-emerald-600 dark:text-emerald-400",
+                  badgeBorder: "border-emerald-200/50 dark:border-emerald-800/40",
+                  iconBg: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400",
+                  hoverBorder: "hover:border-emerald-300/80 dark:hover:border-emerald-700/60",
+                  hoverGlow: "hover:shadow-[0_0_30px_rgba(16,185,129,0.08)]",
+                  gradientText: "from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-400"
+                },
+                "Game": {
+                  badgeBg: "bg-cyan-50 dark:bg-cyan-950/40",
+                  badgeText: "text-cyan-600 dark:text-cyan-400",
+                  badgeBorder: "border-cyan-200/50 dark:border-cyan-800/40",
+                  iconBg: "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400",
+                  hoverBorder: "hover:border-cyan-300/80 dark:hover:border-cyan-700/60",
+                  hoverGlow: "hover:shadow-[0_0_30px_rgba(6,182,212,0.08)]",
+                  gradientText: "from-cyan-600 to-blue-500 dark:from-cyan-400 dark:to-blue-400"
+                },
+                "Productivity": {
+                  badgeBg: "bg-blue-50 dark:bg-blue-950/40",
+                  badgeText: "text-blue-600 dark:text-blue-400",
+                  badgeBorder: "border-blue-200/50 dark:border-blue-800/40",
+                  iconBg: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
+                  hoverBorder: "hover:border-blue-300/80 dark:hover:border-blue-700/60",
+                  hoverGlow: "hover:shadow-[0_0_30px_rgba(59,130,246,0.08)]",
+                  gradientText: "from-blue-600 to-indigo-500 dark:from-blue-400 dark:to-indigo-400"
+                },
+                "Finance": {
+                  badgeBg: "bg-purple-50 dark:bg-purple-950/40",
+                  badgeText: "text-purple-600 dark:text-purple-400",
+                  badgeBorder: "border-purple-200/50 dark:border-purple-800/40",
+                  iconBg: "bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400",
+                  hoverBorder: "hover:border-purple-300/80 dark:hover:border-purple-700/60",
+                  hoverGlow: "hover:shadow-[0_0_30px_rgba(168,85,247,0.08)]",
+                  gradientText: "from-purple-600 to-pink-500 dark:from-purple-400 dark:to-pink-400"
+                },
+                "Timer": {
+                  badgeBg: "bg-indigo-50 dark:bg-indigo-950/40",
+                  badgeText: "text-indigo-600 dark:text-indigo-400",
+                  badgeBorder: "border-indigo-200/50 dark:border-indigo-800/40",
+                  iconBg: "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400",
+                  hoverBorder: "hover:border-indigo-300/80 dark:hover:border-indigo-700/60",
+                  hoverGlow: "hover:shadow-[0_0_30px_rgba(99,102,241,0.08)]",
+                  gradientText: "from-indigo-600 to-violet-500 dark:from-indigo-400 dark:to-violet-400"
+                },
+                "Slides": {
+                  badgeBg: "bg-rose-50 dark:bg-rose-950/40",
+                  badgeText: "text-rose-600 dark:text-rose-400",
+                  badgeBorder: "border-rose-200/50 dark:border-rose-800/40",
+                  iconBg: "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400",
+                  hoverBorder: "hover:border-rose-300/80 dark:hover:border-rose-700/60",
+                  hoverGlow: "hover:shadow-[0_0_30px_rgba(244,63,94,0.08)]",
+                  gradientText: "from-rose-600 to-pink-500 dark:from-rose-400 dark:to-pink-400"
+                }
+              };
+              
+              const theme = themes[suggestion.tag] || {
+                badgeBg: "bg-slate-50 dark:bg-slate-950/40",
+                badgeText: "text-slate-600 dark:text-slate-400",
+                badgeBorder: "border-slate-200/50 dark:border-slate-800/40",
+                iconBg: "bg-slate-50 dark:bg-slate-950/40 text-slate-600 dark:text-slate-400",
+                hoverBorder: "hover:border-slate-300/80 dark:hover:border-slate-700/60",
+                hoverGlow: "hover:shadow-[0_0_30px_rgba(99,102,241,0.08)]",
+                gradientText: "from-slate-600 to-slate-500 dark:from-slate-400 dark:to-slate-300"
+              };
+
+              return (
+                <button 
+                  key={idx}
+                  onClick={() => {
+                    setInput(suggestion.desc)
+                  }}
+                  className={cn(
+                    "flex flex-col justify-between items-start gap-4 p-4 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60 transition-all duration-300 text-left group hover:-translate-y-1 hover:bg-white/80 dark:hover:bg-slate-950/60 relative overflow-hidden",
+                    theme.hoverBorder,
+                    theme.hoverGlow
+                  )}
+                >
+                  <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-transparent to-current opacity-[0.02] dark:opacity-[0.04] blur-xl pointer-events-none transition-all duration-500 group-hover:scale-150" />
+                  
+                  <div className="w-full">
+                    <div className="flex items-center justify-between w-full mb-3">
+                      <div className={cn("p-2 rounded-xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-[0_2px_10px_rgba(0,0,0,0.02)]", theme.iconBg)}>
+                        {suggestion.icon}
+                      </div>
+                      <span className={cn("text-[9px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border", theme.badgeBg, theme.badgeText, theme.badgeBorder)}>
+                        {suggestion.tag}
+                      </span>
+                    </div>
+                    <div className="w-full">
+                      <h3 className={cn("text-[14px] font-bold text-slate-800 dark:text-slate-100 transition-all duration-300 group-hover:bg-gradient-to-r group-hover:bg-clip-text group-hover:text-transparent", theme.gradientText)}>
+                        {suggestion.title}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5 line-clamp-2 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
+                        {suggestion.desc}
+                      </p>
+                    </div>
                   </div>
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60 bg-muted/50 px-2 py-0.5 rounded-full">
-                    {suggestion.tag}
-                  </span>
-                </div>
-                <div className="mt-1">
-                  <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{suggestion.title}</h3>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed mt-1 line-clamp-2">{suggestion.desc}</p>
-                </div>
-              </button>
-            ))}
+
+                  <div className="flex items-center justify-between w-full pt-3 border-t border-slate-100/60 dark:border-slate-800/40">
+                    <span className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                      Use prompt template
+                    </span>
+                    <div className="p-1 rounded-lg bg-slate-50 dark:bg-slate-900 group-hover:bg-slate-100 dark:group-hover:bg-slate-800/80 transition-colors ml-auto flex items-center justify-center">
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-white transition-all duration-300 transform group-hover:translate-x-0.5" />
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
           </div>
@@ -981,18 +1343,27 @@ export default function PlaygroundPage() {
                       </button>
                     </div>
 
-                    {/* Action buttons (Copy/Refresh) */}
+                    {/* Action buttons (Copy/Refresh/New Tab) */}
                     <div className="flex items-center gap-1 shrink-0">
                       {activeTab === 'preview' ? (
-                        <button
-                          onClick={handleRefreshSandbox}
-                          title="Refresh Preview"
-                          className="h-8 w-8 flex items-center justify-center rounded-lg border border-border/50 bg-background/50 hover:bg-background text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                        >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-                          </svg>
-                        </button>
+                        <>
+                          <button
+                            onClick={handleOpenInNewTab}
+                            title="Open in New Tab"
+                            className="h-8 w-8 flex items-center justify-center rounded-lg border border-border/50 bg-background/50 hover:bg-background text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={handleRefreshSandbox}
+                            title="Refresh Preview"
+                            className="h-8 w-8 flex items-center justify-center rounded-lg border border-border/50 bg-background/50 hover:bg-background text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                            </svg>
+                          </button>
+                        </>
                       ) : (
                         <button
                           onClick={handleCopySandboxCode}
@@ -1044,6 +1415,7 @@ export default function PlaygroundPage() {
                       iframeKey={iframeKey}
                       copied={copied}
                       onCopy={handleCopySandboxCode}
+                      iframeRef={activeIframeRef}
                     />
                   </div>
                 ) : (

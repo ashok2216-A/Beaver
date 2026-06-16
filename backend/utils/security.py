@@ -7,9 +7,13 @@ from urllib.parse import urlparse
 
 from cryptography.fernet import Fernet
 from fastapi import HTTPException
+from dotenv import load_dotenv
 
 # SEC-02: End-to-End Encryption (AES-256 at rest)
-# If ENCRYPTION_KEY is missing, we use a stable default for dev, but warn in logs.
+# If ENCRYPTION_KEY is missing, we load .env from the backend directory
+_env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+load_dotenv(_env_path)
+
 _raw_key = os.getenv("ENCRYPTION_KEY", "api2bot_studio_default_32byte_key_!!!")
 # Fernet keys must be 32 url-safe base64-encoded bytes.
 # If the key isn't valid base64, we pad/encode it to be safe.

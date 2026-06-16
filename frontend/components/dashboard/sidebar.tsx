@@ -138,16 +138,18 @@ export function DashboardSidebar({
                             {item.name}
                           </span>
                           {!isCollapsed && item.name === "Chat" && (
-                            <a 
-                              href={item.href + "?embed=true"}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(e) => e.stopPropagation()}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.open(item.href + "?embed=true", "_blank", "noopener,noreferrer");
+                              }}
                               className="opacity-0 group-hover:opacity-100 ml-auto p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-muted-foreground hover:text-foreground transition-all duration-200 flex items-center justify-center shrink-0"
                               title="Open in new tab"
                             >
                               <ExternalLink className="h-3.5 w-3.5" />
-                            </a>
+                            </button>
                           )}
                           {isCollapsed && (
                             <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-2.5 py-1 bg-popover text-popover-foreground text-[11px] font-bold rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 shadow-glow-sm border border-border pointer-events-none z-[100] whitespace-nowrap">
