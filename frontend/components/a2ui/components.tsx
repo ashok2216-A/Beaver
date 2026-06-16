@@ -1548,6 +1548,32 @@ export interface A2SandboxProps {
   isControlled?: boolean;
   onCopy?: () => void;
   copied?: boolean;
+  iframeRef?: React.RefObject<HTMLIFrameElement | null>;
+}
+
+function formatHtml(html: string): string {
+  if (!html) return "";
+  if (html.includes("\n")) return html;
+  
+  let formatted = "";
+  let indent = 0;
+  const tokens = html.split(/(<\/?[a-zA-Z0-9_\-]+[^>]*>)/g);
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i].trim();
+    if (!token) continue;
+    if (token.startsWith("</")) {
+      indent = Math.max(0, indent - 1);
+      formatted += "\n" + "  ".repeat(indent) + token;
+    } else if (token.startsWith("<") && !token.endsWith("/>") && !token.startsWith("<!") && !token.startsWith("<?") && !["img", "br", "hr", "input", "meta", "link"].includes(token.match(/<([a-zA-Z0-9_\-]+)/)?.[1]?.toLowerCase() || "")) {
+      formatted += "\n" + "  ".repeat(indent) + token;
+      indent++;
+    } else if (token.startsWith("<")) {
+      formatted += "\n" + "  ".repeat(indent) + token;
+    } else {
+      formatted += "\n" + "  ".repeat(indent) + token;
+    }
+  }
+  return formatted.trim();
 }
 
 export function A2Sandbox({ 
@@ -1556,7 +1582,8 @@ export function A2Sandbox({
   iframeKey: parentIframeKey, 
   isControlled = false,
   onCopy,
-  copied: parentCopied
+  copied: parentCopied,
+  iframeRef
 }: A2SandboxProps) {
   const [localActiveTab, setLocalActiveTab] = useState<'preview' | 'code'>('preview');
   const [localCopied, setLocalCopied] = useState(false);
@@ -1583,9 +1610,27 @@ export function A2Sandbox({
           <script src="https://cdn.tailwindcss.com"></script>
           <style>
             body { font-family: system-ui, -apple-system, sans-serif; }
+            /* Custom styled premium scrollbar for sandboxed document viewports */
+            ::-webkit-scrollbar {
+              width: 8px;
+              height: 8px;
+            }
+            ::-webkit-scrollbar-track {
+              background: #000000;
+            }
+            ::-webkit-scrollbar-thumb {
+              background: #27272a;
+              border-radius: 9999px;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+              background: #3f3f46;
+            }
+            html {
+              scroll-behavior: smooth;
+            }
           </style>
         </head>
-        <body class="p-6 bg-slate-900 text-white min-h-screen">
+        <body class="p-6 bg-black text-white min-h-screen">
           ${srcDoc}
         </body>
       </html>
@@ -1610,9 +1655,10 @@ export function A2Sandbox({
 
   if (isControlled) {
     return (
-      <div className="flex-1 min-h-[440px] flex flex-col relative bg-slate-900 w-full h-full">
+      <div className="flex-1 min-h-[440px] flex flex-col relative bg-black w-full h-full">
         {activeTab === 'preview' ? (
           <iframe
+            ref={iframeRef}
             key={iframeKey}
             srcDoc={srcDoc}
             title={title}
@@ -1620,9 +1666,9 @@ export function A2Sandbox({
             className="w-full h-full flex-1 border-none min-h-[440px]"
           />
         ) : (
-          <div className="flex-1 flex flex-col bg-slate-950 font-mono text-xs text-slate-300 leading-relaxed custom-scrollbar selection:bg-indigo-500/30 select-text p-5">
-            <pre className="m-0 leading-6 tab-size-2 overflow-auto">
-              <code>{rawCode}</code>
+          <div className="flex-1 overflow-y-auto bg-black font-mono text-xs text-slate-300 leading-relaxed custom-scrollbar selection:bg-indigo-500/30 select-text p-5">
+            <pre className="m-0 leading-6 tab-size-2 whitespace-pre-wrap break-all">
+              <code>{formatHtml(rawCode)}</code>
             </pre>
           </div>
         )}
@@ -1631,8 +1677,9 @@ export function A2Sandbox({
   }
 
   return (
-    <div className="w-full bg-slate-900 rounded-2xl overflow-hidden shadow-md mt-2 flex flex-col min-h-[440px]">
+    <div className="w-full bg-black rounded-2xl overflow-hidden shadow-md mt-2 flex flex-col min-h-[440px]">
       <iframe
+        ref={iframeRef}
         key={iframeKey}
         srcDoc={srcDoc}
         title={title}

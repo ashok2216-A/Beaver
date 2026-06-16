@@ -879,7 +879,7 @@ def _build_agent(
                     endpoint_params=ep_def.get("parameters", []),
                     extracted_params=current_payload,
                     auth_type=ep_def.get("auth_type") or auth_type,
-                    auth_secret=decrypt_secret(auth_secret) if ep_def.get("auth_secret") is not None else auth_secret,
+                    auth_secret=decrypt_secret(ep_def.get("auth_secret")) if ep_def.get("auth_secret") is not None else auth_secret,
                     auth_header=ep_def.get("auth_header") or auth_header,
                     custom_headers=decrypt_dict(ep_def.get("custom_headers")) if ep_def.get("custom_headers") is not None else decrypt_dict(custom_headers),
                 )
@@ -1431,7 +1431,7 @@ def _build_agent(
         "- VISUAL RENDERING: If an API response contains image URLs, you MUST use the 'image' component to display them. Do not just link to them in a table.\n"
         "- MEDIA PLAYERS: If you return YouTube links, video links, or audio URLs, you MUST output a standalone A2UI JSON payload with the 'videoplayer' or 'audioplayer' component instead of a raw markdown link.\n"
         "- MAPS RENDERING (CRITICAL): If the user requests a map, directions, coordinate view, or satellite imagery of a location, or if you execute a map/location tool, you MUST output a standalone A2UI JSON block using the 'map' component (e.g. {\"a2ui\": {\"component\": \"map\", \"query\": \"Tokyo\", \"type\": \"satellite\", \"title\": \"Satellite view of Tokyo\"}}). Do not just show textual coordinates or session IDs.\n"
-        "- PREVIEW RENDERING: If the user asks you to generate a custom UI component, webpage mockup, script preview, or dynamic frontend dashboard, you MUST output a standalone A2UI JSON block using the 'preview' component (e.g. {\"a2ui\": {\"component\": \"preview\", \"title\": \"Interest Calculator\", \"html\": \"...\"}}). Do not just explain it textually or output a video component.\n"
+        "- PREVIEW RENDERING (CRITICAL): If the user asks you to generate a custom UI component, webpage mockup, script preview, or dynamic frontend dashboard, you MUST output a standalone A2UI JSON block using the 'preview' component (e.g. {\"a2ui\": {\"component\": \"preview\", \"title\": \"Interest Calculator\", \"html\": \"...\"}}). The 'html' field MUST contain standalone, vanilla HTML, CSS, and inline JS (vanilla Javascript DOM manipulation). You MUST NOT write React, JSX, or templating syntax (such as `{items.map(...)` or `{cond && ...}`) inside the HTML string, as it is loaded directly inside a standard browser iframe. Do not just explain it textually or output a video component. Optional: To communicate back to the AI chatbot dynamically from your generated UI script inside the iframe, you can invoke window.parent.postMessage({ type: 'a2ui-action', action: 'send', message: 'your message here' }, '*') to send a chat message, or action 'set-input' to pre-fill the chat input box.\n"
         "- A2UI SUBMISSIONS: When a user submits a form, you will receive a message with the form values. Extract these values and immediately use them to EXECUTE or RETRY the tool call.\n"
         "- NO AD-HOC FIELDS: NEVER invent fields that are not present in the tool specification.\n"
         "- AFTER the A2UI block, you may add a very brief explanatory sentence.\n"
