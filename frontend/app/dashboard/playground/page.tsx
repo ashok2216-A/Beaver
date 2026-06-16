@@ -1131,25 +1131,10 @@ Design:
 - Smooth hover scaling and animations for grid cells.
 
 Bidirectional Event Handling:
-- User Move -> Agent: When the player clicks a cell, update the board visually with "X" and automatically send a message to the chat using:
-  window.parent.postMessage({
-    type: 'a2ui-action',
-    action: 'send',
-    message: \`[Tic-Tac-Toe Move] I played X at grid cell index \${index}. Here is the current board state: \${JSON.stringify(boardState)}. It is your turn! Please analyze the board and play your move. Reply strictly in this format: "AI_MOVE: <index>" (where index is 0-8).\`
-  }, '*');
+- User Move -> Agent: When the player clicks a cell, update the board visually with "X" and automatically send a postMessage event to the parent window containing the action 'send' and the message string: "[Tic-Tac-Toe Move] I played X at grid cell index {index}. Here is the current board state: {boardState}. It is your turn! Please analyze the board and play your move. Reply strictly in this format: AI_MOVE: <index> (where index is 0-8)."
+  (Trigger this by invoking window.parent.postMessage with type: 'a2ui-action', action: 'send')
 
-- Agent Move -> Iframe: Register a message listener in the iframe:
-  window.addEventListener('message', (event) => {
-    const data = event.data;
-    if (data && data.type === 'a2ui-agent-reply') {
-      // Check if the agent's reply contains "AI_MOVE: X"
-      const match = data.message.match(/AI_MOVE:\\s*(\\d)/i);
-      if (match) {
-        const aiMoveIndex = parseInt(match[1]);
-        // Automatically play "O" at aiMoveIndex and update the UI!
-      }
-    }
-  });
+- Agent Move -> Iframe: Bind a message listener to the window. If the incoming event data has type 'a2ui-agent-reply', check if the reply message text matches the pattern "AI_MOVE: <index>". Parse the index, play "O" at that position, and update the game board.
 
 Include a clean status panel indicating who's turn it is and a "Reset Game" button.`,
                 tag: "Game"
