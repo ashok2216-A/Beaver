@@ -115,7 +115,7 @@ class Agent(Base):
     auth_type      = Column(String(32), default="bearer")  # bearer | apikey | none
     auth_header    = Column(String(100), nullable=True)    # optional custom header name (e.g. x-api-key)
     auth_secret    = Column(Text, default="")              # encrypted in prod
-    model_id       = Column(String(64), default="gemini/gemini-3.1-flash-lite")
+    model_id       = Column(String(64), default=None, nullable=True)
     custom_headers = Column(JSON, default=dict)            # e.g. {"Notion-Version": "2022-06-28"}
     status         = Column(SAEnum(AgentStatus), default=AgentStatus.draft, nullable=False)
     created_at     = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)

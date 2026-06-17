@@ -133,7 +133,7 @@ class AgentCreate(BaseModel):
     auth_type: str = "bearer"          # bearer | apikey | none
     auth_header: Optional[str] = None
     auth_secret: str = ""
-    model_id: Optional[str] = "gemini/gemini-3.1-flash-lite"
+    model_id: Optional[str] = None
     custom_headers: dict[str, str] = Field(default_factory=dict)
     source_type: Optional[str] = "rest"
     mcp_server_url: Optional[str] = None

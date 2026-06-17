@@ -1389,21 +1389,7 @@ export default function AgentBuilderPage() {
                     </div>
                   )}
 
-                  <div className="space-y-4 pt-6 border-t border-border/50">
-                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-primary">Engine</h3>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-foreground/70">Model ID</label>
-                      <select 
-                        name="model_id" 
-                        defaultValue={agent.model_id} 
-                        className="w-full h-11 rounded-xl border border-border/50 bg-background/50 px-4 text-xs outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
-                      >
-                        <option value="gemini/gemini-3.1-flash-lite">mistral-small (Mistral)</option>
-                        <option value="mistral/mistral-large-latest">mistral-large (Mistral)</option>
-                        <option value="openai/gpt-4o-mini">gpt-4o-mini (OpenAI)</option>
-                      </select>
-                    </div>
-                  </div>
+
                 </form>
               </div>
 
