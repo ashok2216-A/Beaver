@@ -435,9 +435,10 @@ Return ONLY the JSON object. No other text.
 }}"""
 
     try:
-        # We use a fast, small model for this utility task
+        settings = get_settings()
+
         res = await litellm.acompletion(
-            model="gemini/gemini-3.1-flash-lite",
+            model=settings.default_llm_model,
             messages=[{"role": "user", "content": prompt}],
             api_key=api_key,
             temperature=1.0
@@ -492,9 +493,8 @@ RULES:
 Corrected JSON Payload:"""
 
     try:
-        # We use a fast model for structural repair
         res = await litellm.acompletion(
-            model="gemini/gemini-3.1-flash-lite",
+            model=settings.default_llm_model,
             messages=[{"role": "user", "content": prompt}],
             api_key=api_key,
             temperature=1.0

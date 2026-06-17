@@ -67,11 +67,13 @@ Respond ONLY with a JSON object:
 {{"component": "...", "data_type": "...", "format": "...", "multiline": bool}}"""
 
         try:
+            from config.config import get_settings
+            settings = get_settings()
+
             res = await acompletion(
-                model="gemini/gemini-3.1-flash-lite",
+                model=settings.default_llm_model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=1.0,
-                response_format={ "type": "json_object" }
             )
             import json
             return json.loads(res.choices[0].message.content)
@@ -141,10 +143,10 @@ Respond ONLY with a JSON list of strings. No explanations."""
 
         try:
             res = await acompletion(
-                model="gemini/gemini-3.1-flash-lite",
+                model=settings.default_llm_model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=1.0,
-                response_format={ "type": "json_object" }
+                api_key=api_key
             )
             import json
             text = res.choices[0].message.content

@@ -220,8 +220,11 @@ def _ingest_spec(agent: Agent, spec: dict | str, db: Session) -> Agent:
         eps_summary = ", ".join([f"{ep['method']} {ep['path']} ({ep.get('summary', '')})" for ep in endpoints[:15]])
         prompt = f"Write a single, highly concise 2-sentence description summarizing the core purpose of this API based on its endpoints: {eps_summary}. Return ONLY the plain text description. Do not include quotes or formatting."
         
+        from config.config import get_settings
+        settings = get_settings()
+
         res = litellm.completion(
-            model="gemini/gemini-3.1-flash-lite",
+            model=settings.default_llm_model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=60,
             temperature=1.0
@@ -534,7 +537,7 @@ async def ingest_file(
         auth_type=auth_type,
         auth_header=auth_header,
         auth_secret=encrypt_secret(auth_secret or ""),
-        model_id="gemini/gemini-3.1-flash-lite",
+        model_id=None,
         status=AgentStatus.draft,
         api_spec="",
     )
