@@ -1,7 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import dynamic from 'next/dynamic'
+import { DayPicker } from 'react-day-picker'
+import { format } from 'date-fns'
+import 'react-day-picker/dist/style.css'
 
+const MapComponent = dynamic(() => import('./MapPickerClient'), {
+  ssr: false,
+  loading: () => <div className="w-full h-[300px] bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg flex items-center justify-center text-sm text-slate-500">Loading map...</div>
+})
 // ─── SVG ICONS ────────────────────────────────────────────────────────────────
 
 const ICON_PATHS: Record<string, React.ReactNode> = {
@@ -551,6 +559,80 @@ export function A2Image({ data }: A2ImageProps) {
     </div>
   );
 }
+// ─── CONTEXT-AWARE MICRO-APPS ──────────────────────────────────────────────────
+
+export function A2ColorPicker({ label, required, fieldKey, value, onChange }: any) {
+  const [color, setColor] = useState(value || '#0f172a')
+  return (
+    <div style={STYLES.fieldGroup}>
+      <label style={STYLES.label}>
+        {label || 'Select Color'} {required && <span style={STYLES.requiredStar}>*</span>}
+      </label>
+      <div className="flex items-center gap-4 mt-1">
+        <div className="relative w-12 h-12 rounded overflow-hidden shadow-sm border border-slate-200 dark:border-slate-700">
+          <input 
+            type="color" 
+            value={color}
+            onChange={(e) => {
+              setColor(e.target.value)
+              if (onChange) onChange(fieldKey, e.target.value)
+            }}
+            className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer border-0 p-0"
+          />
+        </div>
+        <div className="font-mono text-xs uppercase bg-white dark:bg-slate-800 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm text-slate-700 dark:text-slate-300">
+          {color}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function A2DateRangePicker({ label, required, fieldKey, value, onChange }: any) {
+  const [range, setRange] = useState<any>(value || { from: undefined, to: undefined })
+  return (
+    <div style={STYLES.fieldGroup}>
+      <label style={STYLES.label}>
+        {label || 'Select Date Range'} {required && <span style={STYLES.requiredStar}>*</span>}
+      </label>
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-3 mt-1 border border-slate-200 dark:border-slate-800 shadow-sm flex justify-center">
+        <DayPicker
+          mode="range"
+          selected={range}
+          onSelect={(r) => {
+            setRange(r)
+            if (onChange && r?.from && r?.to) {
+              onChange(fieldKey, `${format(r.from, 'yyyy-MM-dd')} to ${format(r.to, 'yyyy-MM-dd')}`)
+            }
+          }}
+          className="text-sm bg-white dark:bg-slate-900 rounded-lg"
+          modifiersClassNames={{
+            selected: 'bg-primary text-primary-foreground',
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+export function A2MapPicker({ label, required, fieldKey, value, onChange }: any) {
+  return (
+    <div style={STYLES.fieldGroup}>
+      <label style={STYLES.label}>
+        {label || 'Select Location on Map'} {required && <span style={STYLES.requiredStar}>*</span>}
+      </label>
+      <div className="mt-1">
+        <MapComponent 
+          onChange={(pos: any) => {
+            if (onChange) {
+              onChange(fieldKey, `{"lat": ${pos.lat}, "lng": ${pos.lng}}`)
+            }
+          }} 
+        />
+      </div>
+    </div>
+  )
+}
 
 // ─── A2UI INPUT FORM ──────────────────────────────────────────────────────────
 // Top-level component: renders the full input form described by the agent's a2ui JSON
@@ -575,11 +657,12 @@ export interface A2UIField {
 }
 
 export interface A2UIFormNode {
-  component: 'form' | 'column' | 'card'
+  component: 'form' | 'column' | 'card' | 'wizard'
   title?: string
   subtitle?: string
   submit_label?: string
   children?: (A2UIField | A2UIFormNode)[]
+  steps?: { title?: string, subtitle?: string, children?: (A2UIField | A2UIFormNode)[] }[]
   // flat field shorthand (when node is itself a field)
   key?: string
   label?: string
@@ -602,11 +685,26 @@ interface A2InputFormProps {
 
 export function A2InputForm({ data, onSubmit }: A2InputFormProps) {
   const root = data.a2ui
+  const isWizard = root.component === 'wizard'
+  const steps = root.steps || []
+  const [currentStep, setCurrentStep] = useState(0)
   const [fieldValues, setFieldValues] = useState<Record<string, any>>({})
   const [submitted, setSubmitted] = useState(false)
 
   const handleFieldChange = (key: string, value: any) => {
     setFieldValues(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleNext = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(s => s + 1)
+    }
+  }
+
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep(s => s - 1)
+    }
   }
 
   const buildMessage = () => {
@@ -668,6 +766,15 @@ export function A2InputForm({ data, onSubmit }: A2InputFormProps) {
       case 'datetimeinput':
       case 'date':
         return <A2DateTimeInput key={key} {...commonProps} type={(field.type as 'date' | 'datetime-local' | 'time') || 'date'} />
+      case 'colorpicker':
+      case 'color':
+        return <A2ColorPicker key={key} {...commonProps} value={String(field.value ?? '')} />
+      case 'daterange':
+      case 'daterangepicker':
+        return <A2DateRangePicker key={key} {...commonProps} value={field.value} />
+      case 'mappicker':
+      case 'locationpicker':
+        return <A2MapPicker key={key} {...commonProps} value={field.value} />
       case 'audioplayer':
       case 'audio':
       case 'media':
@@ -681,13 +788,28 @@ export function A2InputForm({ data, onSubmit }: A2InputFormProps) {
     }
   }
 
-  const fields = collectFields(root)
-  const title = root.title
-  const subtitle = root.subtitle
+  const fields = isWizard && steps.length > 0 
+    ? collectFields(steps[currentStep] as any) 
+    : collectFields(root)
+  const title = isWizard && steps[currentStep]?.title ? steps[currentStep].title : root.title
+  const subtitle = isWizard && steps[currentStep]?.subtitle ? steps[currentStep].subtitle : root.subtitle
   const submitLabel = root.submit_label || 'Submit'
 
   return (
     <div style={STYLES.form}>
+      {/* Wizard Progress Header */}
+      {isWizard && steps.length > 0 && (
+        <div className="flex flex-col gap-2 mb-2">
+          <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <span>Step {currentStep + 1} of {steps.length}</span>
+            <span>{Math.round(((currentStep + 1) / steps.length) * 100)}%</span>
+          </div>
+          <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-full bg-primary transition-all duration-300" style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}></div>
+          </div>
+        </div>
+      )}
+
       {title && (
         <div style={STYLES.formTitle}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="hsl(var(--primary))">
@@ -700,15 +822,49 @@ export function A2InputForm({ data, onSubmit }: A2InputFormProps) {
 
       {fields.map((field, idx) => renderField(field, idx))}
 
-      <button
-        type="button"
-        style={{ ...STYLES.submitBtn, opacity: submitted ? 0.5 : 1 }}
-        onClick={handleSubmit}
-        disabled={submitted}
-      >
-        <SvgIcon name="send" size={13} />
-        {submitted ? 'Sent!' : submitLabel}
-      </button>
+      {isWizard && steps.length > 0 ? (
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            type="button"
+            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold text-xs bg-white dark:bg-slate-900 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 flex-1 disabled:opacity-50"
+            onClick={handleBack}
+            disabled={currentStep === 0 || submitted}
+          >
+            Back
+          </button>
+          
+          {currentStep === steps.length - 1 ? (
+            <button
+              type="button"
+              style={{ ...STYLES.submitBtn, opacity: submitted ? 0.5 : 1, margin: 0, flex: 1 }}
+              onClick={handleSubmit}
+              disabled={submitted}
+            >
+              <SvgIcon name="send" size={13} />
+              {submitted ? 'Sent!' : submitLabel}
+            </button>
+          ) : (
+            <button
+              type="button"
+              style={{ ...STYLES.submitBtn, margin: 0, flex: 1 }}
+              onClick={handleNext}
+              disabled={submitted}
+            >
+              Next
+            </button>
+          )}
+        </div>
+      ) : (
+        <button
+          type="button"
+          style={{ ...STYLES.submitBtn, opacity: submitted ? 0.5 : 1 }}
+          onClick={handleSubmit}
+          disabled={submitted}
+        >
+          <SvgIcon name="send" size={13} />
+          {submitted ? 'Sent!' : submitLabel}
+        </button>
+      )}
     </div>
   )
 }
@@ -1796,4 +1952,99 @@ export function A2ArtifactPlaceholder({ data, onOpen }: A2ArtifactPlaceholderPro
   );
 }
 
+// ─── A2DATA GRID ──────────────────────────────────────────────────────────────
 
+export interface A2DataGridProps {
+  data: {
+    a2ui: {
+      component: 'data_grid' | 'datagrid';
+      columns?: string[];
+      data?: Record<string, any>[];
+      title?: string;
+    };
+  };
+}
+
+export function A2DataGrid({ data }: A2DataGridProps) {
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+
+  const title = data?.a2ui?.title || 'Data Grid';
+  const rawData = data?.a2ui?.data || [];
+  
+  // If no columns provided, derive them from the first row (up to 7 max)
+  let columns = data?.a2ui?.columns || [];
+  if (columns.length === 0 && rawData.length > 0) {
+    columns = Object.keys(rawData[0]).slice(0, 7);
+  }
+
+  // Handle Sorting
+  const sortedData = [...rawData].sort((a, b) => {
+    if (!sortConfig) return 0;
+    const aVal = a[sortConfig.key];
+    const bVal = b[sortConfig.key];
+    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  if (!rawData || rawData.length === 0) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
+        <span className="text-sm font-medium text-slate-500">No data available to display.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full flex flex-col bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden mt-4">
+      {title && (
+        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center gap-2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-500">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="3" y1="9" x2="21" y2="9"></line>
+            <line x1="9" y1="21" x2="9" y2="9"></line>
+          </svg>
+          <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{title}</span>
+          <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">{rawData.length} rows</span>
+        </div>
+      )}
+      <div className="w-full overflow-x-auto overflow-y-auto max-h-[400px]">
+        <table className="w-full text-sm text-left">
+          <thead className="text-[10px] text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50 dark:text-slate-400 sticky top-0 z-10 font-bold tracking-wider">
+            <tr>
+              {columns.map((col, idx) => (
+                <th key={idx} scope="col" className="px-4 py-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap" onClick={() => requestSort(col)}>
+                  <div className="flex items-center gap-1">
+                    {col.replace(/_/g, ' ')}
+                    {sortConfig?.key === col && (
+                      <span className="text-indigo-500">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sortedData.map((row, rIdx) => (
+              <tr key={rIdx} className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                {columns.map((col, cIdx) => (
+                  <td key={cIdx} className="px-4 py-3 text-slate-700 dark:text-slate-300 whitespace-nowrap text-xs font-medium">
+                    {typeof row[col] === 'object' ? JSON.stringify(row[col]) : String(row[col] ?? '-')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

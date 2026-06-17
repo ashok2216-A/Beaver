@@ -8,7 +8,7 @@ import { useAuth, useUser } from "@clerk/nextjs"
 import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval, A2FlightsList, A2Map, A2WeatherCard, A2Sandbox, A2ArtifactPlaceholder, A2Image } from "@/components/a2ui/components"
+import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval, A2FlightsList, A2Map, A2WeatherCard, A2Sandbox, A2ArtifactPlaceholder, A2Image, A2DataGrid } from "@/components/a2ui/components"
 
 interface MessageChunk {
   type: 'text' | 'a2ui'
@@ -739,6 +739,7 @@ export default function PlaygroundPage() {
                                     comp === 'weather' || comp === 'weather_card' ||
                                     comp === 'sandbox' || comp === 'iframe' || comp === 'preview' ||
                                     comp === 'map' || comp === 'google_maps' ||
+                                    comp === 'data_grid' || comp === 'datagrid' ||
                                     comp === 'audioplayer' || comp === 'audio' ||
                                     comp === 'videoplayer' || comp === 'video' || comp === 'youtube') {
                                   return (
@@ -762,6 +763,9 @@ export default function PlaygroundPage() {
                                         }
                                         if (comp === 'map' || comp === 'google_maps') {
                                           return <A2Map data={a2data} />;
+                                        }
+                                        if (comp === 'data_grid' || comp === 'datagrid') {
+                                          return <A2DataGrid data={a2data} />;
                                         }
                                         if (comp === 'audioplayer' || comp === 'audio') {
                                           return (

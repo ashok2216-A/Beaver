@@ -188,12 +188,7 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
             if auth_configs_dict:
                 payload["auth_configs"] = auth_configs_dict
 
-            try:
-                import json
-                with open("d:/Beaver/Beaver/backend/mcp_debug.json", "w") as f:
-                    json.dump(payload, f)
-            except Exception:  # nosec B110
-                pass
+            # Debug log was here
 
             # Retry loop for invalid toolkit slugs
             max_retries = 3
@@ -238,14 +233,16 @@ async def _composio_rpc(method: str, params: Optional[dict] = None, timeout: flo
         mcp_url = mcp_data.get("url")
         mcp_headers = mcp_data.get("headers", {})
         
-        # Ensure the API key is passed to the MCP endpoint
+        # Ensure we have a headers dict
         if not mcp_headers:
             mcp_headers = {}
-        mcp_headers["x-api-key"] = api_key
-        # Some endpoints might expect Bearer token instead
-        mcp_headers["Authorization"] = f"Bearer {api_key}"
+            
+        # Add API key ONLY if Composio didn't provide specific routing headers
+        if "authorization" not in {k.lower() for k in mcp_headers.keys()} and "x-api-key" not in {k.lower() for k in mcp_headers.keys()}:
+            mcp_headers["x-api-key"] = api_key
+            
         # Composio MCP Gateway may need X-User-Id to correctly resolve connections
-        if user_id:
+        if user_id and "x-user-id" not in {k.lower() for k in mcp_headers.keys()}:
             mcp_headers["X-User-Id"] = user_id
 
         if not mcp_url:
