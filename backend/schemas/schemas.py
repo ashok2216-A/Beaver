@@ -166,7 +166,7 @@ class AgentOut(BaseModel):
     description: str
     base_url: str
     status: str
-    model_id: str
+    model_id: Optional[str] = None
     system_prompt: str
     auth_type: str
     auth_header: Optional[str] = None
