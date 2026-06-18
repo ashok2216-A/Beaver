@@ -200,6 +200,7 @@ class ChatMessageOut(BaseModel):
     conversation_id: str
     role: str
     content: str
+    chunks: list | dict | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

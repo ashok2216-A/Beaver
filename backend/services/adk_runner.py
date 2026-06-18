@@ -291,7 +291,8 @@ def _mcp_path_matches_score(template: str, actual: str) -> float:
     if len(common_words) >= 2:
         service_prefixes = {
             "youtube", "googlecalendar", "google", "calendar",
-            "gmail", "github", "slack", "notion", "composio", "serpapi"
+            "gmail", "github", "slack", "notion", "composio", "serpapi",
+            "veo", "video", "sora"
         }
         if any(prefix in common_words for prefix in service_prefixes):
             ratio = len(common_words) / max(len(t_words), len(a_words), 1)

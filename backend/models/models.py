@@ -187,6 +187,7 @@ class ChatMessage(Base):
     conversation_id = Column(String(255), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True)
     role            = Column(String(32), nullable=False) # user | assistant
     content         = Column(Text, nullable=False)
+    chunks          = Column(JSON, nullable=True) # Added chunks for A2UI persistence
     created_at      = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     conversation = relationship("Conversation", back_populates="messages")

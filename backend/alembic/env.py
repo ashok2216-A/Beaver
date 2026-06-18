@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database.database import Base
 from config.config import get_settings
+import models.models  # Required so Base.metadata is populated
 
 settings = get_settings()
 

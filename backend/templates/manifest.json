@@ -386,6 +386,15 @@
       "mcp_server_url": "composio:dropbox",
       "source_type": "mcp_sse",
       "description": "Upload files, share links, download folder contents, and manage cloud storage."
+    },
+    {
+      "id": "veo",
+      "name": "Veo AI",
+      "category": "AI & Search",
+      "domain": "google.com",
+      "mcp_server_url": "composio:veo",
+      "source_type": "mcp_sse",
+      "description": "Generate high-fidelity video and native audio with Google's generative Veo model."
     }
   ]
 }

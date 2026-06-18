@@ -88,6 +88,15 @@ def get_integration_registry() -> Dict[str, Dict[str, Any]]:
         "aliases": ["duffel", "duffel_flights", "duffelflights"],
         "env_var_names": ["DUFFEL_API_KEY"]
     }
+    
+    # 3. Hardcoded fallback for Composio toolkits that exist in auth_configs but not in toolkits catalog
+    registry["veo"] = {
+        "provider_name": "veo",
+        "composio_slug": "veo",
+        "auth_type": "OAUTH",
+        "aliases": ["veo", "veo_ai", "veoai", "googleveo", "google_veo"],
+        "env_var_names": []
+    }
         
     _DYNAMIC_REGISTRY = registry
     return registry

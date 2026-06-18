@@ -376,7 +376,32 @@ export default function PlaygroundPage() {
       })
       if (res.ok) {
         const data = await res.json()
-        setMessages(data.messages || [])
+        const msgs = data.messages || []
+        setMessages(msgs)
+        
+        // Scan the last assistant message for A2UI to restore it
+        const lastAssistantMsg = [...msgs].reverse().find(m => m.role === 'assistant' && m.chunks)
+        if (lastAssistantMsg && lastAssistantMsg.chunks) {
+          const artifactChunk = lastAssistantMsg.chunks.find((chunk: any) => {
+            if (chunk.type !== 'a2ui') return false;
+            const comp = chunk.content?.a2ui?.component?.toLowerCase?.();
+            return [
+              'flights', 'flight_list',
+              'weather', 'weather_card',
+              'sandbox', 'iframe', 'preview',
+              'map', 'google_maps',
+              'audioplayer', 'audio',
+              'videoplayer', 'video', 'youtube'
+            ].includes(comp);
+          });
+          if (artifactChunk) {
+            setActiveA2UI(artifactChunk.content);
+          } else {
+            setActiveA2UI(null);
+          }
+        } else {
+          setActiveA2UI(null);
+        }
       }
     } catch (err) {
       console.error("Failed to load conversation:", err)
