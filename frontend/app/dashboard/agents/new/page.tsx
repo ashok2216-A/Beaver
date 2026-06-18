@@ -219,6 +219,7 @@ function NewAgentContent() {
 
   const getLogoForTemplate = (t: Template) => {
     const id = (t.id || "").toLowerCase();
+    if (id === "veo") return "https://tse4.mm.bing.net/th/id/OIP.OQwb5oyCxmFx41V1U_wdYQHaHa?rs=1&pid=ImgDetMain&o=7&rm=3";
     if (id === "google_maps") return "https://www.google.com/s2/favicons?sz=128&domain=maps.google.com";
     if (id === "google_chat") return "https://www.google.com/s2/favicons?sz=128&domain=chat.google.com";
     if (id === "duffel_flights" || id === "duffel") return "https://www.google.com/s2/favicons?sz=128&domain=duffel.com";
