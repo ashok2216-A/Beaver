@@ -109,8 +109,8 @@ def main():
                             }
                         }
                     }
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"Warning: Could not parse body for {api_name}: {e}")
 
             template_id = "apiverve-" + api_name.lower().replace(" ", "-").replace("/", "")
             template_id = re.sub(r'[^a-z0-9-]', '', template_id)
