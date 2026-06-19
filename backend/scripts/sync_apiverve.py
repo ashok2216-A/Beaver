@@ -109,7 +109,7 @@ def main():
                             }
                         }
                     }
-                except:
+                except Exception:
                     pass
 
             template_id = "apiverve-" + api_name.lower().replace(" ", "-").replace("/", "")
