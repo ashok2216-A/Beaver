@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { DayPicker } from 'react-day-picker'
 import { format } from 'date-fns'
 import 'react-day-picker/dist/style.css'
+import { useAuth } from '@clerk/nextjs'
 
 const MapComponent = dynamic(() => import('./MapPickerClient'), {
   ssr: false,
@@ -398,19 +399,124 @@ export function A2Slider({ label, required, min = 0, max = 100, value: initial =
       )}
       <div style={STYLES.sliderRow}>
         <input
+          style={{ flex: 1, accentColor: '#0f172a' }}
           type="range"
           min={min}
           max={max}
           step={step}
           value={value}
           onChange={handleChange}
-          style={{ flex: 1, accentColor: 'hsl(var(--primary))' }}
         />
-        <span style={STYLES.sliderVal}>{value}</span>
+        <div style={STYLES.sliderVal}>{value}</div>
       </div>
     </div>
   )
 }
+
+// File / Image Upload Field
+interface A2FileFieldProps extends FieldProps {
+  fieldKey: string
+  onChange: (key: string, value: any) => void
+}
+
+export function A2FileField({ label, required, fieldKey, onChange }: A2FileFieldProps) {
+  const [uploading, setUploading] = useState(false)
+  const [filename, setFilename] = useState<string | null>(null)
+  const { getToken } = useAuth()
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    try {
+      const token = await getToken()
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const url = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1'
+      const res = await fetch(`${url}/files/upload/temp`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setFilename(data.filename)
+        onChange(fieldKey, data.file_id) // Pass beaver-file:// token back
+      } else {
+        console.error('File upload failed')
+        alert('File upload failed. Please try again.')
+      }
+    } catch (err) {
+      console.error('Error uploading file', err)
+      alert('Error uploading file. Please try again.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div style={STYLES.fieldGroup}>
+      {label && (
+        <span style={STYLES.label}>
+          {label}
+          {required && <span style={STYLES.requiredStar}>*</span>}
+        </span>
+      )}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        padding: '12px',
+        background: '#f8fafc',
+        borderRadius: '16px',
+        border: '1px dashed #cbd5e1',
+        cursor: 'pointer',
+        position: 'relative',
+        transition: 'all 0.2s ease',
+      }}>
+        <input 
+          type="file" 
+          onChange={handleFileChange}
+          disabled={uploading}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            opacity: 0,
+            cursor: 'pointer',
+            width: '100%'
+          }} 
+        />
+        {uploading ? (
+          <div className="flex items-center gap-2 text-sm text-slate-500 font-medium w-full justify-center">
+            <span className="w-4 h-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-800" />
+            Uploading...
+          </div>
+        ) : filename ? (
+          <div className="flex items-center gap-2 text-sm font-bold text-emerald-600 w-full justify-center">
+            <SvgIcon name="check" size={16} />
+            {filename}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-sm text-slate-500 font-medium w-full justify-center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            Click or drag to upload
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Map Picker
 
 // Date / DateTime
 interface A2DateTimeInputProps extends FieldProps {
@@ -744,6 +850,27 @@ export function A2InputForm({ data, onSubmit }: A2InputFormProps) {
     const key = field.key || `field_${idx}`
     const comp = (field.component || '').toLowerCase()
     const commonProps = { label: field.label, required: field.required, fieldKey: key, onChange: handleFieldChange }
+
+    const labelLower = (field.label || '').toLowerCase()
+    const placeholderLower = (field.placeholder || '').toLowerCase()
+    const keyLower = key.toLowerCase()
+
+    const isLikelyFile = 
+      comp === 'file' || 
+      comp === 'upload' || 
+      comp === 'filefield' || 
+      field.type === 'file' ||
+      labelLower.includes('upload') ||
+      labelLower.includes('multipart') ||
+      labelLower.includes('image') ||
+      labelLower.includes('photo') ||
+      placeholderLower.includes('multipart') ||
+      keyLower.includes('file') ||
+      keyLower.includes('image')
+
+    if (isLikelyFile) {
+      return <A2FileField key={key} {...commonProps} />
+    }
 
     switch (comp) {
       case 'textfield':
@@ -1772,21 +1899,21 @@ export function A2Sandbox({
               height: 8px;
             }
             ::-webkit-scrollbar-track {
-              background: #000000;
+              background: #ffffff;
             }
             ::-webkit-scrollbar-thumb {
-              background: #27272a;
+              background: #d4d4d8;
               border-radius: 9999px;
             }
             ::-webkit-scrollbar-thumb:hover {
-              background: #3f3f46;
+              background: #a1a1aa;
             }
             html {
               scroll-behavior: smooth;
             }
           </style>
         </head>
-        <body class="p-6 bg-black text-white min-h-screen">
+        <body class="p-6 bg-white text-black min-h-screen">
           ${srcDoc}
         </body>
       </html>
@@ -1811,14 +1938,14 @@ export function A2Sandbox({
 
   if (isControlled) {
     return (
-      <div className="flex-1 min-h-[440px] flex flex-col relative bg-black w-full h-full">
+      <div className="flex-1 min-h-[440px] flex flex-col relative bg-white w-full h-full">
         {activeTab === 'preview' ? (
           <iframe
             ref={iframeRef}
             key={iframeKey}
             srcDoc={srcDoc}
             title={title}
-            sandbox="allow-scripts"
+            sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin"
             className="w-full h-full flex-1 border-none min-h-[440px]"
           />
         ) : (
@@ -1833,13 +1960,13 @@ export function A2Sandbox({
   }
 
   return (
-    <div className="w-full bg-black rounded-2xl overflow-hidden shadow-md mt-2 flex flex-col min-h-[440px]">
+    <div className="w-full bg-white rounded-2xl overflow-hidden shadow-md mt-2 flex flex-col min-h-[440px]">
       <iframe
         ref={iframeRef}
         key={iframeKey}
         srcDoc={srcDoc}
         title={title}
-        sandbox="allow-scripts"
+        sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin"
         className="w-full h-full flex-1 border-none min-h-[440px]"
       />
     </div>

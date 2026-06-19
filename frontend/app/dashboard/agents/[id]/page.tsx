@@ -552,7 +552,7 @@ export default function AgentBuilderPage() {
     return matchesSearch && matchesMethod
   })
 
-  const isIntegrationAgent = agent?.base_url?.match(/^(composio|npx|docker|smithery|mcp):/i);
+  const isIntegrationAgent = agent?.base_url?.match(/^(composio|npx|docker|smithery|mcp):/i) || agent?.base_url?.includes('apiverve.com') || agent?.base_url?.includes('cloudmersive.com');
   const integrationName = agent?.base_url
     ? agent.base_url.replace(/^(composio:|npx:(@[\w-]+\/)?(mcp-)?(server-)?|docker:|smithery:|mcp:)/i, "").replace("googlecalendar", "Google Calendar")
     : "";
@@ -865,7 +865,7 @@ export default function AgentBuilderPage() {
                       </div>
                     </div>
                     {isMcpTool ? (() => {
-                      const rawName = ep.path.replace("/mcp/tools/", "") || ep.summary;
+                      const rawName = ep.path.startsWith("/mcp/tools/") ? ep.path.replace("/mcp/tools/", "") : (ep.summary || ep.path);
                       const cleanName = rawName
                         .split('_')
                         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())

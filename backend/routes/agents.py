@@ -74,6 +74,65 @@ def list_templates():
         log.exception(f"Error loading manifest at {manifest_path}")
         return {"templates": []}
 
+@router.get("/templates/cloudmersive")
+def list_cloudmersive_templates(user: User = Depends(get_current_user)):
+    """Return the list of parsed Cloudmersive API templates."""
+    import os
+    import json
+    
+    # Locate cloudmersive_registry.json
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    path1 = os.path.join(current_dir, "..", "data", "cloudmersive_registry.json")
+    path2 = os.path.join(os.getcwd(), "data", "cloudmersive_registry.json")
+    path3 = os.path.join(os.getcwd(), "backend", "data", "cloudmersive_registry.json")
+    
+    manifest_path = None
+    for p in [path1, path2, path3]:
+        if os.path.exists(p):
+            manifest_path = p
+            break
+            
+    if not manifest_path:
+        log.warning("Could not find cloudmersive_registry.json")
+        return []
+        
+    try:
+        with open(manifest_path, "r", encoding="utf-8-sig") as f:
+            registry = json.load(f)
+            return registry
+    except Exception:
+        log.exception(f"Error loading registry at {manifest_path}")
+        return []
+
+@router.get("/templates/apiverve")
+def list_apiverve_templates():
+    """Return the list of auto-generated API Verve templates."""
+    import os
+    
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    path1 = os.path.join(current_dir, "..", "data", "apiverve_registry.json")
+    path2 = os.path.join(os.getcwd(), "data", "apiverve_registry.json")
+    path3 = os.path.join(os.getcwd(), "backend", "data", "apiverve_registry.json")
+
+    registry_path = None
+    for p in [path1, path2, path3]:
+        if os.path.exists(p):
+            registry_path = p
+            break
+
+    if not registry_path:
+        log.error(f"APIVERVE REGISTRY NOT FOUND. Tried: {path1}, {path2}, {path3}")
+        return {"templates": []}
+        
+    try:
+        with open(registry_path, "r", encoding="utf-8-sig") as f:
+            data = json.load(f)
+            log.info(f"Successfully loaded {len(data)} API Verve templates from {registry_path}")
+            return {"templates": data}
+    except Exception:
+        log.exception(f"Error loading apiverve registry at {registry_path}")
+        return {"templates": []}
+
 
 def get_duffel_openapi_spec(app) -> dict:
     from fastapi.openapi.utils import get_openapi
@@ -433,16 +492,23 @@ def create_agent(
 
     auth_secret_val = data.auth_secret
     if not auth_secret_val:
-        from utils.security import get_provider_name_from_urls, decrypt_secret
-        provider_name = get_provider_name_from_urls(data.base_url, data.mcp_server_url or data.base_url)
-        if provider_name:
-            from models.models import UserIntegration
-            user_integ = db.query(UserIntegration).filter(
-                UserIntegration.user_id == user.id,
-                UserIntegration.provider == provider_name.lower()
-            ).first()
-            if user_integ:
-                auth_secret_val = decrypt_secret(user_integ.access_token)
+        import os
+        if data.base_url and "cloudmersive" in data.base_url.lower():
+            auth_secret_val = os.getenv("CLOUDMERSIVE_API_KEY", "")
+        elif data.base_url and "apiverve" in data.base_url.lower():
+            auth_secret_val = os.getenv("APIVERVE_API_KEY", "")
+
+        if not auth_secret_val:
+            from utils.security import get_provider_name_from_urls, decrypt_secret
+            provider_name = get_provider_name_from_urls(data.base_url, data.mcp_server_url or data.base_url)
+            if provider_name:
+                from models.models import UserIntegration
+                user_integ = db.query(UserIntegration).filter(
+                    UserIntegration.user_id == user.id,
+                    UserIntegration.provider == provider_name.lower()
+                ).first()
+                if user_integ:
+                    auth_secret_val = decrypt_secret(user_integ.access_token)
 
     agent = Agent(
         owner_id=user.id,

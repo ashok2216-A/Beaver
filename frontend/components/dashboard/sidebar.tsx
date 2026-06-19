@@ -83,10 +83,10 @@ export function DashboardSidebar({
           {/* Logo */}
           <div className={cn(
             "flex h-16 shrink-0 items-center transition-all duration-300",
-            isCollapsed ? "justify-center" : "px-2"
+            isCollapsed ? "" : "px-2"
           )}>
-            <Link href="/" className="flex items-center gap-1 group/logo">
-              <div className="relative w-10 h-10 shrink-0 group-hover/logo:scale-105 transition-transform">
+            <Link href="/" className={cn("flex items-center group/logo relative", isCollapsed ? "ml-[22px]" : "")}>
+              <div className={cn("relative w-9 h-9 shrink-0 group-hover/logo:scale-105 transition-transform")}>
                 <Image 
                   src="/logo.svg" 
                   alt="Beaver Logo" 
@@ -96,8 +96,8 @@ export function DashboardSidebar({
                 />
               </div>
               <span className={cn(
-                "text-xl font-bold tracking-tight text-foreground transition-all duration-300 origin-left",
-                isCollapsed ? "opacity-0 w-0 scale-0 overflow-hidden" : "opacity-100 w-auto scale-100 ml-1"
+                "text-xl font-bold tracking-tight text-foreground transition-all duration-300 origin-left ml-2",
+                isCollapsed ? "opacity-0 scale-0 absolute pointer-events-none" : "opacity-100 scale-100 relative"
               )}>
                 Beaver
               </span>
@@ -132,7 +132,8 @@ export function DashboardSidebar({
                             )}
                           />
                           <span className={cn(
-                            "transition-all duration-300 origin-left truncate flex-1",
+                            "transition-all duration-300 origin-left truncate",
+                            !isCollapsed && "flex-1",
                             isCollapsed ? "opacity-0 w-0 scale-0 invisible" : "opacity-100 w-auto scale-100 visible ml-3"
                           )}>
                             {item.name}
