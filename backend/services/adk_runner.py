@@ -291,7 +291,8 @@ def _mcp_path_matches_score(template: str, actual: str) -> float:
     if len(common_words) >= 2:
         service_prefixes = {
             "youtube", "googlecalendar", "google", "calendar",
-            "gmail", "github", "slack", "notion", "composio", "serpapi"
+            "gmail", "github", "slack", "notion", "composio", "serpapi",
+            "veo", "video", "sora"
         }
         if any(prefix in common_words for prefix in service_prefixes):
             ratio = len(common_words) / max(len(t_words), len(a_words), 1)
@@ -962,26 +963,7 @@ def _build_agent(
                 "note": "Audio was generated successfully. DO NOT generate your own <audio> tags or markdown audio links. Just tell the user the audio is ready."
             })
 
-        if path == "/search_flights" and status == 200:
-            log.info("Flight search detected. Storing massive flight payload in sideband.")
-            
-            actual_data = data.get("data", data) if isinstance(data, dict) else data
-            
-            audio_artifacts.append({
-                "type": "a2ui",
-                "content": {
-                    "a2ui": {
-                        "component": "flights",
-                        "data": actual_data
-                    }
-                }
-            })
-            return json.dumps({
-                "status_code": status,
-                "data": f"Found {len(actual_data) if isinstance(actual_data, list) else 0} flights. They have been displayed to the user automatically via the A2UI sideband.",
-                "latency_ms": latency,
-                "note": "Flights displayed to user automatically. DO NOT output the a2ui block yourself. Just tell the user you found them."
-            })
+
 
         is_weather_tool = False
         if isinstance(path, str) and (
@@ -1393,12 +1375,12 @@ def _build_agent(
         "you MUST respond with an interactive input form.\n\n"
         "CRITICAL: YOUR RESPONSE MUST CONTAIN A FENCED CODE BLOCK WITH THE 'a2ui' LANGUAGE IDENTIFIER.\n"
         "CRITICAL: THE JSON MUST START WITH THE 'a2ui' WRAPPER KEY.\n\n"
-        "FORM TEMPLATE (You MUST use this EXACT JSON structure with { } and \" \" in your response):\n"
+        "GENERAL TEMPLATE (You MUST use this EXACT JSON structure with { } and \" \" in your response, replacing 'form' with the actual component you want to render):\n"
         "```a2ui\n"
         "{\n"
         "  \"a2ui\": {\n"
         "    \"component\": \"form\",\n"
-        "    \"title\": \"[Title of the form]\",\n"
+        "    \"title\": \"[Title]\",\n"
         "    \"children\": [\n"
         "      {\n"
         "        \"component\": \"textfield\",\n"
@@ -1417,21 +1399,41 @@ def _build_agent(
         "- checkbox: key, label\n"
         "- slider: key, label, min, max, value\n"
         "- datetime: key, label, type (date/datetime)\n"
+        "- colorpicker: key, label (Renders an interactive color wheel, returns hex string)\n"
+        "- daterange: key, label (Renders an interactive calendar range picker, returns 'YYYY-MM-DD to YYYY-MM-DD' string)\n"
+        "- mappicker: key, label (Renders an interactive map, user drops a pin, returns JSON string with lat/lng)\n"
         "- image: url, label, size (sm/md/lg)\n"
         "- audioplayer: src (url to mp3/audio file), title\n"
         "- videoplayer: src (url to mp4/youtube video), title\n"
         "- map: query (location/search query/route description), lat (latitude), lng (longitude), zoom (1-20), type (roadmap/satellite), title (title/caption)\n"
-        "- preview: html (complete HTML/JS/CSS source code to render), title (preview title)\n\n"
+        "- preview: html (complete HTML/JS/CSS source code to render), title (preview title)\n"
+        "- data_grid: columns (list of string keys to display, max 7), data (list of objects to display in the table), title (table title)\n\n"
+        "DATA GRID TEMPLATE (Example for displaying a list of items):\n"
+        "```a2ui\n"
+        "{\n"
+        "  \"a2ui\": {\n"
+        "    \"component\": \"data_grid\",\n"
+        "    \"title\": \"[Table Title]\",\n"
+        "    \"columns\": [\"id\", \"name\", \"status\"],\n"
+        "    \"data\": [\n"
+        "      {\"id\": 1, \"name\": \"Item 1\", \"status\": \"Active\"}\n"
+        "    ]\n"
+        "  }\n"
+        "}\n"
+        "```\n\n"
         "Rules:\n"
-        "- WRAPPER: Your JSON must be wrapped in an 'a2ui' key: {\"a2ui\": {\"component\": \"form\", ...}}\n"
+        "- WRAPPER: Your JSON must be wrapped in an 'a2ui' key: {\"a2ui\": {\"component\": \"<your-component-name>\", ...}}\n"
         "- CODE BLOCK: You MUST use ```a2ui [JSON] ``` markers. Failure to do this will result in rendering failure.\n"
-        "- SCHEMA-DRIVEN EXHAUSTIVENESS (CRITICAL): When generating a form, you MUST include ALL fields from the tool's JSON Schema (both REQUIRED and OPTIONAL). Map schema 'type' and 'enum' to the most appropriate A2UI component (e.g. use 'choicepicker' for enums, 'checkbox' for booleans, 'number' for integers).\n"
+        "- MULTI-STEP WIZARDS (CRITICAL): For complex APIs with many parameters (5+ fields) or logically grouped parameters, you MUST use the `wizard` component with a `steps` array instead of a single long `form`.\n"
+        "- MICRO-APPS (CRITICAL): Instead of generic text fields, you MUST intelligently detect parameter domains and use specialized micro-widgets: use `colorpicker` for hex color inputs, `daterange` for start/end date pairs, and `mappicker` for latitude/longitude coordinate selection.\n"
+        "- SCHEMA-DRIVEN EXHAUSTIVENESS (CRITICAL): When generating a form, you MUST include ALL fields from the tool's JSON Schema (both REQUIRED and OPTIONAL). Map schema 'type' and 'enum' to the most appropriate A2UI component.\n"
         "- LABELS & DESCRIPTIONS: Use the schema 'description' as the 'placeholder' and the parameter name (converted to Title Case) as the 'label'.\n"
         "- DOT-NOTATION (MANDATORY): For nested objects, you MUST use the exact dot-notation keys provided in the parameter list (e.g. 'settings.mode').\n"
         "- VISUAL RENDERING: If an API response contains image URLs, you MUST use the 'image' component to display them. Do not just link to them in a table.\n"
         "- MEDIA PLAYERS: If you return YouTube links, video links, or audio URLs, you MUST output a standalone A2UI JSON payload with the 'videoplayer' or 'audioplayer' component instead of a raw markdown link.\n"
         "- MAPS RENDERING (CRITICAL): If the user requests a map, directions, coordinate view, or satellite imagery of a location, or if you execute a map/location tool, you MUST output a standalone A2UI JSON block using the 'map' component (e.g. {\"a2ui\": {\"component\": \"map\", \"query\": \"Tokyo\", \"type\": \"satellite\", \"title\": \"Satellite view of Tokyo\"}}). Do not just show textual coordinates or session IDs.\n"
-        "- PREVIEW RENDERING (CRITICAL): If the user asks you to generate a custom UI component, webpage mockup, script preview, or dynamic frontend dashboard, you MUST output a standalone A2UI JSON block using the 'preview' component (e.g. {\"a2ui\": {\"component\": \"preview\", \"title\": \"Interest Calculator\", \"html\": \"...\"}}). The 'html' field MUST contain standalone, vanilla HTML, CSS, and inline JS (vanilla Javascript DOM manipulation). You MUST NOT write React, JSX, or templating syntax (such as `{items.map(...)` or `{cond && ...}`) inside the HTML string, as it is loaded directly inside a standard browser iframe. Do not just explain it textually or output a video component. Optional: To communicate back to the AI chatbot dynamically from your generated UI script inside the iframe, you can invoke window.parent.postMessage({ type: 'a2ui-action', action: 'send', message: 'your message here' }, '*') to send a chat message, or action 'set-input' to pre-fill the chat input box.\n"
+        "- PREVIEW RENDERING (CRITICAL): If the user asks you to generate a custom UI component, webpage mockup, script preview, or dynamic frontend dashboard, you MUST output a standalone A2UI JSON block using the 'preview' component (e.g. {\"a2ui\": {\"component\": \"preview\", \"title\": \"Interest Calculator\", \"html\": \"...\"}}). The 'html' field MUST contain standalone, vanilla HTML, CSS, and inline JS (vanilla Javascript DOM manipulation). You MUST use Tailwind CSS classes for styling. AESTHETICS ARE VERY IMPORTANT: You must design premium, modern interfaces with beautiful color palettes, glassmorphism, soft shadows, hover micro-animations, and smooth transitions. Avoid generic default colors, basic shapes, and simple minimum-viable layouts. CRITICAL FORMATTING RULE: The 'html' string MUST be pure, literal HTML. DO NOT use Javascript template literals (e.g. `${...}`), `.map()` functions, or JSX syntax anywhere within the HTML structure, because the browser will just render them as plain text. If you need repeating elements (like a grid of 9 buttons), you MUST either literally write out all 9 HTML tags in the string, or use a `<script>` tag with `document.createElement()` to build them at runtime. Do not just explain it textually or output a video component. Optional: To communicate back to the AI chatbot dynamically from your generated UI script inside the iframe, you can invoke window.parent.postMessage({ type: 'a2ui-action', action: 'send', message: 'your message here' }, '*') to send a chat message.\n"
+        "- DATA VISUALIZATION (CRITICAL): If an API tool returns a large list of items (e.g., flights, users, products, tickets, tasks), you MUST output a standalone A2UI JSON block using the 'data_grid' component. You MUST provide the 'columns' array (pick the 5-7 most relevant keys to display, avoiding obscure IDs) and the 'data' array containing the exact objects from the tool response. Do not dump a massive markdown table or text list.\n"
         "- A2UI SUBMISSIONS: When a user submits a form, you will receive a message with the form values. Extract these values and immediately use them to EXECUTE or RETRY the tool call.\n"
         "- NO AD-HOC FIELDS: NEVER invent fields that are not present in the tool specification.\n"
         "- AFTER the A2UI block, you may add a very brief explanatory sentence.\n"
@@ -1441,8 +1443,7 @@ def _build_agent(
         "You are an expert API Assistant. Use the `call_api_endpoint` tool to fulfill user requests.\n\n"
         "RESPONSE STRUCTURE RULES:\n"
         "- ALWAYS use Markdown for formatting.\n"
-        "- Use bullet points (*) or numbered lists for all lists of items.\n"
-        "- Use Markdown tables for structured data (like lists of customers, payments, etc.).\n"
+        "- Use bullet points (*) or numbered lists for simple, short lists.\n"
         "- Use bold headings (e.g., **#### Agent Details**) to categorize your response.\n"
         "- Summarize API data clearly before showing values.\n\n"
         "Available endpoints:\n"

@@ -50,7 +50,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { toast } from "sonner"
 import Link from "next/link"
-import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval, A2FlightsList, A2Map, A2WeatherCard, A2Sandbox, A2ArtifactPlaceholder, A2Image } from "@/components/a2ui/components"
+import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval, A2FlightsList, A2Map, A2WeatherCard, A2Sandbox, A2ArtifactPlaceholder, A2Image, A2DataGrid } from "@/components/a2ui/components"
 
 interface Agent {
   id: number
@@ -552,7 +552,7 @@ export default function AgentBuilderPage() {
     return matchesSearch && matchesMethod
   })
 
-  const isIntegrationAgent = agent?.base_url?.match(/^(composio|npx|docker|smithery|mcp):/i);
+  const isIntegrationAgent = agent?.base_url?.match(/^(composio|npx|docker|smithery|mcp):/i) || agent?.base_url?.includes('apiverve.com') || agent?.base_url?.includes('cloudmersive.com');
   const integrationName = agent?.base_url
     ? agent.base_url.replace(/^(composio:|npx:(@[\w-]+\/)?(mcp-)?(server-)?|docker:|smithery:|mcp:)/i, "").replace("googlecalendar", "Google Calendar")
     : "";
@@ -865,7 +865,7 @@ export default function AgentBuilderPage() {
                       </div>
                     </div>
                     {isMcpTool ? (() => {
-                      const rawName = ep.path.replace("/mcp/tools/", "") || ep.summary;
+                      const rawName = ep.path.startsWith("/mcp/tools/") ? ep.path.replace("/mcp/tools/", "") : (ep.summary || ep.path);
                       const cleanName = rawName
                         .split('_')
                         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -975,6 +975,7 @@ export default function AgentBuilderPage() {
                                         comp === 'weather' || comp === 'weather_card' ||
                                         comp === 'sandbox' || comp === 'iframe' || comp === 'preview' ||
                                         comp === 'map' || comp === 'google_maps' ||
+                                        comp === 'data_grid' || comp === 'datagrid' ||
                                         comp === 'audioplayer' || comp === 'audio' ||
                                         comp === 'videoplayer' || comp === 'video' || comp === 'youtube') {
                                       return (
@@ -1238,6 +1239,8 @@ export default function AgentBuilderPage() {
                   }
                   if (comp === 'map' || comp === 'google_maps') {
                     return <A2Map data={activeA2UI} />;
+                  } else if (comp === 'data_grid' || comp === 'datagrid') {
+                    return <A2DataGrid data={activeA2UI} />;
                   }
                   if (comp === 'audioplayer' || comp === 'audio') {
                     return (

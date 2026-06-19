@@ -420,7 +420,12 @@ Conversation:
     db.commit()
 
     if session_id:
-        assistant_msg = ChatMessage(conversation_id=session_id, role="assistant", content=result.get("answer", ""))
+        assistant_msg = ChatMessage(
+            conversation_id=session_id, 
+            role="assistant", 
+            content=result.get("answer", ""),
+            chunks=result.get("chunks")
+        )
         db.add(assistant_msg)
         db.commit()
 
@@ -658,6 +663,16 @@ async def chat(
                             output_tokens=res.get("output_tokens", 0),
                         )
                         db.add(log_entry)
+                        
+                        if session_id:
+                            assistant_msg = ChatMessage(
+                                conversation_id=session_id, 
+                                role="assistant", 
+                                content=res.get("answer", ""),
+                                chunks=res.get("chunks")
+                            )
+                            db.add(assistant_msg)
+                            
                         db.commit()
                 except Exception as e:
                     log.error(f"Failed to log streaming request: {e}")
@@ -688,7 +703,12 @@ async def chat(
     db.refresh(log_entry)
 
     if session_id:
-        assistant_msg = ChatMessage(conversation_id=session_id, role="assistant", content=result.get("answer", ""))
+        assistant_msg = ChatMessage(
+            conversation_id=session_id, 
+            role="assistant", 
+            content=result.get("answer", ""),
+            chunks=result.get("chunks")
+        )
         db.add(assistant_msg)
         db.commit()
 

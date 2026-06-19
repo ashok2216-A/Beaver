@@ -14,7 +14,8 @@ import {
   X,
   Boxes,
   Wrench,
-  FileCode2
+  FileCode2,
+  Store
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -219,6 +220,7 @@ function NewAgentContent() {
 
   const getLogoForTemplate = (t: Template) => {
     const id = (t.id || "").toLowerCase();
+    if (id === "veo") return "https://tse4.mm.bing.net/th/id/OIP.OQwb5oyCxmFx41V1U_wdYQHaHa?rs=1&pid=ImgDetMain&o=7&rm=3";
     if (id === "google_maps") return "https://www.google.com/s2/favicons?sz=128&domain=maps.google.com";
     if (id === "google_chat") return "https://www.google.com/s2/favicons?sz=128&domain=chat.google.com";
     if (id === "duffel_flights" || id === "duffel") return "https://www.google.com/s2/favicons?sz=128&domain=duffel.com";
@@ -720,7 +722,7 @@ function NewAgentContent() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 w-full max-w-5xl">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-6xl">
             {/* Option 1: Integrations */}
             <button
               onClick={() => setTab("templates")}
@@ -774,6 +776,34 @@ function NewAgentContent() {
 
               <div className="flex items-center text-sm font-bold text-emerald-500 gap-2 pt-4 border-t border-slate-100 dark:border-slate-800/80 w-full group-hover:gap-3 transition-all duration-300">
                 Configure Custom Engine <ArrowRight className="w-4 h-4 text-emerald-500" />
+              </div>
+            </button>
+
+            {/* Option 3: Template Marketplace */}
+            <button
+              onClick={() => router.push("/dashboard/templates")}
+              className="group relative flex flex-col p-10 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xl hover:shadow-2xl hover:border-violet-500/50 transition-all duration-500 text-left overflow-hidden hover:-translate-y-1"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-violet-500/15 via-purple-500/10 to-transparent rounded-full blur-3xl -mr-20 -mt-20 group-hover:scale-125 transition-transform duration-700 pointer-events-none" />
+
+              <div className="flex items-center justify-between w-full mb-8">
+                <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-violet-500 to-purple-600 p-4 text-white shadow-lg shadow-violet-500/25 flex items-center justify-center transform group-hover:scale-110 transition-all duration-300">
+                  <Store className="w-8 h-8" />
+                </div>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold tracking-wide border border-slate-200 dark:border-slate-700">
+                  Pre-built Templates
+                </span>
+              </div>
+
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 group-hover:text-violet-500 transition-colors">
+                Template Marketplace
+              </h3>
+              <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-10 flex-1 text-sm sm:text-base">
+                Instantly deploy from a vast collection of verified utility agents.
+              </p>
+
+              <div className="flex items-center text-sm font-bold text-violet-500 gap-2 pt-4 border-t border-slate-100 dark:border-slate-800/80 w-full group-hover:gap-3 transition-all duration-300">
+                Browse Marketplace <ArrowRight className="w-4 h-4 text-violet-500" />
               </div>
             </button>
           </div>

@@ -8,7 +8,7 @@ import { useAuth, useUser } from "@clerk/nextjs"
 import { cn, addNotification } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval, A2FlightsList, A2Map, A2WeatherCard, A2Sandbox, A2ArtifactPlaceholder, A2Image } from "@/components/a2ui/components"
+import { A2InputForm, A2AudioPlayer, A2VideoPlayer, A2HumanApproval, A2FlightsList, A2Map, A2WeatherCard, A2Sandbox, A2ArtifactPlaceholder, A2Image, A2DataGrid } from "@/components/a2ui/components"
 
 interface MessageChunk {
   type: 'text' | 'a2ui'
@@ -376,7 +376,32 @@ export default function PlaygroundPage() {
       })
       if (res.ok) {
         const data = await res.json()
-        setMessages(data.messages || [])
+        const msgs = data.messages || []
+        setMessages(msgs)
+        
+        // Scan the last assistant message for A2UI to restore it
+        const lastAssistantMsg = [...msgs].reverse().find(m => m.role === 'assistant' && m.chunks)
+        if (lastAssistantMsg && lastAssistantMsg.chunks) {
+          const artifactChunk = lastAssistantMsg.chunks.find((chunk: any) => {
+            if (chunk.type !== 'a2ui') return false;
+            const comp = chunk.content?.a2ui?.component?.toLowerCase?.();
+            return [
+              'flights', 'flight_list',
+              'weather', 'weather_card',
+              'sandbox', 'iframe', 'preview',
+              'map', 'google_maps',
+              'audioplayer', 'audio',
+              'videoplayer', 'video', 'youtube'
+            ].includes(comp);
+          });
+          if (artifactChunk) {
+            setActiveA2UI(artifactChunk.content);
+          } else {
+            setActiveA2UI(null);
+          }
+        } else {
+          setActiveA2UI(null);
+        }
       }
     } catch (err) {
       console.error("Failed to load conversation:", err)
@@ -739,6 +764,7 @@ export default function PlaygroundPage() {
                                     comp === 'weather' || comp === 'weather_card' ||
                                     comp === 'sandbox' || comp === 'iframe' || comp === 'preview' ||
                                     comp === 'map' || comp === 'google_maps' ||
+                                    comp === 'data_grid' || comp === 'datagrid' ||
                                     comp === 'audioplayer' || comp === 'audio' ||
                                     comp === 'videoplayer' || comp === 'video' || comp === 'youtube') {
                                   return (
@@ -762,6 +788,9 @@ export default function PlaygroundPage() {
                                         }
                                         if (comp === 'map' || comp === 'google_maps') {
                                           return <A2Map data={a2data} />;
+                                        }
+                                        if (comp === 'data_grid' || comp === 'datagrid') {
+                                          return <A2DataGrid data={a2data} />;
                                         }
                                         if (comp === 'audioplayer' || comp === 'audio') {
                                           return (

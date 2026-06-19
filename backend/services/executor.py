@@ -239,15 +239,68 @@ async def call_api(
                 # Unflatten body params to support nested JSON structures (e.g. conversation_config.model_id)
                 final_body = _unflatten_params(body_params) if body_params else {}
                 
-                # Ensure we send an empty JSON body {} instead of None for methods that usually expect a body,
-                # as some APIs (like GitHub starring) require Content-Length: 0 or an empty body.
-                r = await client.request(
-                    method_upper,
-                    url,
-                    params=query_params,
-                    json=final_body,
-                    headers=headers,
-                )
+                # Check for file uploads
+                import os
+                multipart_files = {}
+                multipart_data = {}
+                has_file = False
+                
+                UPLOAD_DIR = os.path.join(os.getcwd(), ".beaver", "tmp")
+
+                if isinstance(final_body, dict):
+                    for k, v in list(final_body.items()):
+                        if isinstance(v, str) and v.startswith("beaver-file://"):
+                            filename = v.replace("beaver-file://", "")
+                            filepath = os.path.join(UPLOAD_DIR, filename)
+                            if os.path.exists(filepath):
+                                has_file = True
+                                # If the LLM assigned a file to a parameter named 'url' or 'image_url',
+                                # the API (like APIVerve) typically expects the multipart key to be 'file'.
+                                final_k = "file" if k.lower() in ("url", "image_url", "imageurl", "image_url") else k
+                                multipart_files[final_k] = (filename, open(filepath, "rb"))
+                            else:
+                                multipart_data[k] = v
+                        else:
+                            # Convert dict/lists to string if sending as multipart data
+                            if has_file and (isinstance(v, dict) or isinstance(v, list)):
+                                multipart_data[k] = json.dumps(v)
+                            else:
+                                multipart_data[k] = v
+
+                # If we discovered a file, retrospectively convert everything to string for data
+                if has_file:
+                    for k, v in multipart_data.items():
+                        if isinstance(v, (dict, list)):
+                            multipart_data[k] = json.dumps(v)
+                        elif not isinstance(v, str):
+                            multipart_data[k] = str(v)
+
+                if has_file:
+                    # Remove content-type so httpx sets the multipart boundary automatically
+                    headers_clean = {k: v for k, v in headers.items() if k.lower() != "content-type"}
+                    try:
+                        r = await client.request(
+                            method_upper,
+                            url,
+                            params=query_params,
+                            data=multipart_data,
+                            files=multipart_files,
+                            headers=headers_clean,
+                        )
+                    finally:
+                        # Clean up file handles
+                        for f in multipart_files.values():
+                            f[1].close()
+                else:
+                    # Ensure we send an empty JSON body {} instead of None for methods that usually expect a body,
+                    # as some APIs (like GitHub starring) require Content-Length: 0 or an empty body.
+                    r = await client.request(
+                        method_upper,
+                        url,
+                        params=query_params,
+                        json=final_body,
+                        headers=headers,
+                    )
             else:
                 r = await client.get(url, params=query_params, headers=headers)
 
