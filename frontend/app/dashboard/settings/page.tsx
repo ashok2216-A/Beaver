@@ -197,20 +197,20 @@ export default function SettingsPage() {
             <AlertDialogTrigger asChild>
               <Button variant="destructive" className="rounded-xl shadow-lg shadow-rose-500/20">Delete Account</Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-3xl bg-white/60 backdrop-blur-2xl border-white/50 shadow-2xl">
+            <AlertDialogContent className="rounded-3xl bg-background/95 backdrop-blur-2xl border-white/20 shadow-2xl">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-2xl font-bold text-rose-600">Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle className="text-2xl font-semibold text-rose-600">Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription className="text-sm">
                   This action cannot be undone. This will permanently delete your
                   account and remove all your data from our servers.
                 </AlertDialogDescription>
                 <div className="mt-6 space-y-3">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Type <b className="text-foreground">DELETE</b> to confirm:</Label>
+                  <Label className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Type <b className="font-semibold text-foreground">DELETE</b> to confirm:</Label>
                   <Input 
                     placeholder="DELETE" 
                     value={deleteConfirmation}
                     onChange={(e) => setDeleteConfirmation(e.target.value)}
-                    className="h-12 rounded-xl bg-white/40 border-rose-500/20 focus-visible:ring-rose-500"
+                    className="h-12 rounded-xl border-0 bg-muted/50 shadow-none focus-visible:ring-1 focus-visible:ring-rose-500/50"
                   />
                 </div>
               </AlertDialogHeader>
@@ -219,7 +219,7 @@ export default function SettingsPage() {
                 <AlertDialogAction 
                   onClick={handleDeleteAccount}
                   disabled={deleteConfirmation !== "DELETE" || isDeleting}
-                  className="rounded-xl bg-rose-500 hover:bg-rose-600 font-bold shadow-lg shadow-rose-500/20"
+                  className="rounded-xl bg-rose-500 hover:bg-rose-600 font-semibold shadow-lg shadow-rose-500/20"
                 >
                   {isDeleting ? "Deleting..." : "Delete Account"}
                 </AlertDialogAction>

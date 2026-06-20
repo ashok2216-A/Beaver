@@ -212,7 +212,7 @@ export default function TemplatesPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filteredTemplates.map(template => (
-          <div key={template.id} className="group flex flex-col bg-card border rounded-xl hover:border-primary/50 transition-colors duration-200 overflow-hidden">
+          <div key={template.id} className="group flex flex-col bg-card/40 backdrop-blur-md border rounded-xl hover:border-primary/50 transition-colors duration-200 overflow-hidden shadow-sm">
             <div className="p-5 flex-1 flex flex-col">
               <div className="flex items-start justify-between mb-1.5 gap-2">
                 <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</h3>
