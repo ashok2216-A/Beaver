@@ -83,9 +83,9 @@ export function DashboardSidebar({
           {/* Logo */}
           <div className={cn(
             "flex h-16 shrink-0 items-center transition-all duration-300",
-            isCollapsed ? "" : "px-2"
+            isCollapsed ? "justify-center w-full" : "-ml-1"
           )}>
-            <Link href="/" className={cn("flex items-center group/logo relative", isCollapsed ? "ml-[22px]" : "")}>
+            <Link href="/" className={cn("flex items-center group/logo relative")}>
               <div className={cn("relative w-9 h-9 shrink-0 group-hover/logo:scale-105 transition-transform")}>
                 <Image 
                   src="/logo.svg" 
